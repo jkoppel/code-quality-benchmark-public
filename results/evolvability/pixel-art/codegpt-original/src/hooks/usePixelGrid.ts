@@ -1,94 +1,202 @@
 import { useState, useCallback } from "react";
-import { PixelGrid, GridPosition, ColorString } from "../types";
-import { GridUtility } from "../utils";
-import { DEFAULT_COLORS } from "../config/constants";
+import { PixelGrid, RGBColor, GridPosition } from "../types";
+import { DEFAULT_CANVAS_CONFIG, WHITE_COLOR } from "../config/constants";
+import { rgbToString } from "../utils/colorUtils";
+import { validateGridPosition } from "../utils/coordinateUtils";
 
 /**
- * Custom hook for managing pixel grid state
- * Encapsulates all grid-related state management logic
+ * Custom hook for managing pixel grid state and operations
+ * Follows Single Responsibility Principle - only manages grid state
  */
-export const usePixelGrid = (initialColor: string = DEFAULT_COLORS.WHITE) => {
+export const usePixelGrid = (
+  initialGridSize: number = DEFAULT_CANVAS_CONFIG.gridSize
+) => {
+  // Initialize grid with white pixels
   const [pixels, setPixels] = useState<PixelGrid>(() =>
-    GridUtility.createEmptyGrid(initialColor)
+    Array(initialGridSize)
+      .fill(null)
+      .map(() => Array(initialGridSize).fill(rgbToString(WHITE_COLOR)))
   );
 
-  /**
-   * Sets a pixel at the specified position
-   */
-  const setPixel = useCallback((position: GridPosition, color: ColorString) => {
-    setPixels((currentPixels) =>
-      GridUtility.setPixelAt(currentPixels, position, color)
-    );
-  }, []);
+  const [history, setHistory] = useState<PixelGrid[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   /**
-   * Gets a pixel color at the specified position
+   * Set a pixel at the specified position
    */
-  const getPixel = useCallback(
-    (position: GridPosition): ColorString => {
-      return GridUtility.getPixelAt(pixels, position);
-    },
-    [pixels]
-  );
-
-  /**
-   * Clears the entire grid with specified color
-   */
-  const clearGrid = useCallback((color: string = DEFAULT_COLORS.WHITE) => {
-    setPixels(GridUtility.fillGrid(color));
-  }, []);
-
-  /**
-   * Replaces the entire pixel grid
-   */
-  const replaceGrid = useCallback((newPixels: PixelGrid) => {
-    setPixels(GridUtility.cloneGrid(newPixels));
-  }, []);
-
-  /**
-   * Fills a specific area with color (flood fill algorithm)
-   */
-  const floodFill = useCallback(
-    (startPosition: GridPosition, newColor: ColorString) => {
-      const targetColor = GridUtility.getPixelAt(pixels, startPosition);
-
-      if (targetColor === newColor) return; // No need to fill
-
-      const visited = new Set<string>();
-      const stack: GridPosition[] = [startPosition];
-      const newPixels = GridUtility.cloneGrid(pixels);
-
-      while (stack.length > 0) {
-        const current = stack.pop()!;
-        const key = `${current.row},${current.col}`;
-
-        if (visited.has(key) || !GridUtility.isValidGridPosition(current)) {
-          continue;
-        }
-
-        if (GridUtility.getPixelAt(newPixels, current) !== targetColor) {
-          continue;
-        }
-
-        visited.add(key);
-        newPixels[current.row][current.col] = newColor;
-
-        // Add neighbors to stack
-        const neighbors = GridUtility.getNeighbors(current);
-        stack.push(...neighbors);
+  const setPixel = useCallback(
+    (position: GridPosition, color: RGBColor) => {
+      const validation = validateGridPosition(position, pixels.length);
+      if (!validation.isValid) {
+        console.warn("Invalid grid position:", validation.errors);
+        return;
       }
+
+      setPixels((prevPixels) => {
+        // Save current state to history before making changes
+        const newHistory = [...history.slice(0, historyIndex + 1), prevPixels];
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+
+        const newPixels = prevPixels.map((row) => [...row]);
+        newPixels[position.row][position.col] = rgbToString(color);
+        return newPixels;
+      });
+    },
+    [pixels.length, history, historyIndex]
+  );
+
+  /**
+   * Clear the entire grid
+   */
+  const clearGrid = useCallback(() => {
+    const newPixels = Array(pixels.length)
+      .fill(null)
+      .map(() => Array(pixels.length).fill(rgbToString(WHITE_COLOR)));
+
+    // Save current state to history
+    const newHistory = [...history.slice(0, historyIndex + 1), pixels];
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+
+    setPixels(newPixels);
+  }, [pixels, history, historyIndex]);
+
+  /**
+   * Load a new pixel grid
+   */
+  const loadGrid = useCallback(
+    (newPixels: PixelGrid) => {
+      // Save current state to history
+      const newHistory = [...history.slice(0, historyIndex + 1), pixels];
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
 
       setPixels(newPixels);
     },
+    [pixels, history, historyIndex]
+  );
+
+  /**
+   * Undo the last action
+   */
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setPixels(history[historyIndex - 1]);
+    }
+  }, [history, historyIndex]);
+
+  /**
+   * Redo the next action
+   */
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setPixels(history[historyIndex + 1]);
+    }
+  }, [history, historyIndex]);
+
+  /**
+   * Fill an area with a color (flood fill algorithm)
+   */
+  const floodFill = useCallback(
+    (startPosition: GridPosition, newColor: RGBColor) => {
+      const validation = validateGridPosition(startPosition, pixels.length);
+      if (!validation.isValid) {
+        console.warn("Invalid grid position:", validation.errors);
+        return;
+      }
+
+      const targetColor = pixels[startPosition.row][startPosition.col];
+      const fillColor = rgbToString(newColor);
+
+      if (targetColor === fillColor) {
+        return; // No need to fill with the same color
+      }
+
+      setPixels((prevPixels) => {
+        // Save current state to history
+        const newHistory = [...history.slice(0, historyIndex + 1), prevPixels];
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+
+        const newPixels = prevPixels.map((row) => [...row]);
+        const stack: GridPosition[] = [startPosition];
+
+        while (stack.length > 0) {
+          const { row, col } = stack.pop()!;
+
+          if (
+            row < 0 ||
+            row >= newPixels.length ||
+            col < 0 ||
+            col >= newPixels[0].length
+          ) {
+            continue;
+          }
+
+          if (newPixels[row][col] !== targetColor) {
+            continue;
+          }
+
+          newPixels[row][col] = fillColor;
+
+          // Add adjacent pixels to stack
+          stack.push(
+            { row: row - 1, col },
+            { row: row + 1, col },
+            { row, col: col - 1 },
+            { row, col: col + 1 }
+          );
+        }
+
+        return newPixels;
+      });
+    },
+    [pixels, history, historyIndex]
+  );
+
+  /**
+   * Get pixel color at position
+   */
+  const getPixel = useCallback(
+    (position: GridPosition): string | null => {
+      const validation = validateGridPosition(position, pixels.length);
+      if (!validation.isValid) {
+        return null;
+      }
+      return pixels[position.row][position.col];
+    },
     [pixels]
   );
+
+  /**
+   * Check if undo is available
+   */
+  const canUndo = historyIndex > 0;
+
+  /**
+   * Check if redo is available
+   */
+  const canRedo = historyIndex < history.length - 1;
+
+  /**
+   * Get grid dimensions
+   */
+  const gridSize = pixels.length;
 
   return {
     pixels,
     setPixel,
-    getPixel,
     clearGrid,
-    replaceGrid,
+    loadGrid,
+    undo,
+    redo,
     floodFill,
+    getPixel,
+    canUndo,
+    canRedo,
+    gridSize,
   };
 };

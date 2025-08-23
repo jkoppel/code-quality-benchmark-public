@@ -1,67 +1,44 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { CalculatorState, Operation } from "../types/calculator.types";
-import { CalculatorService } from "../services/CalculatorService";
+import { CalculatorService } from "../services/calculator.service";
 
 export const useCalculator = () => {
-  const calculatorService = useMemo(() => new CalculatorService(), []);
-  const [state, setState] = useState<CalculatorState>(
-    calculatorService.getState()
+  const calculatorService = new CalculatorService();
+  const [state, setState] = useState<CalculatorState>(() =>
+    calculatorService.getInitialState()
   );
 
-  useEffect(() => {
-    const unsubscribe = calculatorService.subscribe(setState);
-    return unsubscribe;
-  }, [calculatorService]);
-
   const inputNumber = useCallback(
-    (num: string) => {
-      try {
-        calculatorService.inputNumber(num);
-      } catch (error) {
-        console.error("Input number error:", error);
-      }
+    (number: string) => {
+      setState((currentState) =>
+        calculatorService.processNumberInput(currentState, number)
+      );
     },
     [calculatorService]
   );
 
   const inputOperation = useCallback(
     (operation: Operation) => {
-      try {
-        calculatorService.inputOperation(operation);
-      } catch (error) {
-        console.error("Input operation error:", error);
-      }
+      setState((currentState) =>
+        calculatorService.processOperationInput(currentState, operation)
+      );
     },
     [calculatorService]
   );
 
-  const calculate = useCallback(() => {
-    try {
-      calculatorService.calculate();
-    } catch (error) {
-      console.error("Calculate error:", error);
-    }
+  const performCalculation = useCallback(() => {
+    setState((currentState) => calculatorService.processEquals(currentState));
   }, [calculatorService]);
 
   const clear = useCallback(() => {
-    calculatorService.clear();
-  }, [calculatorService]);
-
-  const backspace = useCallback(() => {
-    calculatorService.backspace();
-  }, [calculatorService]);
-
-  const toggleSign = useCallback(() => {
-    calculatorService.toggleSign();
+    setState(calculatorService.processClear());
   }, [calculatorService]);
 
   return {
-    state,
+    display: state.display,
     inputNumber,
     inputOperation,
-    calculate,
+    performCalculation,
     clear,
-    backspace,
-    toggleSign,
   };
 };

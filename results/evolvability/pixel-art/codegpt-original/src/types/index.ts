@@ -1,12 +1,20 @@
-// Core types for the Pixel Art Editor
-
+// Color-related types
 export interface RGBColor {
   r: number;
   g: number;
   b: number;
 }
 
-export interface Position {
+export interface HSLColor {
+  h: number;
+  s: number;
+  l: number;
+}
+
+// Grid and canvas types
+export type PixelGrid = string[][];
+
+export interface Coordinates {
   x: number;
   y: number;
 }
@@ -20,54 +28,52 @@ export interface CanvasConfig {
   gridSize: number;
   pixelSize: number;
   strokeColor: string;
+  backgroundColor: string;
 }
 
-export interface FileHandlerConfig {
-  defaultFileName: string;
-  acceptedFileTypes: string[];
+// File handling types
+export interface FileLoadResult {
+  success: boolean;
+  data?: PixelGrid;
+  error?: string;
 }
 
-export interface ColorUtilityConfig {
-  minValue: number;
-  maxValue: number;
+export interface FileSaveOptions {
+  filename: string;
+  format: "png" | "bmp" | "jpeg";
+  quality?: number;
 }
 
-// Type aliases for better readability
-export type PixelGrid = string[][];
-export type ColorString = string;
-export type EventHandler<T> = (event: T) => void;
-
-// Enums for better type safety
-export enum FileFormat {
-  BMP = "bmp",
-  PNG = "png",
-  JPEG = "jpeg",
+// Component props types
+export interface ColorPickerProps {
+  selectedColor: RGBColor;
+  onColorChange: (color: RGBColor) => void;
 }
 
-export enum ColorFormat {
-  RGB = "rgb",
-  HEX = "hex",
-  HSL = "hsl",
+export interface CanvasProps {
+  pixels: PixelGrid;
+  selectedColor: RGBColor;
+  config: CanvasConfig;
+  onPixelClick: (position: GridPosition) => void;
 }
 
-// Interface for canvas operations
-export interface CanvasOperations {
-  drawPixel: (position: GridPosition, color: ColorString) => void;
-  clearCanvas: () => void;
-  drawGrid: () => void;
-  getPixelColor: (position: GridPosition) => ColorString;
+export interface ControlsProps {
+  onSave: () => void;
+  onLoad: (file: File) => void;
+  onClear: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
-// Interface for file operations
-export interface FileOperations {
-  saveAsImage: (pixels: PixelGrid, format: FileFormat) => void;
-  loadFromImage: (file: File) => Promise<PixelGrid>;
+// Error types
+export interface PixelArtError {
+  code: string;
+  message: string;
+  details?: any;
 }
 
-// Interface for color operations
-export interface ColorOperations {
-  rgbToString: (color: RGBColor) => ColorString;
-  stringToRgb: (colorString: ColorString) => RGBColor;
-  isValidRgbValue: (value: number) => boolean;
-  generateRandomColor: () => RGBColor;
+// Validation types
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
 }

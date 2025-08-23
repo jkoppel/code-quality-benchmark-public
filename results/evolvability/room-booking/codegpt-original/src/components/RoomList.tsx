@@ -1,25 +1,24 @@
 import React from 'react';
-import { Room } from '../types';
+import { ROOMS } from '../constants';
 
 interface RoomListProps {
-  rooms: Room[];
-  selectedRoom: Room | null;
-  onRoomSelect: (room: Room) => void;
+  selectedRoom: string | null;
+  onRoomSelect: (roomName: string) => void;
 }
 
-const RoomList: React.FC<RoomListProps> = ({ rooms, selectedRoom, onRoomSelect }) => {
+const RoomList: React.FC<RoomListProps> = ({ selectedRoom, onRoomSelect }) => {
   return (
     <div className="room-list">
-      <h2>Available Rooms</h2>
+      <h2>Rooms</h2>
       <ul>
-        {rooms.map(room => (
+        {ROOMS.map((room) => (
           <li 
-            key={room.id}
-            className={selectedRoom?.id === room.id ? 'selected' : ''}
-            onClick={() => onRoomSelect(room)}
+            key={room.name}
+            className={selectedRoom === room.name ? 'selected' : ''}
+            onClick={() => onRoomSelect(room.name)}
           >
             {room.name}
-            {room.isVirtual && <span className="virtual-tag"> (Combines all ballrooms)</span>}
+            {room.isVirtual && <span className="virtual-badge"> (Virtual)</span>}
           </li>
         ))}
       </ul>

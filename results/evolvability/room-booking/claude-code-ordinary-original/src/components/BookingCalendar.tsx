@@ -1,80 +1,122 @@
 import React, { useState } from 'react';
-import { Room, Booking } from '../types';
-import { HOURS } from '../constants/hours';
-import { BookingService } from '../services/bookingService';
-import { getCurrentDate } from '../utils/dateUtils';
-import HourSlot from './BookingCalendar/HourSlot';
-import BookingForm from './BookingCalendar/BookingForm';
+import { Booking } from '../types';
+import { UI_MESSAGES } from '../constants';
+import { formatDateLong } from '../utils/dateUtils';
+import { useCalendarState } from '../hooks/useCalendarState';
+import { checkResourceAvailability } from '../services/bookingService';
+import DateNavigation from './DateNavigation';
+import TimeSlots from './TimeSlots';
+import BookingForm from './BookingForm';
 
 interface BookingCalendarProps {
-  room: Room;
+  selectedRoom: string | null;
+  selectedDate: string;
   bookings: Booking[];
-  onBook: (name: string, date: string, hour: number) => void;
+  onBook: (roomName: string, date: string, startTime: string, endTime: string, userName: string, resources?: string[]) => void;
+  onUnbook: (bookingId: string) => void;
+  onDateChange: (date: string) => void;
 }
 
-const BookingCalendar: React.FC<BookingCalendarProps> = ({ room, bookings, onBook }) => {
-  const [selectedDate, setSelectedDate] = useState(getCurrentDate());
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [selectedHour, setSelectedHour] = useState<number | null>(null);
+const BookingCalendar: React.FC<BookingCalendarProps> = ({
+  selectedRoom,
+  selectedDate,
+  bookings,
+  onBook,
+  onUnbook,
+  onDateChange
+}) => {
+  const {
+    selectedSlot,
+    selectedEndSlot,
+    userName,
+    showBookingForm,
+    setUserName,
+    resetState,
+    handleSlotClick,
+    getEndTime
+  } = useCalendarState();
 
-  const handleHourClick = (hour: number) => {
-    if (BookingService.isHourAvailable(bookings, selectedDate, hour)) {
-      setSelectedHour(hour);
-      setShowBookingForm(true);
+  const [selectedResources, setSelectedResources] = useState<string[]>([]);
+  const [resourceError, setResourceError] = useState<string>('');
+
+  const handleBook = () => {
+    if (selectedSlot && userName.trim()) {
+      const endTime = getEndTime();
+      
+      // Check resource availability
+      if (selectedResources.length > 0) {
+        const resourcesAvailable = checkResourceAvailability(
+          selectedResources,
+          selectedDate,
+          selectedSlot,
+          endTime,
+          bookings
+        );
+        
+        if (!resourcesAvailable) {
+          setResourceError(UI_MESSAGES.RESOURCE_UNAVAILABLE);
+          return;
+        }
+      }
+      
+      onBook(selectedRoom!, selectedDate, selectedSlot, endTime, userName.trim(), selectedResources);
+      resetState();
+      setSelectedResources([]);
+      setResourceError('');
     }
   };
 
-  const handleBookingConfirm = (name: string) => {
-    if (selectedHour !== null) {
-      onBook(name, selectedDate, selectedHour);
-      setShowBookingForm(false);
-      setSelectedHour(null);
-    }
+  const handleResourcesChange = (resources: string[]) => {
+    setSelectedResources(resources);
+    setResourceError('');
   };
 
-  const handleBookingCancel = () => {
-    setShowBookingForm(false);
-    setSelectedHour(null);
+  const onSlotClick = (time: string) => {
+    handleSlotClick(time, selectedRoom!, selectedDate, bookings, onUnbook);
   };
+
+  if (!selectedRoom) {
+    return <div className="calendar-container">{UI_MESSAGES.SELECT_ROOM}</div>;
+  }
 
   return (
-    <div className="booking-calendar">
-      <h2>{room.name} - Availability</h2>
+    <div className="calendar-container">
+      <DateNavigation 
+        selectedDate={selectedDate} 
+        onDateChange={onDateChange} 
+      />
+
+      <h3>{selectedRoom} - {formatDateLong(selectedDate)}</h3>
       
-      <div className="date-selector">
-        <label>Date: </label>
-        <input 
-          type="date" 
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        />
-      </div>
+      <TimeSlots
+        selectedRoom={selectedRoom}
+        selectedDate={selectedDate}
+        bookings={bookings}
+        selectedSlot={selectedSlot}
+        selectedEndSlot={selectedEndSlot}
+        onSlotClick={onSlotClick}
+      />
 
-      <div className="hours-grid">
-        {HOURS.map(hour => {
-          const isBooked = !BookingService.isHourAvailable(bookings, selectedDate, hour);
-          const booking = BookingService.getBookingForSlot(bookings, selectedDate, hour);
-          
-          return (
-            <HourSlot
-              key={hour}
-              hour={hour}
-              isBooked={isBooked}
-              booking={booking}
-              onClick={handleHourClick}
-            />
-          );
-        })}
-      </div>
-
-      {showBookingForm && selectedHour !== null && (
+      {showBookingForm && selectedSlot && (
         <BookingForm
-          room={room}
-          selectedDate={selectedDate}
-          selectedHour={selectedHour}
-          onConfirm={handleBookingConfirm}
-          onCancel={handleBookingCancel}
+          roomName={selectedRoom}
+          startTime={selectedSlot}
+          endTime={getEndTime()}
+          userName={userName}
+          selectedResources={selectedResources}
+          onUserNameChange={setUserName}
+          onResourcesChange={handleResourcesChange}
+          onConfirm={handleBook}
+          onCancel={resetState}
         />
+      )}
+
+      {resourceError && (
+        <div className="error-message">{resourceError}</div>
+      )}
+
+      {selectedSlot && !selectedEndSlot && !showBookingForm && (
+        <p className="instruction">{UI_MESSAGES.SLOT_INSTRUCTION}</p>
       )}
     </div>
   );

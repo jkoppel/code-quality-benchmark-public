@@ -1,103 +1,160 @@
-import React, { useState } from 'react';
-import { Room, Booking } from '../types';
+import React, { useCallback, useState } from 'react';
+import { Booking } from '../types';
+import { BookingFormData } from '../types/booking';
 import { HOURS } from '../constants';
+import { useTimeSlotSelection } from '../hooks/useTimeSlotSelection';
+import { BookingService } from '../services/BookingService';
+import { DateNavigation } from './booking/DateNavigation';
+import { TimeSlotGrid } from './booking/TimeSlotGrid';
+import { BookingForm } from './booking/BookingForm';
+import { DateUtils } from '../utils/dateUtils';
 
 interface BookingCalendarProps {
-  room: Room;
+  selectedRoom: string | null;
+  selectedDate: string;
   bookings: Booking[];
-  onBook: (name: string, date: string, hour: number) => void;
+  onBook: (roomName: string, date: string, startTime: string, endTime: string, userName: string) => void;
+  onUnbook: (bookingId: string) => void;
+  onDateChange: (date: string) => void;
 }
 
-const BookingCalendar: React.FC<BookingCalendarProps> = ({ room, bookings, onBook }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [selectedHour, setSelectedHour] = useState<number | null>(null);
-  const [bookingName, setBookingName] = useState('');
+const BookingCalendar: React.FC<BookingCalendarProps> = ({
+  selectedRoom,
+  selectedDate,
+  bookings,
+  onBook,
+  onUnbook,
+  onDateChange
+}) => {
+  const [error, setError] = useState<string | null>(null);
+  
+  const {
+    selectedSlot,
+    selectedEndSlot,
+    showBookingForm,
+    handleSlotClick,
+    resetSelection,
+    isInSelectedRange
+  } = useTimeSlotSelection();
 
-  const isHourBooked = (hour: number) => {
-    return bookings.some(
-      booking => booking.date === selectedDate && booking.hour === hour
+
+
+  const handleTimeSlotClick = useCallback((time: string) => {
+    if (!selectedRoom) return;
+    
+    setError(null);
+    
+    const result = handleSlotClick(time, selectedRoom, selectedDate, bookings, HOURS);
+    
+    if (typeof result === 'object') {
+      switch (result.action) {
+        case 'unbook':
+          if (result.booking && window.confirm(
+            `Unbook this slot?\nBooked by: ${result.booking.userName}\nTime: ${result.booking.startTime} - ${result.booking.endTime}`
+          )) {
+            onUnbook(result.booking.id);
+          }
+          break;
+        case 'conflict':
+          setError('Selected range contains booked slots');
+          break;
+      }
+    }
+  }, [selectedRoom, selectedDate, bookings, handleSlotClick, onUnbook]);
+
+  const handleBookingConfirm = useCallback((formData: BookingFormData) => {
+    if (!selectedRoom || !selectedSlot) return;
+    
+    let actualEndTime: string;
+    
+    if (selectedEndSlot) {
+      const endIndex = HOURS.indexOf(selectedEndSlot);
+      actualEndTime = HOURS[endIndex + 1] || '20:00';
+    } else {
+      // If no end slot selected, book just 30 minutes
+      const startIndex = HOURS.indexOf(selectedSlot);
+      actualEndTime = HOURS[startIndex + 1] || '20:00';
+    }
+    
+    try {
+      onBook(selectedRoom, selectedDate, selectedSlot, actualEndTime, formData.userName);
+      resetSelection();
+      setError(null);
+    } catch (err) {
+      setError('Failed to create booking. Please try again.');
+    }
+  }, [selectedRoom, selectedDate, selectedSlot, selectedEndSlot, onBook, resetSelection]);
+
+  const handleBookingCancel = useCallback(() => {
+    resetSelection();
+    setError(null);
+  }, [resetSelection]);
+
+  const getEndTime = useCallback((): string => {
+    if (!selectedSlot) return '';
+    
+    if (selectedEndSlot) {
+      const endIndex = HOURS.indexOf(selectedEndSlot);
+      return HOURS[endIndex + 1] || '20:00';
+    } else {
+      const startIndex = HOURS.indexOf(selectedSlot);
+      return HOURS[startIndex + 1] || '20:00';
+    }
+  }, [selectedSlot, selectedEndSlot]);
+
+  if (!selectedRoom) {
+    return (
+      <div className="calendar-container">
+        <div className="empty-state">
+          Please select a room to view the booking calendar
+        </div>
+      </div>
     );
-  };
-
-  const handleHourClick = (hour: number) => {
-    if (!isHourBooked(hour)) {
-      setSelectedHour(hour);
-      setShowBookingForm(true);
-    }
-  };
-
-  const handleBooking = () => {
-    if (bookingName && selectedHour !== null) {
-      onBook(bookingName, selectedDate, selectedHour);
-      setShowBookingForm(false);
-      setBookingName('');
-      setSelectedHour(null);
-    }
-  };
-
-  const formatHour = (hour: number) => {
-    const h = hour % 12 || 12;
-    const ampm = hour < 12 ? 'AM' : 'PM';
-    return `${h}:00 ${ampm}`;
-  };
+  }
 
   return (
-    <div className="booking-calendar">
-      <h2>{room.name} - Availability</h2>
+    <div className="calendar-container">
+      <DateNavigation 
+        selectedDate={selectedDate}
+        onDateChange={onDateChange}
+      />
+
+      <div className="calendar-header">
+        <h3>
+          {selectedRoom} - {DateUtils.formatDateForDisplay(selectedDate)}
+        </h3>
+      </div>
+
+      {error && (
+        <div className="error-banner">
+          {error}
+        </div>
+      )}
       
-      <div className="date-selector">
-        <label>Date: </label>
-        <input 
-          type="date" 
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+      <TimeSlotGrid
+        roomName={selectedRoom}
+        selectedDate={selectedDate}
+        timeSlots={HOURS}
+        bookings={bookings}
+        selectedSlot={selectedSlot}
+        selectedEndSlot={selectedEndSlot}
+        onSlotClick={handleTimeSlotClick}
+        isInSelectedRange={(time) => isInSelectedRange(time, HOURS)}
+      />
+
+      {showBookingForm && selectedSlot && (
+        <BookingForm
+          roomName={selectedRoom}
+          startTime={selectedSlot}
+          endTime={getEndTime()}
+          onConfirm={handleBookingConfirm}
+          onCancel={handleBookingCancel}
         />
-      </div>
+      )}
 
-      <div className="hours-grid">
-        {HOURS.map(hour => {
-          const booked = isHourBooked(hour);
-          const booking = bookings.find(
-            b => b.date === selectedDate && b.hour === hour
-          );
-          
-          return (
-            <div 
-              key={hour}
-              className={`hour-slot ${booked ? 'booked' : 'available'}`}
-              onClick={() => handleHourClick(hour)}
-            >
-              <div className="hour-time">{formatHour(hour)}</div>
-              {booked && booking && (
-                <div className="booking-info">Booked by: {booking.name}</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {showBookingForm && (
-        <div className="booking-form-overlay">
-          <div className="booking-form">
-            <h3>Book {room.name}</h3>
-            <p>Date: {selectedDate}</p>
-            <p>Time: {selectedHour !== null && formatHour(selectedHour)}</p>
-            <input 
-              type="text"
-              placeholder="Your name"
-              value={bookingName}
-              onChange={(e) => setBookingName(e.target.value)}
-            />
-            <div className="form-buttons">
-              <button onClick={handleBooking}>Confirm Booking</button>
-              <button onClick={() => {
-                setShowBookingForm(false);
-                setBookingName('');
-                setSelectedHour(null);
-              }}>Cancel</button>
-            </div>
-          </div>
+      {selectedSlot && !selectedEndSlot && !showBookingForm && (
+        <div className="instruction">
+          Click the same slot again for 30-min booking, or click another slot for longer duration
         </div>
       )}
     </div>

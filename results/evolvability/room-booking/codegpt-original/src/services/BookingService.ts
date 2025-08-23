@@ -1,100 +1,158 @@
-import { Booking } from "../types";
+import { Booking, Room } from "../types";
+import { ROOMS } from "../constants";
 
-/**
- * BookingService Interface
- * Follows Dependency Inversion Principle - depends on abstractions, not concretions
- */
-export interface IBookingService {
-  createBooking(
-    name: string,
-    roomId: string,
+export class BookingService {
+  /**
+   * Checks if a time slot is booked for a specific room
+   */
+  public static isSlotBooked(
+    roomName: string,
+    time: string,
     date: string,
-    hour: number
-  ): Promise<Booking>;
-  getBookingsForRoom(roomId: string): Promise<Booking[]>;
-  getBookingsForDate(date: string): Promise<Booking[]>;
-  cancelBooking(bookingId: string): Promise<void>;
-}
+    bookings: Booking[]
+  ): Booking | undefined {
+    const room = ROOMS.find((r) => r.name === roomName);
 
-/**
- * Mock BookingService Implementation
- * This can be easily replaced with a real API service
- * Follows Open/Closed Principle - open for extension, closed for modification
- */
-export class MockBookingService implements IBookingService {
-  private bookings: Booking[] = [];
-  private nextId = 1;
+    // Handle virtual room bookings (like Grand Ballroom)
+    if (room?.isVirtual && room.components) {
+      return this.checkVirtualRoomBooking(room, time, date, bookings);
+    }
 
-  async createBooking(
-    name: string,
-    roomId: string,
+    // Handle component rooms that might be affected by virtual room bookings
+    if (!room?.isVirtual) {
+      const virtualRoomBooking = this.checkVirtualRoomConflict(
+        roomName,
+        time,
+        date,
+        bookings
+      );
+      if (virtualRoomBooking) return virtualRoomBooking;
+    }
+
+    // Check direct booking for the room
+    return this.findDirectBooking(roomName, time, date, bookings);
+  }
+
+  /**
+   * Validates if a booking range is available
+   */
+  public static validateBookingRange(
+    roomName: string,
+    startTime: string,
+    endTime: string,
     date: string,
-    hour: number
-  ): Promise<Booking> {
-    // Simulate API delay
-    await this.delay(500);
+    bookings: Booking[],
+    timeSlots: string[]
+  ): { isValid: boolean; conflictingSlots: string[] } {
+    const startIndex = timeSlots.indexOf(startTime);
+    const endIndex = timeSlots.indexOf(endTime);
 
-    // Check for conflicts
-    const existingBooking = this.bookings.find(
-      (b) => b.roomId === roomId && b.date === date && b.hour === hour
+    if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+      return { isValid: false, conflictingSlots: [] };
+    }
+
+    const conflictingSlots: string[] = [];
+    const slotsToCheck = timeSlots.slice(startIndex, endIndex);
+
+    for (const slot of slotsToCheck) {
+      if (this.isSlotBooked(roomName, slot, date, bookings)) {
+        conflictingSlots.push(slot);
+      }
+    }
+
+    return {
+      isValid: conflictingSlots.length === 0,
+      conflictingSlots,
+    };
+  }
+
+  /**
+   * Creates a new booking
+   */
+  public static createBooking(
+    roomName: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    userName: string
+  ): Booking {
+    return {
+      id: this.generateBookingId(),
+      roomName,
+      date,
+      startTime,
+      endTime,
+      userName: userName.trim(),
+    };
+  }
+
+  private static checkVirtualRoomBooking(
+    room: Room,
+    time: string,
+    date: string,
+    bookings: Booking[]
+  ): Booking | undefined {
+    const componentBooking = room.components!.some((component) =>
+      bookings.some(
+        (b) =>
+          b.roomName === component &&
+          b.date === date &&
+          b.startTime <= time &&
+          b.endTime > time
+      )
     );
 
-    if (existingBooking) {
-      throw new Error("This time slot is already booked");
+    if (componentBooking) {
+      return bookings.find(
+        (b) =>
+          room.components!.includes(b.roomName) &&
+          b.date === date &&
+          b.startTime <= time &&
+          b.endTime > time
+      );
     }
 
-    const booking: Booking = {
-      id: this.nextId.toString(),
-      name: name.trim(),
-      roomId,
-      date,
-      hour,
-    };
-
-    this.nextId++;
-    this.bookings.push(booking);
-    return booking;
+    return undefined;
   }
 
-  async getBookingsForRoom(roomId: string): Promise<Booking[]> {
-    await this.delay(200);
-    return this.bookings.filter((b) => b.roomId === roomId);
-  }
+  private static checkVirtualRoomConflict(
+    roomName: string,
+    time: string,
+    date: string,
+    bookings: Booking[]
+  ): Booking | undefined {
+    // Check if Grand Ballroom is booked (affects Ballroom 1, 2, 3)
+    const ballroomComponents = ["Ballroom 1", "Ballroom 2", "Ballroom 3"];
 
-  async getBookingsForDate(date: string): Promise<Booking[]> {
-    await this.delay(200);
-    return this.bookings.filter((b) => b.date === date);
-  }
-
-  async cancelBooking(bookingId: string): Promise<void> {
-    await this.delay(300);
-    const index = this.bookings.findIndex((b) => b.id === bookingId);
-    if (index === -1) {
-      throw new Error("Booking not found");
+    if (ballroomComponents.includes(roomName)) {
+      return bookings.find(
+        (b) =>
+          b.roomName === "Grand Ballroom" &&
+          b.date === date &&
+          b.startTime <= time &&
+          b.endTime > time
+      );
     }
-    this.bookings.splice(index, 1);
+
+    return undefined;
   }
 
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-}
-
-/**
- * BookingService Factory
- * Follows Factory Pattern for service creation
- */
-export class BookingServiceFactory {
-  private static instance: IBookingService;
-
-  static getInstance(): IBookingService {
-    if (!this.instance) {
-      this.instance = new MockBookingService();
-    }
-    return this.instance;
+  private static findDirectBooking(
+    roomName: string,
+    time: string,
+    date: string,
+    bookings: Booking[]
+  ): Booking | undefined {
+    return bookings.find(
+      (b) =>
+        b.roomName === roomName &&
+        b.date === date &&
+        b.startTime <= time &&
+        b.endTime > time
+    );
   }
 
-  static setInstance(service: IBookingService): void {
-    this.instance = service;
+  private static generateBookingId(): string {
+    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 }

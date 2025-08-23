@@ -1,93 +1,182 @@
 import { useState, useCallback } from "react";
-import { RGBColor } from "../types";
-import { ColorUtility } from "../utils";
-import { DEFAULT_RGB_COLOR } from "../config/constants";
+import { RGBColor, HSLColor } from "../types";
+import { DEFAULT_COLOR } from "../config/constants";
+import {
+  validateRgbColor,
+  clampColor,
+  rgbToHsl,
+  hslToRgb,
+} from "../utils/colorUtils";
 
 /**
- * Custom hook for managing color picker state
- * Encapsulates color selection and manipulation logic
+ * Custom hook for managing color picker state and operations
+ * Follows Single Responsibility Principle - only manages color state
  */
-export const useColorPicker = (initialColor: RGBColor = DEFAULT_RGB_COLOR) => {
+export const useColorPicker = (initialColor: RGBColor = DEFAULT_COLOR) => {
   const [selectedColor, setSelectedColor] = useState<RGBColor>(initialColor);
-  const colorUtility = new ColorUtility();
+  const [colorHistory, setColorHistory] = useState<RGBColor[]>([initialColor]);
 
   /**
-   * Updates a specific RGB component
+   * Update the selected color with validation
    */
-  const updateColorComponent = useCallback(
-    (component: keyof RGBColor, value: number) => {
-      const clampedValue = colorUtility.clampRgbValue(value);
-      setSelectedColor((prev) => ({
-        ...prev,
-        [component]: clampedValue,
-      }));
+  const updateColor = useCallback((newColor: Partial<RGBColor>) => {
+    setSelectedColor((prevColor) => {
+      const updatedColor = { ...prevColor, ...newColor };
+      const validation = validateRgbColor(updatedColor);
+
+      if (!validation.isValid) {
+        console.warn("Invalid color values:", validation.errors);
+        return clampColor(updatedColor);
+      }
+
+      return updatedColor;
+    });
+  }, []);
+
+  /**
+   * Set red component
+   */
+  const setRed = useCallback(
+    (r: number) => {
+      updateColor({ r });
     },
-    [colorUtility]
+    [updateColor]
   );
 
   /**
-   * Sets the entire RGB color
+   * Set green component
    */
-  const setColor = useCallback(
-    (color: RGBColor) => {
-      const clampedColor: RGBColor = {
-        r: colorUtility.clampRgbValue(color.r),
-        g: colorUtility.clampRgbValue(color.g),
-        b: colorUtility.clampRgbValue(color.b),
-      };
-      setSelectedColor(clampedColor);
+  const setGreen = useCallback(
+    (g: number) => {
+      updateColor({ g });
     },
-    [colorUtility]
+    [updateColor]
   );
 
   /**
-   * Sets color from CSS color string
+   * Set blue component
    */
-  const setColorFromString = useCallback(
-    (colorString: string) => {
-      const rgbColor = colorUtility.stringToRgb(colorString);
+  const setBlue = useCallback(
+    (b: number) => {
+      updateColor({ b });
+    },
+    [updateColor]
+  );
+
+  /**
+   * Set entire color
+   */
+  const setColor = useCallback((color: RGBColor) => {
+    const validation = validateRgbColor(color);
+    const finalColor = validation.isValid ? color : clampColor(color);
+
+    setSelectedColor(finalColor);
+
+    // Add to history if it's a new color
+    setColorHistory((prevHistory) => {
+      const lastColor = prevHistory[prevHistory.length - 1];
+      if (
+        !lastColor ||
+        lastColor.r !== finalColor.r ||
+        lastColor.g !== finalColor.g ||
+        lastColor.b !== finalColor.b
+      ) {
+        return [...prevHistory.slice(-9), finalColor]; // Keep last 10 colors
+      }
+      return prevHistory;
+    });
+  }, []);
+
+  /**
+   * Set color from HSL values
+   */
+  const setColorFromHSL = useCallback(
+    (hsl: HSLColor) => {
+      const rgbColor = hslToRgb(hsl);
       setColor(rgbColor);
     },
-    [colorUtility, setColor]
+    [setColor]
   );
 
   /**
-   * Gets the current color as CSS RGB string
+   * Get HSL representation of current color
    */
-  const getColorString = useCallback((): string => {
-    return colorUtility.rgbToString(selectedColor);
-  }, [selectedColor, colorUtility]);
+  const getHSL = useCallback((): HSLColor => {
+    return rgbToHsl(selectedColor);
+  }, [selectedColor]);
 
   /**
-   * Gets the current color as hex string
+   * Select a color from history
    */
-  const getColorHex = useCallback((): string => {
-    return colorUtility.rgbToHex(selectedColor);
-  }, [selectedColor, colorUtility]);
+  const selectFromHistory = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < colorHistory.length) {
+        setSelectedColor(colorHistory[index]);
+      }
+    },
+    [colorHistory]
+  );
 
   /**
-   * Generates and sets a random color
-   */
-  const setRandomColor = useCallback(() => {
-    const randomColor = colorUtility.generateRandomColor();
-    setSelectedColor(randomColor);
-  }, [colorUtility]);
-
-  /**
-   * Resets to default color
+   * Reset to default color
    */
   const resetColor = useCallback(() => {
-    setSelectedColor(DEFAULT_RGB_COLOR);
-  }, []);
+    setColor(DEFAULT_COLOR);
+  }, [setColor]);
+
+  /**
+   * Generate random color
+   */
+  const randomColor = useCallback(() => {
+    const randomRGB: RGBColor = {
+      r: Math.floor(Math.random() * 256),
+      g: Math.floor(Math.random() * 256),
+      b: Math.floor(Math.random() * 256),
+    };
+    setColor(randomRGB);
+  }, [setColor]);
+
+  /**
+   * Invert current color
+   */
+  const invertColor = useCallback(() => {
+    const invertedColor: RGBColor = {
+      r: 255 - selectedColor.r,
+      g: 255 - selectedColor.g,
+      b: 255 - selectedColor.b,
+    };
+    setColor(invertedColor);
+  }, [selectedColor, setColor]);
+
+  /**
+   * Adjust brightness of current color
+   */
+  const adjustBrightness = useCallback(
+    (factor: number) => {
+      const adjustedColor: RGBColor = {
+        r: Math.round(selectedColor.r * factor),
+        g: Math.round(selectedColor.g * factor),
+        b: Math.round(selectedColor.b * factor),
+      };
+      setColor(clampColor(adjustedColor));
+    },
+    [selectedColor, setColor]
+  );
 
   return {
     selectedColor,
-    updateColorComponent,
+    colorHistory,
+    setRed,
+    setGreen,
+    setBlue,
     setColor,
-    setColorFromString,
-    getColorString,
-    getColorHex,
-    setRandomColor,
+    setColorFromHSL,
+    getHSL,
+    selectFromHistory,
     resetColor,
+    randomColor,
+    invertColor,
+    adjustBrightness,
+    updateColor,
   };
 };

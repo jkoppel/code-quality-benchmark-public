@@ -1,14 +1,20 @@
 export interface Booking {
   id: string;
-  roomId: string;
-  name: string;
+  roomName: string;
   date: string;
-  hour: number;
+  startTime: string;
+  endTime: string;
+  userName: string;
 }
 
 export interface Room {
-  id: string;
   name: string;
   isVirtual?: boolean;
-  requiredRooms?: string[];
+  components?: string[];
+}
+
+export interface TimeSlot {
+  time: string;
+  available: boolean;
+  booking?: Booking;
 }

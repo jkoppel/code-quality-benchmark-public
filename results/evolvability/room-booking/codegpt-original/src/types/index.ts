@@ -1,0 +1,2 @@
+// Re-export main types
+export type { Booking, Room, TimeSlot } from '../types';\n\n// Export booking-specific types\nexport type {\n  BookingFormData,\n  BookingCreationData,\n  SlotClickResult,\n  BookingCalendarState,\n  TimeSlotDisplayProps,\n  BookingOperations\n} from './booking';

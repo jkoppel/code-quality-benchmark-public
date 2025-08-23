@@ -1,15 +1,30 @@
 /**
- * Get today's date in ISO format (YYYY-MM-DD)
+ * Add or subtract days from a date string
  */
-export function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+export function addDays(dateString: string, days: number): string {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
 }
 
 /**
- * Format hour number (0-23) to readable time string
+ * Format date string to long readable format
  */
-export function formatHour(hour: number): string {
-  const h = hour % 12 || 12;
-  const ampm = hour < 12 ? 'AM' : 'PM';
-  return `${h}:00 ${ampm}`;
+export function formatLongDate(dateString: string): string {
+  // Parse as UTC to avoid timezone issues
+  const date = new Date(dateString + 'T12:00:00Z');
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC'
+  });
+}
+
+/**
+ * Get today's date in YYYY-MM-DD format
+ */
+export function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
 }

@@ -1,2 +1,0 @@
-// Strategy pattern barrel exports
-export {\n  AdditionStrategy,\n  SubtractionStrategy,\n  MultiplicationStrategy,\n  DivisionStrategy,\n  CalculationStrategyFactory,\n} from './CalculationStrategies';

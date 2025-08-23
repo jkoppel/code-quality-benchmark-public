@@ -1,193 +1,146 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback } from 'react';
+import { GridPosition } from './types';
+import { DEFAULT_CANVAS_CONFIG } from './config/constants';
+import { usePixelGrid } from './hooks/usePixelGrid';
+import { useColorPicker } from './hooks/useColorPicker';
+import { FileService } from './services/FileService';
+import ColorPicker from './components/ColorPicker';
+import DrawingCanvas from './components/DrawingCanvas';
+import Controls from './components/Controls';
+import ErrorBoundary from './components/ErrorBoundary';
 import './PixelArt.css';
 
-const GRID_SIZE = 32;
-const PIXEL_SIZE = 15;
-
+/**
+ * Main PixelArt component - orchestrates the pixel art editor
+ * Follows SOLID principles with proper separation of concerns
+ */
 const PixelArt: React.FC = () => {
-  const [selectedColor, setSelectedColor] = useState({ r: 0, g: 0, b: 0 });
-  const [pixels, setPixels] = useState<string[][]>(() => 
-    Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill('#FFFFFF'))
-  );
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Custom hooks for state management
+  const {
+    pixels,
+    setPixel,
+    clearGrid,
+    loadGrid,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = usePixelGrid(DEFAULT_CANVAS_CONFIG.gridSize);
 
-  useEffect(() => {
-    const drawCanvas = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+  const {
+    selectedColor,
+    setColor,
+  } = useColorPicker();
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      for (let row = 0; row < GRID_SIZE; row++) {
-        for (let col = 0; col < GRID_SIZE; col++) {
-          ctx.fillStyle = pixels[row][col];
-          ctx.fillRect(col * PIXEL_SIZE, row * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-          
-          ctx.strokeStyle = '#E0E0E0';
-          ctx.strokeRect(col * PIXEL_SIZE, row * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-        }
-      }
-    };
-    
-    drawCanvas();
+  /**
+   * Handle pixel click on canvas
+   */
+  const handlePixelClick = useCallback((position: GridPosition) => {
+    setPixel(position, selectedColor);
+  }, [setPixel, selectedColor]);
+
+  /**
+   * Handle save operation
+   */
+  const handleSave = useCallback(async () => {
+    try {
+      await FileService.saveAsImage(pixels, {
+        filename: 'pixel-art',
+        format: 'png',
+      });
+    } catch (error) {
+      console.error('Failed to save image:', error);
+      alert('Failed to save image. Please try again.');
+    }
   }, [pixels]);
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const col = Math.floor(x / PIXEL_SIZE);
-    const row = Math.floor(y / PIXEL_SIZE);
-    
-    if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
-      const newPixels = [...pixels];
-      newPixels[row][col] = `rgb(${selectedColor.r}, ${selectedColor.g}, ${selectedColor.b})`;
-      setPixels(newPixels);
-    }
-  };
-
-  const handleSave = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = GRID_SIZE;
-    tempCanvas.height = GRID_SIZE;
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    if (!tempCtx) return;
-
-    for (let row = 0; row < GRID_SIZE; row++) {
-      for (let col = 0; col < GRID_SIZE; col++) {
-        tempCtx.fillStyle = pixels[row][col];
-        tempCtx.fillRect(col, row, 1, 1);
-      }
-    }
-
-    tempCanvas.toBlob((blob) => {
-      if (!blob) return;
+  /**
+   * Handle load operation
+   */
+  const handleLoad = useCallback(async (file: File) => {
+    try {
+      const result = await FileService.loadFromFile(file);
       
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'pixel-art.bmp';
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  };
+      if (result.success && result.data) {
+        loadGrid(result.data);
+      } else {
+        console.error('Failed to load file:', result.error);
+        alert(`Failed to load file: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Unexpected error loading file:', error);
+      alert('An unexpected error occurred while loading the file.');
+    }
+  }, [loadGrid]);
 
-  const handleLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  /**
+   * Handle clear operation with confirmation
+   */
+  const handleClear = useCallback(() => {
+    if (window.confirm('Are you sure you want to clear the entire canvas? This action cannot be undone.')) {
+      clearGrid();
+    }
+  }, [clearGrid]);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = GRID_SIZE;
-        tempCanvas.height = GRID_SIZE;
-        const tempCtx = tempCanvas.getContext('2d');
-        
-        if (!tempCtx) return;
+  /**
+   * Handle undo operation
+   */
+  const handleUndo = useCallback(() => {
+    if (canUndo) {
+      undo();
+    }
+  }, [undo, canUndo]);
 
-        tempCtx.drawImage(img, 0, 0, GRID_SIZE, GRID_SIZE);
-        const imageData = tempCtx.getImageData(0, 0, GRID_SIZE, GRID_SIZE);
-        const newPixels: string[][] = [];
-
-        for (let row = 0; row < GRID_SIZE; row++) {
-          newPixels[row] = [];
-          for (let col = 0; col < GRID_SIZE; col++) {
-            const index = (row * GRID_SIZE + col) * 4;
-            const r = imageData.data[index];
-            const g = imageData.data[index + 1];
-            const b = imageData.data[index + 2];
-            newPixels[row][col] = `rgb(${r}, ${g}, ${b})`;
-          }
-        }
-        
-        setPixels(newPixels);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
+  /**
+   * Handle redo operation
+   */
+  const handleRedo = useCallback(() => {
+    if (canRedo) {
+      redo();
+    }
+  }, [redo, canRedo]);
 
   return (
-    <div className="pixel-art-container">
-      <h1>Pixel Art Editor</h1>
-      
-      <div className="color-picker">
-        <h3>Color Picker</h3>
-        <div className="rgb-controls">
-          <div className="color-input">
-            <label>R:</label>
-            <input
-              type="range"
-              min="0"
-              max="255"
-              value={selectedColor.r}
-              onChange={(e) => setSelectedColor({ ...selectedColor, r: parseInt(e.target.value) })}
-            />
-            <span>{selectedColor.r}</span>
+    <ErrorBoundary>
+      <div className="pixel-art-container">
+        <header className="app-header">
+          <h1>🎨 Pixel Art Editor</h1>
+          <p>Create beautiful pixel art with our easy-to-use editor</p>
+        </header>
+        
+        <main className="app-main">
+          <div className="editor-layout">
+            <aside className="sidebar">
+              <ColorPicker 
+                selectedColor={selectedColor} 
+                onColorChange={setColor} 
+              />
+              
+              <Controls
+                onSave={handleSave}
+                onLoad={handleLoad}
+                onClear={handleClear}
+                onUndo={canUndo ? handleUndo : undefined}
+                onRedo={canRedo ? handleRedo : undefined}
+              />
+            </aside>
+            
+            <section className="canvas-section">
+              <DrawingCanvas
+                pixels={pixels}
+                selectedColor={selectedColor}
+                config={DEFAULT_CANVAS_CONFIG}
+                onPixelClick={handlePixelClick}
+              />
+            </section>
           </div>
-          <div className="color-input">
-            <label>G:</label>
-            <input
-              type="range"
-              min="0"
-              max="255"
-              value={selectedColor.g}
-              onChange={(e) => setSelectedColor({ ...selectedColor, g: parseInt(e.target.value) })}
-            />
-            <span>{selectedColor.g}</span>
-          </div>
-          <div className="color-input">
-            <label>B:</label>
-            <input
-              type="range"
-              min="0"
-              max="255"
-              value={selectedColor.b}
-              onChange={(e) => setSelectedColor({ ...selectedColor, b: parseInt(e.target.value) })}
-            />
-            <span>{selectedColor.b}</span>
-          </div>
-        </div>
-        <div 
-          className="color-preview" 
-          style={{ backgroundColor: `rgb(${selectedColor.r}, ${selectedColor.g}, ${selectedColor.b})` }}
-        />
+        </main>
+        
+        <footer className="app-footer">
+          <p>Click on the canvas to draw • Use controls to save/load your artwork</p>
+        </footer>
       </div>
-
-      <canvas
-        ref={canvasRef}
-        width={GRID_SIZE * PIXEL_SIZE}
-        height={GRID_SIZE * PIXEL_SIZE}
-        onClick={handleCanvasClick}
-        className="drawing-canvas"
-      />
-
-      <div className="controls">
-        <button onClick={handleSave}>Save as Bitmap</button>
-        <button onClick={() => fileInputRef.current?.click()}>Load Bitmap</button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleLoad}
-          style={{ display: 'none' }}
-        />
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 
