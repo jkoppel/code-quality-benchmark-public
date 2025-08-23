@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { eval as evaluate, createShellAgent, CodingAgent } from './index';
+import { eval as evaluate, createShellAgent } from './index';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 
@@ -12,7 +12,7 @@ import * as path from 'path';
  * 
  * The coding agent must be provided separately (e.g., via command line argument or environment variable)
  */
-export async function runBenchmark(benchmarkPath: string, codingAgent: CodingAgent): Promise<void> {
+export async function runBenchmark(benchmarkPath: string, codingAgent: (prompt: string, folderPath: string, port?: number) => Promise<void>): Promise<void> {
   const benchmarkName = path.basename(benchmarkPath);
   
   // Read prompts from files
@@ -42,9 +42,26 @@ export async function runBenchmark(benchmarkPath: string, codingAgent: CodingAge
 
   // Output benchmark results as JSON
   const successCount = result.updates.filter(u => u.success).length;
+  const totalUpdates = result.updates.length;
+  
+  // Calculate per-agent success rates
+  const agentStats: { [key: string]: { successful: number; total: number; totalScore: number } } = {};
+  result.updates.forEach(u => {
+    if (!agentStats[u.agentName]) {
+      agentStats[u.agentName] = { successful: 0, total: 0, totalScore: 0 };
+    }
+    agentStats[u.agentName].total++;
+    agentStats[u.agentName].totalScore += u.score;
+    if (u.success) {
+      agentStats[u.agentName].successful++;
+    }
+  });
+  
   const updates = result.updates.map(u => ({
     instance: u.instanceId,
+    agent: u.agentName,
     success: u.success,
+    score: u.score,
     diffStats: u.diffStats || { filesChanged: 0, insertions: 0, deletions: 0 },
     executionTime: u.executionTime
   }));
@@ -52,15 +69,24 @@ export async function runBenchmark(benchmarkPath: string, codingAgent: CodingAge
   console.log(JSON.stringify({
     benchmark: benchmarkName,
     workspacePath: result.originalProgramPath.replace('/original-program', ''),
-    success_rate: (successCount / 3) * 100,
+    resultsFile: path.join(result.originalProgramPath.replace('/original-program', ''), 'evaluation-results.json'),
+    total_score: result.totalScore,
+    success_rate: (successCount / totalUpdates) * 100,
     successful_updates: successCount,
-    total_updates: 3,
+    total_updates: totalUpdates,
     duration_ms: result.metadata.totalDuration,
+    agent_stats: Object.entries(agentStats).map(([agent, stats]) => ({
+      agent,
+      success_rate: (stats.successful / stats.total) * 100,
+      successful: stats.successful,
+      total: stats.total,
+      total_score: stats.totalScore
+    })),
     updates
   }, null, 2));
 
-  // Exit with appropriate code
-  process.exit(successCount === 3 ? 0 : 1);
+  // Exit with appropriate code (success if all updates succeeded)
+  process.exit(successCount === totalUpdates ? 0 : 1);
 }
 
 // CLI interface

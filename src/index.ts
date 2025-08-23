@@ -13,5 +13,5 @@ export {
 } from './types';
 
 export { Logger, LogLevel, LogEntry } from './utils/logger';
-export { ClaudeAgent } from './agents/claude-agent';
+export { ClaudeAgent } from './agents/feature-addition/claude-agent';
 export { createShellAgent, defaultShellAgent } from './agents/shell-agent';

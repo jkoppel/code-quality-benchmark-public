@@ -2,8 +2,9 @@ import { query } from '@anthropic-ai/claude-code';
 import { 
   ClaudeAgentConfig, 
   InstanceResult
-} from '../types';
-import { Logger } from '../utils/logger';
+} from '../../types';
+import { Logger } from '../../utils/logger';
+import { SYSTEM_PROMPT, getFullPrompt } from './common-prompts';
 
 export class ClaudeAgent {
   private readonly logger: Logger;
@@ -15,27 +16,19 @@ export class ClaudeAgent {
   ) {
     this.logger = logger;
     this.config = {
-      systemPrompt: config.systemPrompt || this.getDefaultSystemPrompt(),
+      systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
       allowedTools: config.allowedTools || ['Read', 'Write', 'Edit', 'Bash', 'LS', 'Glob'],
       temperature: config.temperature ?? 0.7,
       maxTokens: config.maxTokens ?? 4096
     };
   }
 
-  private getDefaultSystemPrompt(): string {
-    return `You are a code modification assistant. Your task is to implement the requested changes to the existing codebase.
-Follow these guidelines:
-1. Maintain code quality and consistency with existing patterns
-2. Preserve existing functionality unless explicitly asked to change it
-3. Write clean, maintainable, and well-structured code
-4. Handle errors appropriately
-5. Follow the language's best practices and conventions`;
-  }
 
   async applyUpdate(
     updatePrompt: string,
     folderPath: string,
-    instanceId: string
+    instanceId: string,
+    port: number
   ): Promise<InstanceResult> {
     const startTime = Date.now();
     let success = false;
@@ -47,14 +40,7 @@ Follow these guidelines:
         updatePrompt: updatePrompt.substring(0, 100)
       });
 
-      const fullPrompt = `
-Working directory: ${folderPath}
-
-Your task: ${updatePrompt}
-
-Please implement the requested changes to the codebase in the specified directory.
-Make sure to explore the existing code structure first before making changes.
-`;
+      const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
 
       for await (const message of query({
         prompt: fullPrompt,
@@ -102,7 +88,9 @@ Make sure to explore the existing code structure first before making changes.
       folderPath,
       success,
       error,
-      executionTime: Date.now() - startTime
+      executionTime: Date.now() - startTime,
+      agentName: 'claude',
+      score: 0 // Will be calculated by evaluator based on diff
     };
 
     return result;

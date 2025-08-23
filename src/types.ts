@@ -1,4 +1,4 @@
-export type CodingAgent = (prompt: string, folderPath: string) => Promise<void>;
+export type CodingAgent = (prompt: string, folderPath: string, port?: number) => Promise<void>;
 
 export interface EvaluationConfig {
   workspaceRoot?: string;
@@ -20,6 +20,7 @@ export interface EvaluationResult {
   originalProgramPath: string;
   updates: InstanceResult[];
   metadata: EvaluationMetadata;
+  totalScore: number;
 }
 
 export interface DiffStats {
@@ -35,13 +36,15 @@ export interface InstanceResult {
   error?: Error;
   executionTime: number;
   diffStats?: DiffStats;
+  agentName: string;
+  score: number;
 }
 
 export interface EvaluationMetadata {
   startTime: Date;
   endTime: Date;
   totalDuration: number;
-  agentUsed: string;
+  agentsUsed: string[];
   config: EvaluationConfig;
 }
 

@@ -12,7 +12,9 @@ import {
   EvaluationMetadata
 } from './types';
 import { Logger } from './utils/logger';
-import { ClaudeAgent } from './agents/claude-agent';
+import { ClaudeAgent } from './agents/feature-addition/claude-agent';
+import { codexAgent } from './agents/feature-addition/codex-agent';
+// import { geminiAgent } from './agents/feature-addition/gemini-agent';
 
 // Don't automatically cleanup - we want to keep benchmark results
 // tmp.setGracefulCleanup();
@@ -94,13 +96,35 @@ export async function evaluate(
       config,
       logger
     );
+    
+    // Calculate total score
+    const totalScore = updateResults.reduce((sum, result) => sum + result.score, 0);
+    
+    // Save complete results to JSON
+    const resultsPath = path.join(tempDir.name, 'evaluation-results.json');
+    await fs.writeJson(resultsPath, {
+      initialPrompt,
+      updatePrompt,
+      originalProgramPath,
+      updates: updateResults,
+      totalScore,
+      metadata: {
+        startTime,
+        endTime: new Date(),
+        totalDuration: new Date().getTime() - startTime.getTime(),
+        agentsUsed: ['claude-code', 'codex'],
+        config
+      }
+    }, { spaces: 2 });
+    
+    logger.info('Saved complete results to:', { path: resultsPath });
 
     const endTime = new Date();
     const metadata: EvaluationMetadata = {
       startTime,
       endTime,
       totalDuration: endTime.getTime() - startTime.getTime(),
-      agentUsed: 'claude-code',
+      agentsUsed: ['claude-code', 'codex'],
       config
     };
 
@@ -109,7 +133,8 @@ export async function evaluate(
       updatePrompt,
       originalProgramPath,
       updates: updateResults,
-      metadata
+      metadata,
+      totalScore
     };
 
     // Log diff stats
@@ -126,14 +151,15 @@ export async function evaluate(
     });
     
     // Also print diff stats to console for visibility
-    console.log('\n=== Git Diff Statistics ===');
+    console.log('\n=== Git Diff Statistics & Scores ===');
     updateResults.forEach(r => {
       if (r.diffStats) {
-        console.log(`${r.instanceId}: ${r.diffStats.filesChanged} files, +${r.diffStats.insertions}/-${r.diffStats.deletions} lines${r.success ? '' : ' (failed)'}`);
+        console.log(`${r.instanceId} [${r.agentName}]: ${r.diffStats.filesChanged} files, +${r.diffStats.insertions}/-${r.diffStats.deletions} lines, score: ${r.score}${r.success ? '' : ' (failed)'}`);
       } else {
-        console.log(`${r.instanceId}: No changes${r.success ? '' : ' (failed)'}`);
+        console.log(`${r.instanceId} [${r.agentName}]: No changes, score: ${r.score}${r.success ? '' : ' (failed)'}`);
       }
     });
+    console.log(`Total Score: ${totalScore}`);
     console.log('===========================\n');
 
     return result;
@@ -221,38 +247,89 @@ async function applyUpdatesToInstances(
   config: EvaluationConfig,
   logger: Logger
 ): Promise<InstanceResult[]> {
-  const instances = ['instance-1', 'instance-2', 'instance-3'];
-  const claudeAgent = new ClaudeAgent(config.claudeConfig, logger);
+  // Define agents and their configurations
+  const agents = [
+    { name: 'claude', agent: new ClaudeAgent(config.claudeConfig, logger), applyUpdate: true },
+    { name: 'codex', agent: codexAgent, applyUpdate: false },
+    // { name: 'gemini', agent: geminiAgent, applyUpdate: false }
+  ];
+  
+  const instancesPerAgent = 3;
+  const basePort = 30000;
+  let currentPort = basePort;
+  const allInstances: { instanceId: string; agentName: string; agent: any; instancePath: string; port: number }[] = [];
   
   logger.info('Creating program instances for updates');
   
-  // Create instance directories and copy original program (including .git)
-  const instancePaths: string[] = await Promise.all(
-    instances.map(async (instanceId) => {
+  // Create instance directories for all agents
+  for (const agentConfig of agents) {
+    for (let i = 1; i <= instancesPerAgent; i++) {
+      const instanceId = `${agentConfig.name}-${i}`;
       const instancePath = path.join(workspaceDir, instanceId);
       await fs.copy(originalProgramPath, instancePath);
       logger.debug(`Created instance ${instanceId}`, { path: instancePath });
-      return instancePath;
-    })
-  );
+      
+      allInstances.push({
+        instanceId,
+        agentName: agentConfig.name,
+        agent: agentConfig.agent,
+        instancePath,
+        port: currentPort++
+      });
+    }
+  }
   
-  logger.info('Applying updates to instances in parallel');
+  logger.info('Applying updates to all instances in parallel');
   
-  // Always execute in parallel
-  const updatePromises = instancePaths.map((instancePath, index) =>
-    claudeAgent.applyUpdate(
-      updatePrompt,
-      instancePath,
-      instances[index]
-    )
-  );
+  // Execute all updates in parallel
+  const updatePromises = allInstances.map(async (instance) => {
+    const startTime = Date.now();
+    let success = false;
+    let error: Error | undefined;
+    
+    try {
+      // For Claude, use its applyUpdate method, for others use the agent directly
+      if (instance.agentName === 'claude') {
+        const result = await instance.agent.applyUpdate(
+          updatePrompt,
+          instance.instancePath,
+          instance.instanceId,
+          instance.port
+        );
+        success = result.success;
+        error = result.error;
+      } else {
+        await instance.agent(updatePrompt, instance.instancePath, instance.port);
+        success = true;
+      }
+    } catch (e) {
+      success = false;
+      error = e instanceof Error ? e : new Error(String(e));
+      logger.error(`Failed to apply update for ${instance.instanceId}`, {
+        error: error.message
+      });
+    }
+    
+    const executionTime = Date.now() - startTime;
+    
+    return {
+      instanceId: instance.instanceId,
+      folderPath: instance.instancePath,
+      success,
+      error,
+      executionTime,
+      agentName: instance.agentName,
+      score: 0 // Will be calculated later
+    };
+  });
   
   const results = await Promise.all(updatePromises);
   
-  // Calculate git diff statistics
-  const resultsWithDiffs = results.map((result, index) => {
-    const instancePath = instancePaths[index];
+  // Calculate git diff statistics and scores
+  const resultsWithDiffs = results.map((result) => {
+    const instancePath = result.folderPath;
     let diffStats: DiffStats | undefined;
+    let score = 0;
     
     if (result.success) {
       try {
@@ -267,22 +344,25 @@ async function applyUpdatesToInstances(
         
         diffStats = parseGitShortstat(shortstatOutput);
         
+        // Calculate score: 300 - insertions - deletions
+        score = 300 - (diffStats.insertions + diffStats.deletions);
+        
         // Also log the full diff stats for debugging
         const fullStats = execSync('git diff --cached --stat', {
           cwd: instancePath,
           encoding: 'utf-8'
         });
-        logger.debug(`Diff stats for ${instances[index]}:\n${fullStats}`);
+        logger.debug(`Diff stats for ${result.instanceId}:\n${fullStats}`);
         
         // Commit the changes for future reference
         try {
-          execSync(`git commit -m "Update: Applied modifications"`, { cwd: instancePath });
+          execSync(`git commit -m "Update: Applied modifications by ${result.agentName}"`, { cwd: instancePath });
         } catch (commitError) {
           // If commit fails (e.g., nothing to commit), that's okay
-          logger.debug(`No changes to commit for ${instances[index]}`);
+          logger.debug(`No changes to commit for ${result.instanceId}`);
         }
       } catch (error) {
-        logger.warn(`Failed to get git diff for ${instances[index]}`, {
+        logger.warn(`Failed to get git diff for ${result.instanceId}`, {
           error: error instanceof Error ? error.message : String(error)
         });
       }
@@ -290,18 +370,21 @@ async function applyUpdatesToInstances(
     
     const resultWithDiff: InstanceResult = {
       ...result,
-      diffStats
+      diffStats,
+      score
     };
     
-    logger.info(`Instance ${instances[index]} completed`, {
+    logger.info(`Instance ${result.instanceId} completed`, {
       success: result.success,
       executionTime: result.executionTime,
-      diffStats
+      diffStats,
+      score,
+      agentName: result.agentName
     });
     
     // Print diff stats to console immediately
     if (result.success && diffStats) {
-      console.log(`  → ${instances[index]}: ${diffStats.filesChanged} files changed, +${diffStats.insertions}/-${diffStats.deletions} lines`);
+      console.log(`  → ${result.instanceId} [${result.agentName}]: ${diffStats.filesChanged} files changed, +${diffStats.insertions}/-${diffStats.deletions} lines, score: ${score}`);
     }
     
     return resultWithDiff;

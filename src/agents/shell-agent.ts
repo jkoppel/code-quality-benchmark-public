@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { CodingAgent } from '../types';
 import { Logger } from '../utils/logger';
 
 /**
@@ -11,10 +10,10 @@ import { Logger } from '../utils/logger';
 export function createShellAgent(
   scriptPath: string,
   timeout: number = 300000
-): CodingAgent {
+): (prompt: string, folderPath: string, port?: number) => Promise<void> {
   const logger = Logger.getInstance();
   
-  return async (prompt: string, folderPath: string): Promise<void> => {
+  return async (prompt: string, folderPath: string, port: number = 30000): Promise<void> => {
     return new Promise((resolve, reject) => {
       logger.info('Executing shell script agent', {
         script: scriptPath,
@@ -28,7 +27,8 @@ export function createShellAgent(
         env: {
           ...process.env,
           CODING_PROMPT: prompt,
-          CODING_FOLDER: folderPath
+          CODING_FOLDER: folderPath,
+          PORT: String(port)
         },
         timeout
       });
@@ -73,4 +73,4 @@ export function createShellAgent(
 /**
  * Default shell agent that expects a script at a standard location
  */
-export const defaultShellAgent: CodingAgent = createShellAgent('./coding-agent.sh');
+export const defaultShellAgent = createShellAgent('./coding-agent.sh');
