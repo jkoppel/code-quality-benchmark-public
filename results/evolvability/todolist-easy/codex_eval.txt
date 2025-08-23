@@ -1,0 +1,7 @@
+Raw score: 648
+
+However, all three Codex completions maintain a separate checkbox to mark the todo item as done. In codex-1, the done checkbox and the status dropdown share underlying state, but when you click Edit, you see the last thing set by the status dropdown, even if it was marked done (and appears as Done in the non-edit UI). In codex-2, the checkbox and status dropdown have totallly independent state. In codex-3, they are perfectly coupled -- bad UI, but still correct.
+
+I am marking both codex-1 and codex-2 completions as invalid because of their bugs.
+
+Final score: 255
