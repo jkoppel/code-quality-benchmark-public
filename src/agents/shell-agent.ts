@@ -50,7 +50,7 @@ export function createShellAgent(
         reject(new Error(`Failed to execute shell script: ${error.message}`));
       });
 
-      child.on('close', (code) => {
+      child.on('close', (code, signal) => {
         if (code === 0) {
           logger.info('Shell script executed successfully', {
             script: scriptPath,
@@ -58,10 +58,13 @@ export function createShellAgent(
           });
           resolve();
         } else {
-          const errorMsg = `Shell script exited with code ${code}.`;
+          const errorMsg = code !== null 
+            ? `Shell script exited with code ${code}.`
+            : `Shell script was terminated by signal ${signal}.`;
           logger.error('Shell script failed', {
             script: scriptPath,
             code,
+            signal,
           });
           reject(new Error(errorMsg));
         }
