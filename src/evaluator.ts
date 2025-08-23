@@ -55,44 +55,25 @@ function parseGitShortstat(output: string): DiffStats {
   return stats;
 }
 
-export async function evaluate(
-  initialPrompt: string,
-  codingAgent: CodingAgent,
+export async function evaluateUpdates(
+  originalProgramPath: string,
   updatePrompt: string,
+  workspaceDir: string,
   config: EvaluationConfig = {}
 ): Promise<EvaluationResult> {
   const startTime = new Date();
   const logger = Logger.getInstance(config.logLevel);
 
-  logger.info('Starting evaluation', {
-    initialPrompt: initialPrompt.substring(0, 100),
+  logger.info('Starting update evaluation', {
+    originalProgramPath,
     updatePrompt: updatePrompt.substring(0, 100)
   });
 
-  let tempDir: tmp.DirResult | null = null;
-  let originalProgramPath: string = '';
-
   try {
-    // Create temporary workspace - always keep it
-    tempDir = tmp.dirSync({ 
-      prefix: 'benchmark-', 
-      unsafeCleanup: true,
-      keep: true
-    });
-
-    logger.debug('Created temporary workspace', { path: tempDir.name });
-
-    originalProgramPath = await generateOriginalProgram(
-      initialPrompt,
-      codingAgent,
-      tempDir.name,
-      logger
-    );
-
     const updateResults = await applyUpdatesToInstances(
       originalProgramPath,
       updatePrompt,
-      tempDir.name,
+      workspaceDir,
       config,
       logger
     );
@@ -101,9 +82,8 @@ export async function evaluate(
     const totalScore = updateResults.reduce((sum, result) => sum + result.score, 0);
     
     // Save complete results to JSON
-    const resultsPath = path.join(tempDir.name, 'evaluation-results.json');
+    const resultsPath = path.join(workspaceDir, 'evaluation-results.json');
     await fs.writeJson(resultsPath, {
-      initialPrompt,
       updatePrompt,
       originalProgramPath,
       updates: updateResults,
@@ -129,7 +109,7 @@ export async function evaluate(
     };
 
     const result: EvaluationResult = {
-      initialPrompt,
+      initialPrompt: '',  // Not applicable for update-only evaluation
       updatePrompt,
       originalProgramPath,
       updates: updateResults,
@@ -173,6 +153,68 @@ export async function evaluate(
       ? error 
       : new EvaluationError(
           'Evaluation failed',
+          'EVALUATION_FAILED',
+          error
+        );
+  } finally {
+    logger.info('Update evaluation completed');
+  }
+}
+
+export async function evaluate(
+  initialPrompt: string,
+  codingAgent: CodingAgent,
+  updatePrompt: string,
+  config: EvaluationConfig = {}
+): Promise<EvaluationResult> {
+  const logger = Logger.getInstance(config.logLevel);
+
+  logger.info('Starting full evaluation', {
+    initialPrompt: initialPrompt.substring(0, 100),
+    updatePrompt: updatePrompt.substring(0, 100)
+  });
+
+  let tempDir: tmp.DirResult | null = null;
+
+  try {
+    // Create temporary workspace - always keep it
+    tempDir = tmp.dirSync({ 
+      prefix: 'benchmark-', 
+      unsafeCleanup: true,
+      keep: true
+    });
+
+    logger.debug('Created temporary workspace', { path: tempDir.name });
+
+    const originalProgramPath = await generateOriginalProgram(
+      initialPrompt,
+      codingAgent,
+      tempDir.name,
+      logger
+    );
+
+    // Now run the update evaluation
+    const result = await evaluateUpdates(
+      originalProgramPath,
+      updatePrompt,
+      tempDir.name,
+      config
+    );
+
+    // Set the initial prompt in the result
+    result.initialPrompt = initialPrompt;
+
+    return result;
+
+  } catch (error) {
+    logger.error('Full evaluation failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+
+    throw error instanceof EvaluationError 
+      ? error 
+      : new EvaluationError(
+          'Full evaluation failed',
           'EVALUATION_FAILED',
           error
         );

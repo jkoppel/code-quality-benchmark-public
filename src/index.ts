@@ -1,5 +1,10 @@
-export { evaluate as eval } from './evaluator';
-export { runBenchmark } from './benchmark-runner';
+export { evaluate as eval, evaluateUpdates } from './evaluator';
+export { 
+  runBenchmarkWithNewCode, 
+  runBenchmarkWithExistingCode,
+  readBenchmarkPrompts,
+  outputBenchmarkResults
+} from './benchmark-lib';
 
 export {
   CodingAgent,
