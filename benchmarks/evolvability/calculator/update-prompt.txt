@@ -1,0 +1,4 @@
+Add the following enhancements to the calculator:
+1. Add a factorial method that calculates n!
+2. Add a percentage method that calculates what percentage a is of b
+3. Add a checkbox, where, when the checkbox is checked, every action will be logged to the console.
