@@ -144,6 +144,16 @@ export async function runBenchmarkWithExistingCode(
   const originalProgramPath = path.join(tempDir.name, 'original-program');
   await fs.copy(existingCodePath, originalProgramPath);
 
+  // Check if the destination directory is already a git repository
+  try {
+    execSync('git status', { cwd: originalProgramPath, stdio: 'ignore' });
+  } catch (error) {
+    // Not a git repository, initialize it
+    execSync('git init', { cwd: originalProgramPath });
+    execSync('git add -A', { cwd: originalProgramPath });
+    execSync('git commit -m "Initial commit: Generated program"', { cwd: originalProgramPath });
+  }
+
   // Run the update evaluation only
   const result = await evaluateUpdates(
     originalProgramPath,
