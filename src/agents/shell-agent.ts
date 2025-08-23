@@ -34,8 +34,16 @@ export function createShellAgent(
       });
 
       // TODO 2025.08.23: Use package that does all this for you, captures stdout and stderr.
+      let last_packet_looks_like_claude_code_success = false;  // TAG_CLAUDE_CODE_SUCCESS_ACTUALLY_IS_SIGTERM_FOR_SOME_REASON
       child.stdout.on('data', (data) => {
         process.stdout.write(data);
+
+         // TAG_CLAUDE_CODE_SUCCESS_ACTUALLY_IS_SIGTERM_FOR_SOME_REASON
+        if (data.toString().startsWith('{"type":"result","subtype":"success","is_error":false')) {
+          last_packet_looks_like_claude_code_success = true;
+        } else {
+          last_packet_looks_like_claude_code_success = false;
+        }
       });
 
       child.stderr.on('data', (data) => {
@@ -51,7 +59,16 @@ export function createShellAgent(
       });
 
       child.on('close', (code, signal) => {
-        if (code === 0) {
+        let success = false;
+
+        // TAG_CLAUDE_CODE_SUCCESS_ACTUALLY_IS_SIGTERM_FOR_SOME_REASON
+        if (signal === 'SIGTERM' && scriptPath.endsWith('raw_claude_code.sh') && last_packet_looks_like_claude_code_success) {
+          success = true;
+        } else if (code === 0) {
+          success = true;
+        }
+
+        if (success) {
           logger.info('Shell script executed successfully', {
             script: scriptPath,
             folder: folderPath
