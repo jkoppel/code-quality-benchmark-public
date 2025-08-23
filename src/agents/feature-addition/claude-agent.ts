@@ -45,7 +45,8 @@ export class ClaudeAgent {
       for await (const message of query({
         prompt: fullPrompt,
         options: {
-          allowedTools: this.config.allowedTools
+          allowedTools: this.config.allowedTools,
+          model: 'sonnet'
         }
       })) {
         if (message.type === 'result') {

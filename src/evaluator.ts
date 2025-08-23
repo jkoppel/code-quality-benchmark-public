@@ -213,6 +213,7 @@ async function generateOriginalProgram(
 .DS_Store
 *.log
 .env
+package-lock.json
 dist/
 build/
 `;
@@ -345,7 +346,7 @@ async function applyUpdatesToInstances(
         diffStats = parseGitShortstat(shortstatOutput);
         
         // Calculate score: 300 - insertions - deletions
-        score = 300 - (diffStats.insertions + diffStats.deletions);
+        score = Math.max(0, 300 - (diffStats.insertions + diffStats.deletions));
         
         // Also log the full diff stats for debugging
         const fullStats = execSync('git diff --cached --stat', {
