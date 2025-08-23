@@ -1,11 +1,10 @@
 export interface Booking {
   id: string;
   roomName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  date: string; // Format: YYYY-MM-DD
+  startTime: string; // Format: HH:MM
+  endTime: string; // Format: HH:MM
   userName: string;
-  resources?: string[];
 }
 
 export interface Room {
@@ -20,42 +19,19 @@ export interface TimeSlot {
   booking?: Booking;
 }
 
-// Hook return types
-export interface UseBookingsReturn {
-  bookings: Booking[];
-  addBooking: (roomName: string, date: string, startTime: string, endTime: string, userName: string, resources?: string[]) => void;
-  removeBookingById: (bookingId: string) => void;
-}
+// New types for better type safety
+export type DateString = string; // YYYY-MM-DD format
+export type TimeString = string; // HH:MM format
 
-// Component prop interfaces
-export interface DateNavigationProps {
-  selectedDate: string;
-  onDateChange: (date: string) => void;
-}
-
-export interface TimeSlotsProps {
-  selectedRoom: string;
-  selectedDate: string;
-  bookings: Booking[];
-  selectedSlot: string | null;
-  selectedEndSlot: string | null;
-  onSlotClick: (time: string) => void;
-}
-
-export interface BookingFormProps {
+export interface BookingRequest {
   roomName: string;
-  startTime: string;
-  endTime: string;
+  date: DateString;
+  startTime: TimeString;
+  endTime: TimeString;
   userName: string;
-  selectedResources: string[];
-  onUserNameChange: (name: string) => void;
-  onResourcesChange: (resources: string[]) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
 }
 
-// Utility types
-export type RoomName = string;
-export type TimeString = string;
-export type DateString = string;
-export type BookingId = string;
+export interface SlotSelectionState {
+  selectedSlot: TimeString | null;
+  selectedEndSlot: TimeString | null;
+}

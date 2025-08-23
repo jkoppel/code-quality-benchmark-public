@@ -1,0 +1,5 @@
+Refactored version doesn't run. All throughout the codebase, there are erroneously-escaped quotes. Lots of `<div foo=\"blah\">`.
+
+WTF.
+
+Total score: 0

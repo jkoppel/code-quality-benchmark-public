@@ -1,6 +1,6 @@
 import React from 'react';
 import { Booking } from '../../types';
-import { HOURS, ROOMS } from '../../constants';
+import { HOURS } from '../../constants';
 import { formatLongDate } from '../../utils/dateUtils';
 import { useSlotSelection } from '../../hooks/useSlotSelection';
 import DateNavigation from './DateNavigation';

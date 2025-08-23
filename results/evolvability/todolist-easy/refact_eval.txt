@@ -1,0 +1,5 @@
+Claude-1 was fine, but scored a 0. Didn't check claude-2, also a 0. Claude-3 was fine.
+
+All codex completions added the new state incorrectly, and all of them had the redundant checkbox and dropdown. Did not synch correctly. Codex-1 and codex-3 had them as independent; codex-2 tried to synch them, but improperly. Ruling all of them out.
+
+Total score: 19

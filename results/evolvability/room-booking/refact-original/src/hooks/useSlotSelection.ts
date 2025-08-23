@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Booking, Room } from '../types';
+import { Booking } from '../types';
 import { ROOMS, HOURS } from '../constants';
 import { findBookingAtTime, hasTimeRangeConflict } from '../services/bookingService';
 

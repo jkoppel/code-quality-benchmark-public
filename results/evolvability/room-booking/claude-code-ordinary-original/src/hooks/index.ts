@@ -1,2 +1,2 @@
 export { useBookings } from './useBookings';
-export { useCalendarState } from './useCalendarState';
+export { useSlotSelection } from './useSlotSelection';

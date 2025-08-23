@@ -1,1 +1,1 @@
-export * from './bookingService';
+export { BookingService } from './bookingService';

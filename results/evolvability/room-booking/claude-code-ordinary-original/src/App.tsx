@@ -3,12 +3,12 @@ import './App.css';
 import RoomList from './components/RoomList';
 import BookingCalendar from './components/BookingCalendar';
 import { useBookings } from './hooks/useBookings';
-import { getTodayDateString } from './utils/dateUtils';
+import { getCurrentDate } from './utils/dateUtils';
 
 function App() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
-  const { bookings, addBooking, removeBookingById } = useBookings();
+  const [selectedDate, setSelectedDate] = useState<string>(getCurrentDate());
+  const { bookings, addBooking, removeBooking, findBookingAtSlot } = useBookings();
 
   return (
     <div className="App">
@@ -25,8 +25,9 @@ function App() {
           selectedDate={selectedDate}
           bookings={bookings}
           onBook={addBooking}
-          onUnbook={removeBookingById}
+          onUnbook={removeBooking}
           onDateChange={setSelectedDate}
+          findBookingAtSlot={findBookingAtSlot}
         />
       </div>
     </div>

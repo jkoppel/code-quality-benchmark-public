@@ -1,0 +1,5 @@
+Claude-1 and claude-3 were fine. Claude-2 had a diff too large and scored 0.
+
+Two of the Codex solutions did not even let you modify the status once an item is created. The third synched state incorrectly. (They keep having the redundant checkboxes and statuses.)
+
+Total score: 79

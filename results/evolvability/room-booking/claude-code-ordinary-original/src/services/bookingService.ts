@@ -1,140 +1,92 @@
 import { Booking } from '../types';
-import { ROOMS, RESOURCES } from '../constants';
-import { generateBookingId } from '../utils/bookingUtils';
-import { isTimeSlotOverlapping } from '../utils/timeUtils';
+import { 
+  createBookingsForRoom, 
+  findRelatedBookingIds, 
+  findRoomByName,
+  isBallroomComponent 
+} from '../utils/bookingUtils';
 
-export const createBooking = (
-  roomName: string,
-  date: string,
-  startTime: string,
-  endTime: string,
-  userName: string,
-  resources?: string[]
-): Booking[] => {
-  const room = ROOMS.find(r => r.name === roomName);
-  const baseBookingId = generateBookingId();
-  const newBookings: Booking[] = [];
+export class BookingService {
+  private bookings: Booking[] = [];
 
-  // Handle virtual room components
-  if (room?.isVirtual && room.components) {
-    room.components.forEach(component => {
-      newBookings.push({
-        id: `${baseBookingId}-${component}`,
-        roomName: component,
-        date,
-        startTime,
-        endTime,
-        userName,
-        resources
-      });
-    });
+  getBookings(): Booking[] {
+    return [...this.bookings];
   }
 
-  // Add the main booking
-  newBookings.push({
-    id: baseBookingId,
-    roomName,
-    date,
-    startTime,
-    endTime,
-    userName,
-    resources
-  });
-
-  return newBookings;
-};
-
-export const removeBooking = (bookingId: string, allBookings: Booking[]): string[] => {
-  const bookingToRemove = allBookings.find(b => b.id === bookingId);
-  
-  if (!bookingToRemove) {
-    return [];
+  addBooking(
+    roomName: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    userName: string
+  ): Booking[] {
+    const newBookings = createBookingsForRoom(roomName, date, startTime, endTime, userName);
+    this.bookings.push(...newBookings);
+    return this.getBookings();
   }
 
-  let bookingsToRemove = [bookingId];
-  
-  // Handle virtual room component removal
-  const room = ROOMS.find(r => r.name === bookingToRemove.roomName);
-  if (room?.isVirtual && room.components) {
-    const relatedBookings = allBookings.filter(b =>
-      b.id.startsWith(bookingId.split('-')[0]) &&
-      b.date === bookingToRemove.date &&
-      b.startTime === bookingToRemove.startTime
+  removeBooking(bookingId: string): Booking[] {
+    const targetBooking = this.bookings.find(b => b.id === bookingId);
+    
+    if (!targetBooking) {
+      return this.getBookings();
+    }
+
+    const idsToRemove = findRelatedBookingIds(this.bookings, targetBooking);
+    this.bookings = this.bookings.filter(b => !idsToRemove.includes(b.id));
+    
+    return this.getBookings();
+  }
+
+  findBookingAtSlot(roomName: string, date: string, time: string): Booking | undefined {
+    const room = findRoomByName(roomName);
+    
+    // Check virtual room components
+    if (room?.isVirtual && room.components) {
+      const componentBooking = room.components.find(component =>
+        this.bookings.some(b =>
+          b.roomName === component &&
+          b.date === date &&
+          b.startTime <= time &&
+          b.endTime > time
+        )
+      );
+
+      if (componentBooking) {
+        return this.bookings.find(b =>
+          b.roomName === componentBooking &&
+          b.date === date &&
+          b.startTime <= time &&
+          b.endTime > time
+        );
+      }
+    }
+
+    // Check Grand Ballroom conflicts with ballroom components
+    if (!room?.isVirtual && isBallroomComponent(roomName)) {
+      const grandBallroomBooking = this.bookings.find(b =>
+        b.roomName === 'Grand Ballroom' &&
+        b.date === date &&
+        b.startTime <= time &&
+        b.endTime > time
+      );
+      if (grandBallroomBooking) {
+        return grandBallroomBooking;
+      }
+    }
+
+    // Check direct booking
+    return this.bookings.find(b =>
+      b.roomName === roomName &&
+      b.date === date &&
+      b.startTime <= time &&
+      b.endTime > time
     );
-    bookingsToRemove = relatedBookings.map(b => b.id);
-  }
-  
-  // Handle Grand Ballroom special case
-  if (bookingToRemove.roomName === 'Grand Ballroom') {
-    const baseId = bookingId.split('-')[0];
-    bookingsToRemove = allBookings
-      .filter(b => b.id.startsWith(baseId))
-      .map(b => b.id);
-  }
-  
-  return bookingsToRemove;
-};
-
-// Check if resources are available for the given time period
-export const checkResourceAvailability = (
-  resources: string[],
-  date: string,
-  startTime: string,
-  endTime: string,
-  existingBookings: Booking[],
-  excludeBookingId?: string
-): boolean => {
-  if (!resources || resources.length === 0) {
-    return true;
   }
 
-  for (const resource of resources) {
-    const resourceConfig = Object.values(RESOURCES).find(r => r.name === resource);
-    if (!resourceConfig) continue;
-
-    const overlappingBookings = existingBookings.filter(booking => {
-      if (excludeBookingId && booking.id === excludeBookingId) return false;
-      if (booking.date !== date) return false;
-      if (!booking.resources?.includes(resource)) return false;
-
-      return isTimeSlotOverlapping(
-        { startTime: booking.startTime, endTime: booking.endTime },
-        { startTime, endTime }
-      );
-    });
-
-    if (overlappingBookings.length >= resourceConfig.maxQuantity) {
-      return false;
-    }
+  hasConflictInRange(roomName: string, date: string, startTime: string, endTime: string): boolean {
+    // Implementation would check for conflicts in the time range
+    // For now, this is a placeholder - would need to implement time range checking
+    return false;
   }
-
-  return true;
-};
-
-// Get available resources for a time slot
-export const getAvailableResources = (
-  date: string,
-  startTime: string,
-  endTime: string,
-  existingBookings: Booking[]
-): string[] => {
-  const availableResources: string[] = [];
-
-  Object.values(RESOURCES).forEach(resourceConfig => {
-    const overlappingBookings = existingBookings.filter(booking => {
-      if (booking.date !== date) return false;
-      if (!booking.resources?.includes(resourceConfig.name)) return false;
-
-      return isTimeSlotOverlapping(
-        { startTime: booking.startTime, endTime: booking.endTime },
-        { startTime, endTime }
-      );
-    });
-
-    if (overlappingBookings.length < resourceConfig.maxQuantity) {
-      availableResources.push(resourceConfig.name);
-    }
-  });
-
-  return availableResources;
-};
+}

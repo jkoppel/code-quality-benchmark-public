@@ -1,35 +1,36 @@
 import React from 'react';
-import { DateNavigationProps } from '../types';
-import { getPreviousDay, getNextDay } from '../utils/dateUtils';
+import { addDays } from '../utils/dateUtils';
 
-const DateNavigation: React.FC<DateNavigationProps> = ({ selectedDate, onDateChange }) => {
+interface DateNavigationProps {
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+}
+
+const DateNavigation: React.FC<DateNavigationProps> = ({
+  selectedDate,
+  onDateChange
+}) => {
   const handlePreviousDay = () => {
-    onDateChange(getPreviousDay(selectedDate));
+    const previousDate = addDays(selectedDate, -1);
+    onDateChange(previousDate);
   };
 
   const handleNextDay = () => {
-    onDateChange(getNextDay(selectedDate));
-  };
-
-  const handleDateInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onDateChange(event.target.value);
+    const nextDate = addDays(selectedDate, 1);
+    onDateChange(nextDate);
   };
 
   return (
     <div className="date-navigation">
-      <button onClick={handlePreviousDay}>
-        ← Previous Day
-      </button>
+      <button onClick={handlePreviousDay}>← Previous Day</button>
       
       <input
         type="date"
         value={selectedDate}
-        onChange={handleDateInputChange}
+        onChange={(e) => onDateChange(e.target.value)}
       />
       
-      <button onClick={handleNextDay}>
-        Next Day →
-      </button>
+      <button onClick={handleNextDay}>Next Day →</button>
     </div>
   );
 };

@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { Booking } from '../types';
-import { UI_MESSAGES } from '../constants';
-import { formatDateLong } from '../utils/dateUtils';
-import { useCalendarState } from '../hooks/useCalendarState';
-import { checkResourceAvailability } from '../services/bookingService';
+import { HOURS } from '../constants';
+import { useSlotSelection } from '../hooks/useSlotSelection';
+import { formatDisplayDate } from '../utils/dateUtils';
+import { getTimeRange } from '../utils/timeUtils';
 import DateNavigation from './DateNavigation';
-import TimeSlots from './TimeSlots';
 import BookingForm from './BookingForm';
+import TimeSlot from './TimeSlot';
 
 interface BookingCalendarProps {
   selectedRoom: string | null;
   selectedDate: string;
   bookings: Booking[];
-  onBook: (roomName: string, date: string, startTime: string, endTime: string, userName: string, resources?: string[]) => void;
+  onBook: (roomName: string, date: string, startTime: string, endTime: string, userName: string) => void;
   onUnbook: (bookingId: string) => void;
   onDateChange: (date: string) => void;
+  findBookingAtSlot: (roomName: string, date: string, time: string) => Booking | undefined;
 }
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({
@@ -23,100 +24,121 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   bookings,
   onBook,
   onUnbook,
-  onDateChange
+  onDateChange,
+  findBookingAtSlot
 }) => {
+  const [showBookingForm, setShowBookingForm] = useState(false);
   const {
     selectedSlot,
     selectedEndSlot,
-    userName,
-    showBookingForm,
-    setUserName,
-    resetState,
-    handleSlotClick,
-    getEndTime
-  } = useCalendarState();
+    clearSelection,
+    selectStartSlot,
+    selectEndSlot,
+    isSlotSelected,
+    isSlotInRange,
+    getEndTime,
+    hasValidSelection
+  } = useSlotSelection();
 
-  const [selectedResources, setSelectedResources] = useState<string[]>([]);
-  const [resourceError, setResourceError] = useState<string>('');
-
-  const handleBook = () => {
-    if (selectedSlot && userName.trim()) {
-      const endTime = getEndTime();
-      
-      // Check resource availability
-      if (selectedResources.length > 0) {
-        const resourcesAvailable = checkResourceAvailability(
-          selectedResources,
-          selectedDate,
-          selectedSlot,
-          endTime,
-          bookings
-        );
-        
-        if (!resourcesAvailable) {
-          setResourceError(UI_MESSAGES.RESOURCE_UNAVAILABLE);
-          return;
-        }
+  const handleSlotClick = (time: string) => {
+    const booking = findBookingAtSlot(selectedRoom!, selectedDate, time);
+    
+    if (booking) {
+      if (window.confirm(`Unbook this slot?\nBooked by: ${booking.userName}\nTime: ${booking.startTime} - ${booking.endTime}`)) {
+        onUnbook(booking.id);
       }
-      
-      onBook(selectedRoom!, selectedDate, selectedSlot, endTime, userName.trim(), selectedResources);
-      resetState();
-      setSelectedResources([]);
-      setResourceError('');
+    } else {
+      if (!selectedSlot) {
+        selectStartSlot(time);
+        setShowBookingForm(false);
+      } else if (!selectedEndSlot) {
+        const startIndex = HOURS.indexOf(selectedSlot);
+        const endIndex = HOURS.indexOf(time);
+        
+        if (endIndex >= startIndex) {
+          if (endIndex === startIndex) {
+            // Same slot clicked - book just 30 minutes
+            setShowBookingForm(true);
+          } else {
+            const timeRange = getTimeRange(selectedSlot, time);
+            const hasConflict = timeRange.some(t =>
+              findBookingAtSlot(selectedRoom!, selectedDate, t)
+            );
+            
+            if (!hasConflict) {
+              selectEndSlot(time);
+              setShowBookingForm(true);
+            } else {
+              alert('Selected range contains booked slots');
+              clearSelection();
+            }
+          }
+        } else {
+          selectStartSlot(time);
+        }
+      } else {
+        selectStartSlot(time);
+        setShowBookingForm(false);
+      }
     }
   };
 
-  const handleResourcesChange = (resources: string[]) => {
-    setSelectedResources(resources);
-    setResourceError('');
+  const handleBookingConfirm = (userName: string) => {
+    if (selectedSlot) {
+      const endTime = getEndTime();
+      onBook(selectedRoom!, selectedDate, selectedSlot, endTime, userName);
+      clearSelection();
+      setShowBookingForm(false);
+    }
   };
 
-  const onSlotClick = (time: string) => {
-    handleSlotClick(time, selectedRoom!, selectedDate, bookings, onUnbook);
+  const handleBookingCancel = () => {
+    clearSelection();
+    setShowBookingForm(false);
   };
 
   if (!selectedRoom) {
-    return <div className="calendar-container">{UI_MESSAGES.SELECT_ROOM}</div>;
+    return <div className="calendar-container">Please select a room</div>;
   }
 
   return (
     <div className="calendar-container">
-      <DateNavigation 
-        selectedDate={selectedDate} 
-        onDateChange={onDateChange} 
-      />
-
-      <h3>{selectedRoom} - {formatDateLong(selectedDate)}</h3>
-      
-      <TimeSlots
-        selectedRoom={selectedRoom}
+      <DateNavigation
         selectedDate={selectedDate}
-        bookings={bookings}
-        selectedSlot={selectedSlot}
-        selectedEndSlot={selectedEndSlot}
-        onSlotClick={onSlotClick}
+        onDateChange={onDateChange}
       />
 
-      {showBookingForm && selectedSlot && (
+      <h3>{selectedRoom} - {formatDisplayDate(selectedDate)}</h3>
+      
+      <div className="time-slots">
+        {HOURS.map((time) => {
+          const booking = findBookingAtSlot(selectedRoom, selectedDate, time);
+          
+          return (
+            <TimeSlot
+              key={time}
+              time={time}
+              booking={booking}
+              isSelected={isSlotSelected(time)}
+              isInRange={isSlotInRange(time)}
+              onClick={() => handleSlotClick(time)}
+            />
+          );
+        })}
+      </div>
+
+      {showBookingForm && hasValidSelection() && (
         <BookingForm
           roomName={selectedRoom}
-          startTime={selectedSlot}
+          startTime={selectedSlot!}
           endTime={getEndTime()}
-          userName={userName}
-          selectedResources={selectedResources}
-          onUserNameChange={setUserName}
-          onResourcesChange={handleResourcesChange}
-          onConfirm={handleBook}
-          onCancel={resetState}
+          onConfirm={handleBookingConfirm}
+          onCancel={handleBookingCancel}
         />
       )}
 
-      {resourceError && (
-        <div className="error-message">{resourceError}</div>
-      )}
-
       {selectedSlot && !selectedEndSlot && !showBookingForm && (
-        <p className="instruction">{UI_MESSAGES.SLOT_INSTRUCTION}</p>
+        <p className="instruction">Click the same slot again for 30-min booking, or click another slot for longer duration</p>
       )}
     </div>
   );
