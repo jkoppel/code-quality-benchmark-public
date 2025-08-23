@@ -1,0 +1,266 @@
+.App {
+  min-height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  text-align: center;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.main-container {
+  display: flex;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  gap: 20px;
+}
+
+.room-list {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 250px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.room-list h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 20px;
+  color: #333;
+}
+
+.room-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.room-list li {
+  padding: 12px 15px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  transition: background-color 0.2s;
+  border: 1px solid #e0e0e0;
+}
+
+.room-list li:hover {
+  background-color: #f5f5f5;
+}
+
+.room-list li.selected {
+  background-color: #2196f3;
+  color: white;
+  border-color: #2196f3;
+}
+
+.virtual-badge {
+  font-size: 12px;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.calendar-container {
+  flex: 1;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.date-navigation {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.date-navigation button {
+  padding: 8px 15px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.date-navigation button:hover {
+  background-color: #e0e0e0;
+}
+
+.date-navigation input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.calendar-container h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.time-slot {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.time-slot.available {
+  background-color: #f9f9f9;
+}
+
+.time-slot.available:hover {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.time-slot.booked {
+  background-color: #ffebee;
+  border-color: #f44336;
+  cursor: pointer;
+}
+
+.time-slot.booked:hover {
+  background-color: #ffcdd2;
+}
+
+.time-slot.selected {
+  background-color: #bbdefb;
+  border-color: #2196f3;
+  border-width: 2px;
+}
+
+.time-slot.in-range {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.time {
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+}
+
+.booking-info {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.booking-form {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #ddd;
+}
+
+.booking-form h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.booking-form p {
+  margin: 10px 0;
+  color: #666;
+}
+
+.booking-form input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.booking-form button {
+  padding: 10px 20px;
+  margin-right: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.booking-form button:first-of-type {
+  background-color: #4caf50;
+  color: white;
+}
+
+.booking-form button:first-of-type:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.booking-form button:first-of-type:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.booking-form button:last-of-type {
+  background-color: #f44336;
+  color: white;
+}
+
+.booking-form button:last-of-type:hover {
+  background-color: #da190b;
+}
+
+.instruction {
+  color: #666;
+  font-style: italic;
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-left: 3px solid #2196f3;
+}
+
+.no-room-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #666;
+  font-size: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.form-actions button {
+  flex: 1;
+}

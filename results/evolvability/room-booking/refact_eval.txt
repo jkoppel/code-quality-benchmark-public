@@ -1,0 +1,3 @@
+All Claude completions and Codex-2 failed. I am extremely sleep-deprived and can't keep straight which was which, but it was largely some variant of failing to forbid fully booking a resource.
+
+Total score: 332
