@@ -3,7 +3,6 @@ export type CodingAgent = (prompt: string, folderPath: string) => Promise<void>;
 export interface EvaluationConfig {
   workspaceRoot?: string;
   timeout?: number;
-  cleanupAfterRun?: boolean;
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
   claudeConfig?: ClaudeAgentConfig;
 }
@@ -23,12 +22,19 @@ export interface EvaluationResult {
   metadata: EvaluationMetadata;
 }
 
+export interface DiffStats {
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+}
+
 export interface InstanceResult {
   instanceId: string;
   folderPath: string;
   success: boolean;
   error?: Error;
   executionTime: number;
+  diffStats?: DiffStats;
 }
 
 export interface EvaluationMetadata {

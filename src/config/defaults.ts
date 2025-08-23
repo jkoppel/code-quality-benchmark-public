@@ -2,7 +2,6 @@ import { EvaluationConfig } from '../types';
 
 export const DEFAULT_EVALUATION_CONFIG: EvaluationConfig = {
   timeout: 300000, // 5 minutes
-  cleanupAfterRun: true,
   logLevel: 'info',
   claudeConfig: {
     systemPrompt: undefined, // Will use default from ClaudeAgent

@@ -36,19 +36,27 @@ export async function runBenchmark(benchmarkPath: string, codingAgent: CodingAge
     codingAgent,
     updatePrompt.trim(),
     {
-      logLevel: 'info',
-      cleanupAfterRun: true
+      logLevel: 'info'
     }
   );
 
   // Output benchmark results as JSON
   const successCount = result.updates.filter(u => u.success).length;
+  const updates = result.updates.map(u => ({
+    instance: u.instanceId,
+    success: u.success,
+    diffStats: u.diffStats || { filesChanged: 0, insertions: 0, deletions: 0 },
+    executionTime: u.executionTime
+  }));
+  
   console.log(JSON.stringify({
     benchmark: benchmarkName,
+    workspacePath: result.originalProgramPath.replace('/original-program', ''),
     success_rate: (successCount / 3) * 100,
     successful_updates: successCount,
     total_updates: 3,
-    duration_ms: result.metadata.totalDuration
+    duration_ms: result.metadata.totalDuration,
+    updates
   }, null, 2));
 
   // Exit with appropriate code

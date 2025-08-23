@@ -1,19 +1,57 @@
 import * as tmp from 'tmp';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import {
   CodingAgent,
   EvaluationConfig,
   EvaluationResult,
   InstanceResult,
+  DiffStats,
   EvaluationError,
   EvaluationMetadata
 } from './types';
 import { Logger } from './utils/logger';
 import { ClaudeAgent } from './agents/claude-agent';
 
-// Configure tmp to automatically cleanup
-tmp.setGracefulCleanup();
+// Don't automatically cleanup - we want to keep benchmark results
+// tmp.setGracefulCleanup();
+
+/**
+ * Parse git diff --shortstat output
+ * Example: " 4 files changed, 108 insertions(+), 24 deletions(-)"
+ */
+function parseGitShortstat(output: string): DiffStats {
+  const stats: DiffStats = {
+    filesChanged: 0,
+    insertions: 0,
+    deletions: 0
+  };
+
+  if (!output || output.trim() === '') {
+    return stats;
+  }
+
+  // Parse files changed
+  const filesMatch = output.match(/(\d+) files? changed/);
+  if (filesMatch) {
+    stats.filesChanged = parseInt(filesMatch[1], 10);
+  }
+
+  // Parse insertions
+  const insertionsMatch = output.match(/(\d+) insertions?\(\+\)/);
+  if (insertionsMatch) {
+    stats.insertions = parseInt(insertionsMatch[1], 10);
+  }
+
+  // Parse deletions
+  const deletionsMatch = output.match(/(\d+) deletions?\(-\)/);
+  if (deletionsMatch) {
+    stats.deletions = parseInt(deletionsMatch[1], 10);
+  }
+
+  return stats;
+}
 
 export async function evaluate(
   initialPrompt: string,
@@ -33,11 +71,11 @@ export async function evaluate(
   let originalProgramPath: string = '';
 
   try {
-    // Create temporary workspace
+    // Create temporary workspace - always keep it
     tempDir = tmp.dirSync({ 
       prefix: 'benchmark-', 
       unsafeCleanup: true,
-      keep: !config.cleanupAfterRun
+      keep: true
     });
 
     logger.debug('Created temporary workspace', { path: tempDir.name });
@@ -74,11 +112,29 @@ export async function evaluate(
       metadata
     };
 
+    // Log diff stats
+    const diffStats = updateResults.map(r => ({
+      instance: r.instanceId,
+      stats: r.diffStats || { filesChanged: 0, insertions: 0, deletions: 0 }
+    }));
+    
     logger.info('Evaluation completed successfully', {
       duration: metadata.totalDuration,
       successfulUpdates: updateResults.filter(r => r.success).length,
-      failedUpdates: updateResults.filter(r => !r.success).length
+      failedUpdates: updateResults.filter(r => !r.success).length,
+      diffStats
     });
+    
+    // Also print diff stats to console for visibility
+    console.log('\n=== Git Diff Statistics ===');
+    updateResults.forEach(r => {
+      if (r.diffStats) {
+        console.log(`${r.instanceId}: ${r.diffStats.filesChanged} files, +${r.diffStats.insertions}/-${r.diffStats.deletions} lines${r.success ? '' : ' (failed)'}`);
+      } else {
+        console.log(`${r.instanceId}: No changes${r.success ? '' : ' (failed)'}`);
+      }
+    });
+    console.log('===========================\n');
 
     return result;
 
@@ -95,15 +151,9 @@ export async function evaluate(
           error
         );
   } finally {
-    if (config.cleanupAfterRun && tempDir) {
-      try {
-        tempDir.removeCallback();
-        logger.debug('Cleaned up temporary workspace');
-      } catch (cleanupError) {
-        logger.error('Failed to cleanup workspace', {
-          error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
-        });
-      }
+    // Never cleanup - we want to keep the results
+    if (tempDir) {
+      logger.info('Benchmark results saved at:', { path: tempDir.name });
     }
   }
 }
@@ -130,7 +180,25 @@ async function generateOriginalProgram(
       );
     }
     
-    logger.info('Original program generated successfully', {
+    // Create .gitignore if it doesn't exist
+    const gitignorePath = path.join(originalFolder, '.gitignore');
+    if (!await fs.pathExists(gitignorePath)) {
+      const gitignoreContent = `node_modules/
+.DS_Store
+*.log
+.env
+dist/
+build/
+`;
+      await fs.writeFile(gitignorePath, gitignoreContent);
+    }
+    
+    // Initialize git repo and commit
+    execSync('git init', { cwd: originalFolder });
+    execSync('git add -A', { cwd: originalFolder });
+    execSync('git commit -m "Initial commit: Generated program"', { cwd: originalFolder });
+    
+    logger.info('Original program generated and committed to git', {
       path: originalFolder,
       fileCount: files.length
     });
@@ -158,7 +226,7 @@ async function applyUpdatesToInstances(
   
   logger.info('Creating program instances for updates');
   
-  // Create instance directories and copy original program
+  // Create instance directories and copy original program (including .git)
   const instancePaths: string[] = await Promise.all(
     instances.map(async (instanceId) => {
       const instancePath = path.join(workspaceDir, instanceId);
@@ -181,14 +249,65 @@ async function applyUpdatesToInstances(
   
   const results = await Promise.all(updatePromises);
   
-  results.forEach((result, index) => {
+  // Calculate git diff statistics
+  const resultsWithDiffs = results.map((result, index) => {
+    const instancePath = instancePaths[index];
+    let diffStats: DiffStats | undefined;
+    
+    if (result.success) {
+      try {
+        // First add all changes to staging to see what changed
+        execSync('git add -A', { cwd: instancePath });
+        
+        // Get the diff statistics using --shortstat
+        const shortstatOutput = execSync('git diff --cached --shortstat', { 
+          cwd: instancePath,
+          encoding: 'utf-8'
+        });
+        
+        diffStats = parseGitShortstat(shortstatOutput);
+        
+        // Also log the full diff stats for debugging
+        const fullStats = execSync('git diff --cached --stat', {
+          cwd: instancePath,
+          encoding: 'utf-8'
+        });
+        logger.debug(`Diff stats for ${instances[index]}:\n${fullStats}`);
+        
+        // Commit the changes for future reference
+        try {
+          execSync(`git commit -m "Update: Applied modifications"`, { cwd: instancePath });
+        } catch (commitError) {
+          // If commit fails (e.g., nothing to commit), that's okay
+          logger.debug(`No changes to commit for ${instances[index]}`);
+        }
+      } catch (error) {
+        logger.warn(`Failed to get git diff for ${instances[index]}`, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+    
+    const resultWithDiff: InstanceResult = {
+      ...result,
+      diffStats
+    };
+    
     logger.info(`Instance ${instances[index]} completed`, {
       success: result.success,
-      executionTime: result.executionTime
+      executionTime: result.executionTime,
+      diffStats
     });
+    
+    // Print diff stats to console immediately
+    if (result.success && diffStats) {
+      console.log(`  → ${instances[index]}: ${diffStats.filesChanged} files changed, +${diffStats.insertions}/-${diffStats.deletions} lines`);
+    }
+    
+    return resultWithDiff;
   });
   
-  return results;
+  return resultsWithDiffs;
 }
 
 export { EvaluationConfig, EvaluationResult, CodingAgent } from './types';
