@@ -1,0 +1,3 @@
+Create a multi-pane edit mode. That is, have multiple editing panes, each editing a separate bitmap (but a shared color-picker). These panes should appear side-by-side. There is a button to create a new pane, and buttons to close existing panes. Each pane can be saved and loaded separately.
+
+Aim to change as little code as possible when implementing these features.

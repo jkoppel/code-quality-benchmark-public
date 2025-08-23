@@ -1,0 +1,9 @@
+Create a React room-booking app. Users may browse a list of rooms, and may view when a room is available (in increments of 1 hour), and may book a room any time when it is not already booked. Their booking should contain their name and the time it should be booked for.
+
+Hardcode that there are 5 rooms: Anaconda, Baboon, Ballroom 1, Ballroom 2, and Ballroom 3.
+In addition, someone may book the Grand Ballroom, which results from joining all 3 ballrooms.
+
+
+Configure it so that running `npm run start -- --port=$PORT` opens the app in a browser window with port $PORT.
+Pay attention to code quality, as you will be evaluated on how many lines must be changed to add new features.
+Do not implement any more features than you have been asked.

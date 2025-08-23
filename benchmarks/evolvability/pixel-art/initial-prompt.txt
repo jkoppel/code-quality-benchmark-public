@@ -1,4 +1,4 @@
-Create a React calculator application with the basic arithmetic operations of add, subtract, multiply, and divide. E.g.: Pressing the 1 button, then the + button, then the 2 button, then the = button, should display 3.
+Create a pixel-art program in React. Users can select color from an RGB color-picker, and then click on the drawing area to paint the color. They may also save the current drawing as a bitmap on the local file system, and load bitmaps from the local file system.
 
 Configure it so that running `npm run start -- --port=$PORT` opens the app in a browser window with port $PORT.
 Pay attention to code quality, as you will be evaluated on how many lines must be changed to add new features.

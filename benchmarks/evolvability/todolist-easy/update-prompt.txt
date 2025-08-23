@@ -1,0 +1,7 @@
+Extend the todo list app to support the following features:
+
+* Assigning more statuses to todo items, in addition to the existing done/not-done (e.g.: in-progress, under review, blocked)
+* Assign priorities to todo items
+* Adding due dates to todo items
+
+Aim to change as little code as possible when implementing these features.

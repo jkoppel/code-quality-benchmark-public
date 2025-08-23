@@ -71,3 +71,6 @@ evaluation-results.json
 
 # Automatically added by UpToSpeed CommandCenter
 .claude/hooks/*.sh.ignored
+
+# Files within premade versions of benchmarks
+benchmarks/**/node_modules

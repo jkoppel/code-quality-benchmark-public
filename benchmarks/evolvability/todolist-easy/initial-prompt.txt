@@ -1,4 +1,5 @@
-Create a React calculator application with the basic arithmetic operations of add, subtract, multiply, and divide. E.g.: Pressing the 1 button, then the + button, then the 2 button, then the = button, should display 3.
+Create a React todo list app where you can add, remove, and edit tasks. In the basic version, a task is either done or not done. A user should be able to create and delete todo items, view the TodoList, and mark items as done. 
+
 
 Configure it so that running `npm run start -- --port=$PORT` opens the app in a browser window with port $PORT.
 Pay attention to code quality, as you will be evaluated on how many lines must be changed to add new features.
