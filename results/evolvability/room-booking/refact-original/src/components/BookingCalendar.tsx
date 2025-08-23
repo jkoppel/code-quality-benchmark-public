@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
-import { Room, Booking } from '../types';
-import { HOURS } from '../constants';
+import { Room } from '../types';
+import { HOURS } from '../constants/hours';
+import { todayISO } from '../utils/dateUtils';
+import { useBookings } from '../hooks/useBookings';
+import HourSlot from './BookingCalendar/HourSlot';
+import BookingForm from './BookingCalendar/BookingForm';
 
 interface BookingCalendarProps {
   room: Room;
-  bookings: Booking[];
-  onBook: (name: string, date: string, hour: number) => void;
 }
 
-const BookingCalendar: React.FC<BookingCalendarProps> = ({ room, bookings, onBook }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+const BookingCalendar: React.FC<BookingCalendarProps> = ({ room }) => {
+  const [selectedDate, setSelectedDate] = useState(todayISO());
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [bookingName, setBookingName] = useState('');
+
+  const { getForRoom, addBooking } = useBookings();
+  const bookings = getForRoom(room.id);
 
   const isHourBooked = (hour: number) => {
     return bookings.some(
@@ -28,18 +33,18 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ room, bookings, onBoo
   };
 
   const handleBooking = () => {
-    if (bookingName && selectedHour !== null) {
-      onBook(bookingName, selectedDate, selectedHour);
+    if (bookingName.trim() && selectedHour !== null) {
+      addBooking(room, bookingName.trim(), selectedDate, selectedHour);
       setShowBookingForm(false);
       setBookingName('');
       setSelectedHour(null);
     }
   };
 
-  const formatHour = (hour: number) => {
-    const h = hour % 12 || 12;
-    const ampm = hour < 12 ? 'AM' : 'PM';
-    return `${h}:00 ${ampm}`;
+  const handleCancel = () => {
+    setShowBookingForm(false);
+    setBookingName('');
+    setSelectedHour(null);
   };
 
   return (
@@ -63,42 +68,27 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ room, bookings, onBoo
           );
           
           return (
-            <div 
+            <HourSlot
               key={hour}
-              className={`hour-slot ${booked ? 'booked' : 'available'}`}
+              hour={hour}
+              isBooked={booked}
+              bookedBy={booking?.name}
               onClick={() => handleHourClick(hour)}
-            >
-              <div className="hour-time">{formatHour(hour)}</div>
-              {booked && booking && (
-                <div className="booking-info">Booked by: {booking.name}</div>
-              )}
-            </div>
+            />
           );
         })}
       </div>
 
-      {showBookingForm && (
-        <div className="booking-form-overlay">
-          <div className="booking-form">
-            <h3>Book {room.name}</h3>
-            <p>Date: {selectedDate}</p>
-            <p>Time: {selectedHour !== null && formatHour(selectedHour)}</p>
-            <input 
-              type="text"
-              placeholder="Your name"
-              value={bookingName}
-              onChange={(e) => setBookingName(e.target.value)}
-            />
-            <div className="form-buttons">
-              <button onClick={handleBooking}>Confirm Booking</button>
-              <button onClick={() => {
-                setShowBookingForm(false);
-                setBookingName('');
-                setSelectedHour(null);
-              }}>Cancel</button>
-            </div>
-          </div>
-        </div>
+      {showBookingForm && selectedHour !== null && (
+        <BookingForm
+          roomName={room.name}
+          date={selectedDate}
+          hour={selectedHour}
+          name={bookingName}
+          onNameChange={setBookingName}
+          onConfirm={handleBooking}
+          onCancel={handleCancel}
+        />
       )}
     </div>
   );

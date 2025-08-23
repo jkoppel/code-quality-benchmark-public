@@ -1,0 +1,7 @@
+So it didn't actually run at first. Got a "React not found" error. But I decided to pass it, as a build issue rather than a functional issue. Fixing required installing vite and adding a vite config.
+
+UI was a bit weird at first, but it worked perfectly. Fully functional, though not pleasant to use. Diff sizes are implausibly low, and yet they all work.
+
+The Codex completions don't let you assign multiple resources to a room, but the prompt does say "one of," so that's acceptable even though not intended.
+
+Score: 1411

@@ -1,0 +1,145 @@
+.color-picker {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-width: 280px;
+}
+
+.color-picker h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #555;
+  text-align: center;
+}
+
+.rgb-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.color-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-input label {
+  width: 20px;
+  font-weight: bold;
+  color: #666;
+  font-size: 14px;
+}
+
+.color-slider {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.color-slider:hover {
+  opacity: 0.8;
+}
+
+.color-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #333;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.color-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #333;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.red-slider {
+  background: linear-gradient(to right, #000, #ff0000);
+}
+
+.green-slider {
+  background: linear-gradient(to right, #000, #00ff00);
+}
+
+.blue-slider {
+  background: linear-gradient(to right, #000, #0000ff);
+}
+
+.color-value {
+  width: 40px;
+  text-align: right;
+  color: #666;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.color-preview {
+  width: 100%;
+  height: 40px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.color-preview:hover {
+  border-color: #999;
+}
+
+.color-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.action-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.3s;
+  min-width: 80px;
+}
+
+.random-button {
+  background: #ff9800;
+  color: white;
+}
+
+.random-button:hover {
+  background: #f57c00;
+  transform: translateY(-1px);
+}
+
+.reset-button {
+  background: #757575;
+  color: white;
+}
+
+.reset-button:hover {
+  background: #616161;
+  transform: translateY(-1px);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}

@@ -1,60 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import TodoList from './TodoList';
-import './App.css';
-
-interface Todo {
-  id: number;
-  text: string;
-  done: boolean;
-}
+import TodoInput from './components/TodoInput';
+import { useTodos } from './hooks/useTodos';
+import { UI_TEXT, CSS_CLASSES } from './constants';
+import './styles/App.css';
 
 function App() {
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [inputText, setInputText] = useState('');
-  const [nextId, setNextId] = useState(1);
-
-  const addTodo = () => {
-    if (inputText.trim()) {
-      setTodos([...todos, { id: nextId, text: inputText, done: false }]);
-      setNextId(nextId + 1);
-      setInputText('');
-    }
-  };
-
-  const toggleDone = (id: number) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, done: !todo.done } : todo
-    ));
-  };
-
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter(todo => todo.id !== id));
-  };
-
-  const editTodo = (id: number, newText: string) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, text: newText } : todo
-    ));
-  };
+  const { todos, addTodo, toggleTodo, deleteTodo, editTodo } = useTodos();
 
   return (
-    <div className="App">
-      <div className="app-container">
-        <h1 className="app-title">Todo List</h1>
-        <div className="input-container">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addTodo()}
-            placeholder="Enter a new task"
-            className="task-input"
-          />
-          <button onClick={addTodo} className="add-button">Add Todo</button>
-        </div>
+    <div className={CSS_CLASSES.APP}>
+      <div className={CSS_CLASSES.APP_CONTAINER}>
+        <h1 className={CSS_CLASSES.APP_TITLE}>{UI_TEXT.APP_TITLE}</h1>
+        <TodoInput onAddTodo={addTodo} />
         <TodoList
           todos={todos}
-          onToggleDone={toggleDone}
+          onToggleDone={toggleTodo}
           onDelete={deleteTodo}
           onEdit={editTodo}
         />

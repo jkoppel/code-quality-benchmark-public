@@ -1,0 +1,9 @@
+Raw score: 561
+
+The Sonnet completions were garish, sometimes with white-on-white text, and had the duplicated checkbox. But they were functional. State synched perfectly.
+
+The 3 Codex completions also had the duplicated checkbox, but only codex-3 had proper synch between the checkbox and the status dropdown.
+
+Invalidating codex-1 and codex-2.
+
+Final score: 197

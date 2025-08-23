@@ -1,7 +1,16 @@
 .App {
-  background-color: #282c34;
+  background-color: #f0f0f0;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.calculator {
+  max-width: 320px;
+  margin: 50px auto;
+  background: #333;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }

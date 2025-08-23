@@ -1,0 +1,11 @@
+The requirements clearly state you must be able to book in both hour and half-hour granularity, but the initial version only let you book half hour. I'd give it a 0 for that.
+
+But also all diffs were over 300 lines, so it gets a 0 anyway.
+
+For added fun, I had a look at codex-3 and claude-1.
+
+The initial version had a design error in that it chooses to represent a booking of the Grand Ballroom as 3 independent bookings. In claude-1, you can get -1 document cameras available.
+
+Codex 3 also had a bug, but I don't remember which.
+
+Total score: 0

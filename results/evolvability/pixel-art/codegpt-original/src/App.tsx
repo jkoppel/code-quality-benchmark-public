@@ -1,11 +1,11 @@
 import React from 'react';
-import PixelArt from './PixelArt';
+import PixelArtRefactored from './PixelArtRefactored';
 import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <PixelArt />
+      <PixelArtRefactored />
     </div>
   );
 }

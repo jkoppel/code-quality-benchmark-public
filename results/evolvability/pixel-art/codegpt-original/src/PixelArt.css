@@ -1,11 +1,139 @@
+/* Main container with modern styling */
 .pixel-art-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 20px;
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #333;
 }
 
+/* Header section */
+.app-header {
+  text-align: center;
+  margin-bottom: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  color: #333;
+  margin: 0 0 10px 0;
+  font-size: 2.5em;
+  font-weight: 300;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app-description {
+  color: #666;
+  margin: 0;
+  font-size: 1.1em;
+  line-height: 1.5;
+}
+
+/* Main content area */
+.app-main {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.editor-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Footer */
+.app-footer {
+  margin-top: 30px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 600px;
+}
+
+.app-footer p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+/* Animation for smooth transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editor-section > * {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Error and success messages */
+.message {
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin: 10px 0;
+  text-align: center;
+  font-weight: bold;
+}
+
+.message.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .pixel-art-container {
+    padding: 10px;
+  }
+  
+  .app-header h1 {
+    font-size: 2em;
+  }
+  
+  .editor-section {
+    gap: 15px;
+  }
+}
+
+/* Legacy styles for backward compatibility */
 h1 {
   color: #333;
   margin-bottom: 20px;

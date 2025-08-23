@@ -1,0 +1,14 @@
+.display {
+  background: #444;
+  color: white;
+  font-size: 2em;
+  padding: 10px;
+  text-align: right;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}

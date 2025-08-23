@@ -1,17 +1,8 @@
 import React, { useState } from 'react';
-
-interface Todo {
-  id: number;
-  text: string;
-  done: boolean;
-}
-
-interface TodoItemProps {
-  todo: Todo;
-  onToggleDone: (id: number) => void;
-  onDelete: (id: number) => void;
-  onEdit: (id: number, newText: string) => void;
-}
+import Button from './components/Button';
+import { TodoItemProps } from './types';
+import { UI_TEXT, CSS_CLASSES, KEYS } from './constants';
+import './styles/TodoItem.css';
 
 const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggleDone, onDelete, onEdit }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -30,12 +21,12 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggleDone, onDelete, onEdi
   };
 
   return (
-    <li className="todo-item">
+    <li className={CSS_CLASSES.TODO_ITEM}>
       <input
         type="checkbox"
         checked={todo.done}
         onChange={() => onToggleDone(todo.id)}
-        className="todo-checkbox"
+        className={CSS_CLASSES.TODO_CHECKBOX}
       />
       {isEditing ? (
         <>
@@ -43,22 +34,22 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggleDone, onDelete, onEdi
             type="text"
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSave()}
-            className="todo-edit-input"
+            onKeyDown={(e) => e.key === KEYS.ENTER && handleSave()}
+            className={CSS_CLASSES.TODO_EDIT_INPUT}
           />
-          <button onClick={handleSave} className="todo-button save">Save</button>
-          <button onClick={handleCancel} className="todo-button cancel">Cancel</button>
+          <Button onClick={handleSave} variant="save">{UI_TEXT.SAVE_BUTTON}</Button>
+          <Button onClick={handleCancel} variant="cancel">{UI_TEXT.CANCEL_BUTTON}</Button>
         </>
       ) : (
         <>
           <span
-            className={`todo-text ${todo.done ? 'completed' : ''}`}
+            className={`${CSS_CLASSES.TODO_TEXT} ${todo.done ? CSS_CLASSES.TODO_TEXT_COMPLETED : ''}`}
             onClick={() => setIsEditing(true)}
           >
             {todo.text}
           </span>
-          <button onClick={() => setIsEditing(true)} className="todo-button edit">Edit</button>
-          <button onClick={() => onDelete(todo.id)} className="todo-button delete">Delete</button>
+          <Button onClick={() => setIsEditing(true)} variant="edit">{UI_TEXT.EDIT_BUTTON}</Button>
+          <Button onClick={() => onDelete(todo.id)} variant="delete">{UI_TEXT.DELETE_BUTTON}</Button>
         </>
       )}
     </li>

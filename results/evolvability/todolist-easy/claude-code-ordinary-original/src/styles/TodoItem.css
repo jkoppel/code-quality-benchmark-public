@@ -1,0 +1,48 @@
+/* TodoItem Component Styles */
+.todo-item {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.todo-item:hover {
+  background: #f0f0f0;
+}
+
+.todo-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #333;
+}
+
+.todo-text {
+  flex: 1;
+  font-size: 16px;
+  color: #333;
+  cursor: pointer;
+}
+
+.todo-text.completed {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.todo-edit-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+}
+
+.todo-edit-input:focus {
+  border-color: #555;
+}

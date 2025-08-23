@@ -1,0 +1,30 @@
+.canvas-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.drawing-canvas {
+  border: 2px solid #333;
+  cursor: crosshair;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: white;
+  border-radius: 4px;
+  transition: box-shadow 0.3s ease;
+}
+
+.drawing-canvas:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.drawing-canvas:active {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive canvas */
+@media (max-width: 600px) {
+  .drawing-canvas {
+    max-width: 90vw;
+    height: auto;
+  }
+}

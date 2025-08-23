@@ -1,0 +1,3 @@
+Did not test claude-2 because it already scored a 0. Everything else passes.
+
+Total score: 120

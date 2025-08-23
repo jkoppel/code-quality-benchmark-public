@@ -1,5 +1,6 @@
 import React from 'react';
 import { Room } from '../types';
+import RoomListItem from './RoomList/RoomListItem';
 
 interface RoomListProps {
   rooms: Room[];
@@ -13,14 +14,12 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, selectedRoom, onRoomSelect }
       <h2>Available Rooms</h2>
       <ul>
         {rooms.map(room => (
-          <li 
+          <RoomListItem
             key={room.id}
-            className={selectedRoom?.id === room.id ? 'selected' : ''}
-            onClick={() => onRoomSelect(room)}
-          >
-            {room.name}
-            {room.isVirtual && <span className="virtual-tag"> (Combines all ballrooms)</span>}
-          </li>
+            room={room}
+            isSelected={selectedRoom?.id === room.id}
+            onSelect={onRoomSelect}
+          />
         ))}
       </ul>
     </div>

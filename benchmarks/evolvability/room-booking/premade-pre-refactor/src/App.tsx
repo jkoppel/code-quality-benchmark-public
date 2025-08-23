@@ -1,65 +1,71 @@
 import React, { useState } from 'react';
 import './App.css';
-import { Room, Booking } from './types';
-import { ROOMS } from './constants';
 import RoomList from './components/RoomList';
 import BookingCalendar from './components/BookingCalendar';
+import { Booking } from './types';
+import { ROOMS } from './constants';
 
 function App() {
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
   const [bookings, setBookings] = useState<Booking[]>([]);
 
-  const getBookingsForRoom = (roomId: string): Booking[] => {
-    const room = ROOMS.find(r => r.id === roomId);
-    
-    if (room?.isVirtual && room.requiredRooms) {
-      return bookings.filter(b => 
-        room.requiredRooms!.includes(b.roomId) || b.roomId === roomId
-      );
+  const handleBook = (roomName: string, date: string, startTime: string, endTime: string, userName: string) => {
+    const room = ROOMS.find(r => r.name === roomName);
+    const newBookingId = `${Date.now()}-${Math.random()}`;
+    const newBookings: Booking[] = [];
+
+    if (room?.isVirtual && room.components) {
+      room.components.forEach(component => {
+        newBookings.push({
+          id: `${newBookingId}-${component}`,
+          roomName: component,
+          date,
+          startTime,
+          endTime,
+          userName
+        });
+      });
     }
-    
-    const grandBallroom = ROOMS.find(r => r.id === 'grand-ballroom');
-    if (grandBallroom?.requiredRooms?.includes(roomId)) {
-      return bookings.filter(b => 
-        b.roomId === roomId || b.roomId === 'grand-ballroom'
-      );
-    }
-    
-    return bookings.filter(b => b.roomId === roomId);
+
+    newBookings.push({
+      id: newBookingId,
+      roomName,
+      date,
+      startTime,
+      endTime,
+      userName
+    });
+
+    setBookings([...bookings, ...newBookings]);
   };
 
-  const handleBooking = (name: string, date: string, hour: number) => {
-    if (!selectedRoom) return;
-
-    const newBookingId = `${Date.now()}-${Math.random()}`;
+  const handleUnbook = (bookingId: string) => {
+    const bookingToRemove = bookings.find(b => b.id === bookingId);
     
-    if (selectedRoom.isVirtual && selectedRoom.requiredRooms) {
-      const newBookings = selectedRoom.requiredRooms.map(roomId => ({
-        id: `${newBookingId}-${roomId}`,
-        roomId,
-        name,
-        date,
-        hour
-      }));
+    if (bookingToRemove) {
+      let bookingsToRemove = [bookingId];
       
-      newBookings.push({
-        id: newBookingId,
-        roomId: selectedRoom.id,
-        name,
-        date,
-        hour
-      });
+      const room = ROOMS.find(r => r.name === bookingToRemove.roomName);
+      if (room?.isVirtual && room.components) {
+        const relatedBookings = bookings.filter(b =>
+          b.id.startsWith(bookingId.split('-')[0]) &&
+          b.date === bookingToRemove.date &&
+          b.startTime === bookingToRemove.startTime
+        );
+        bookingsToRemove = relatedBookings.map(b => b.id);
+      }
       
-      setBookings([...bookings, ...newBookings]);
-    } else {
-      const newBooking: Booking = {
-        id: newBookingId,
-        roomId: selectedRoom.id,
-        name,
-        date,
-        hour
-      };
-      setBookings([...bookings, newBooking]);
+      if (bookingToRemove.roomName === 'Grand Ballroom') {
+        const baseId = bookingId.split('-')[0];
+        bookingsToRemove = bookings
+          .filter(b => b.id.startsWith(baseId))
+          .map(b => b.id);
+      }
+      
+      setBookings(bookings.filter(b => !bookingsToRemove.includes(b.id)));
     }
   };
 
@@ -68,29 +74,19 @@ function App() {
       <header className="App-header">
         <h1>Room Booking System</h1>
       </header>
-      
-      <div className="main-content">
-        <aside className="sidebar">
-          <RoomList 
-            rooms={ROOMS}
-            selectedRoom={selectedRoom}
-            onRoomSelect={setSelectedRoom}
-          />
-        </aside>
-        
-        <main className="content">
-          {selectedRoom ? (
-            <BookingCalendar 
-              room={selectedRoom}
-              bookings={getBookingsForRoom(selectedRoom.id)}
-              onBook={handleBooking}
-            />
-          ) : (
-            <div className="no-selection">
-              <p>Please select a room to view availability and make bookings.</p>
-            </div>
-          )}
-        </main>
+      <div className="main-container">
+        <RoomList
+          selectedRoom={selectedRoom}
+          onRoomSelect={setSelectedRoom}
+        />
+        <BookingCalendar
+          selectedRoom={selectedRoom}
+          selectedDate={selectedDate}
+          bookings={bookings}
+          onBook={handleBook}
+          onUnbook={handleUnbook}
+          onDateChange={setSelectedDate}
+        />
       </div>
     </div>
   );

@@ -1,0 +1,21 @@
+/* TodoInput Component Styles */
+.input-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  align-items: center;
+}
+
+.task-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+  outline: none;
+}
+
+.task-input:focus {
+  border-color: #555;
+}

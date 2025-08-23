@@ -1,0 +1,28 @@
+.calculator-button-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 5px;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .calculator-button-grid {
+    gap: 10px;
+    padding: 3px;
+  }
+}
+
+@media (max-width: 360px) {
+  .calculator-button-grid {
+    gap: 8px;
+    padding: 2px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .calculator-button-grid {
+    gap: 15px;
+  }
+}

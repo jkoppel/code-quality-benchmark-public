@@ -2,8 +2,14 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders todo list application', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  const titleElement = screen.getByText(/todo list/i);
+  expect(titleElement).toBeInTheDocument();
+  
+  const inputElement = screen.getByPlaceholderText(/enter a new task/i);
+  expect(inputElement).toBeInTheDocument();
+  
+  const addButton = screen.getByText(/add todo/i);
+  expect(addButton).toBeInTheDocument();
 });

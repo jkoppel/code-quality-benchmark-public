@@ -1,92 +1,42 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useCalculator } from './hooks';
+import { Display, ButtonPanel } from './components';
+import { CalculatorProps } from './types';
 import './Calculator.css';
 
-const Calculator: React.FC = () => {
-  const [display, setDisplay] = useState('0');
-  const [previousValue, setPreviousValue] = useState<string | null>(null);
-  const [operation, setOperation] = useState<string | null>(null);
-  const [waitingForNewValue, setWaitingForNewValue] = useState(false);
+/**
+ * Main Calculator component that combines display and button panel
+ * Uses custom hook for state management and business logic
+ */
+const Calculator: React.FC<CalculatorProps> = ({ className = '', onCalculation }) => {
+  const {
+    display,
+    inputNumber,
+    inputOperation,
+    performCalculation,
+    clear,
+  } = useCalculator();
 
-  const inputNumber = (num: string) => {
-    if (waitingForNewValue) {
-      setDisplay(num);
-      setWaitingForNewValue(false);
-    } else {
-      setDisplay(display === '0' ? num : display + num);
+  // Notify parent component of calculations if callback is provided
+  React.useEffect(() => {
+    if (onCalculation && display !== '0' && display !== 'Error') {
+      onCalculation(display);
     }
-  };
+  }, [display, onCalculation]);
 
-  const inputOperation = (nextOperation: string) => {
-    const inputValue = parseFloat(display);
-
-    if (previousValue === null) {
-      setPreviousValue(display);
-    } else if (operation) {
-      const currentValue = previousValue || '0';
-      const newValue = calculate(parseFloat(currentValue), inputValue, operation);
-      setDisplay(String(newValue));
-      setPreviousValue(String(newValue));
-    }
-
-    setWaitingForNewValue(true);
-    setOperation(nextOperation);
-  };
-
-  const calculate = (firstValue: number, secondValue: number, operation: string) => {
-    switch (operation) {
-      case '+':
-        return firstValue + secondValue;
-      case '-':
-        return firstValue - secondValue;
-      case '*':
-        return firstValue * secondValue;
-      case '/':
-        return firstValue / secondValue;
-      default:
-        return secondValue;
-    }
-  };
-
-  const performCalculation = () => {
-    const inputValue = parseFloat(display);
-
-    if (previousValue !== null && operation !== null) {
-      const newValue = calculate(parseFloat(previousValue), inputValue, operation);
-      setDisplay(String(newValue));
-      setPreviousValue(null);
-      setOperation(null);
-      setWaitingForNewValue(true);
-    }
-  };
-
-  const clear = () => {
-    setDisplay('0');
-    setPreviousValue(null);
-    setOperation(null);
-    setWaitingForNewValue(false);
+  const handleEqualsClick = () => {
+    performCalculation();
   };
 
   return (
-    <div className="calculator">
-      <div className="display">{display}</div>
-      <div className="buttons">
-        <button onClick={clear} className="clear">C</button>
-        <button onClick={() => inputOperation('/')} className="operation">/</button>
-        <button onClick={() => inputNumber('7')}>7</button>
-        <button onClick={() => inputNumber('8')}>8</button>
-        <button onClick={() => inputNumber('9')}>9</button>
-        <button onClick={() => inputOperation('*')} className="operation">*</button>
-        <button onClick={() => inputNumber('4')}>4</button>
-        <button onClick={() => inputNumber('5')}>5</button>
-        <button onClick={() => inputNumber('6')}>6</button>
-        <button onClick={() => inputOperation('-')} className="operation">-</button>
-        <button onClick={() => inputNumber('1')}>1</button>
-        <button onClick={() => inputNumber('2')}>2</button>
-        <button onClick={() => inputNumber('3')}>3</button>
-        <button onClick={() => inputOperation('+')} className="operation">+</button>
-        <button onClick={() => inputNumber('0')} className="zero">0</button>
-        <button onClick={performCalculation} className="equals">=</button>
-      </div>
+    <div className={`calculator ${className}`.trim()}>
+      <Display value={display} />
+      <ButtonPanel
+        onNumberClick={inputNumber}
+        onOperationClick={inputOperation}
+        onEqualsClick={handleEqualsClick}
+        onClearClick={clear}
+      />
     </div>
   );
 };

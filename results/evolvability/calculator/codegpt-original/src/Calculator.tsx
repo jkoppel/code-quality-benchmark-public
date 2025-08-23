@@ -1,92 +1,89 @@
-import React, { useState } from 'react';
-import './Calculator.css';
+import React from "react";
+import { Display, ButtonGrid } from "./components";
+import { useCalculator, useKeyboard } from "./hooks";
+import { Operation } from "./types";
+import "./Calculator.css";
 
+/**
+ * Calculator Component - Refactored following SOLID principles
+ *
+ * Single Responsibility: Only handles UI composition and user interactions
+ * Open/Closed: Extensible through props and composition
+ * Liskov Substitution: Components can be substituted with compatible implementations
+ * Interface Segregation: Uses focused interfaces for different concerns
+ * Dependency Inversion: Depends on abstractions (hooks) rather than concrete implementations
+ */
 const Calculator: React.FC = () => {
-  const [display, setDisplay] = useState('0');
-  const [previousValue, setPreviousValue] = useState<string | null>(null);
-  const [operation, setOperation] = useState<string | null>(null);
-  const [waitingForNewValue, setWaitingForNewValue] = useState(false);
+  // Use custom hooks for separation of concerns
+  const {
+    state,
+    inputNumber,
+    inputOperation,
+    calculate,
+    clear,
+    backspace,
+    toggleSign,
+  } = useCalculator();
 
-  const inputNumber = (num: string) => {
-    if (waitingForNewValue) {
-      setDisplay(num);
-      setWaitingForNewValue(false);
-    } else {
-      setDisplay(display === '0' ? num : display + num);
+  // Keyboard support
+  useKeyboard({
+    onNumber: inputNumber,
+    onOperation: inputOperation,
+    onCalculate: calculate,
+    onClear: clear,
+    onBackspace: backspace,
+  });
+
+  // Event handlers with proper error boundaries
+  const handleNumberClick = (num: string) => {
+    try {
+      inputNumber(num);
+    } catch (error) {
+      console.error("Number input error:", error);
     }
   };
 
-  const inputOperation = (nextOperation: string) => {
-    const inputValue = parseFloat(display);
-
-    if (previousValue === null) {
-      setPreviousValue(display);
-    } else if (operation) {
-      const currentValue = previousValue || '0';
-      const newValue = calculate(parseFloat(currentValue), inputValue, operation);
-      setDisplay(String(newValue));
-      setPreviousValue(String(newValue));
-    }
-
-    setWaitingForNewValue(true);
-    setOperation(nextOperation);
-  };
-
-  const calculate = (firstValue: number, secondValue: number, operation: string) => {
-    switch (operation) {
-      case '+':
-        return firstValue + secondValue;
-      case '-':
-        return firstValue - secondValue;
-      case '*':
-        return firstValue * secondValue;
-      case '/':
-        return firstValue / secondValue;
-      default:
-        return secondValue;
+  const handleOperationClick = (operation: Operation) => {
+    try {
+      inputOperation(operation);
+    } catch (error) {
+      console.error("Operation input error:", error);
     }
   };
 
-  const performCalculation = () => {
-    const inputValue = parseFloat(display);
-
-    if (previousValue !== null && operation !== null) {
-      const newValue = calculate(parseFloat(previousValue), inputValue, operation);
-      setDisplay(String(newValue));
-      setPreviousValue(null);
-      setOperation(null);
-      setWaitingForNewValue(true);
+  const handleEqualsClick = () => {
+    try {
+      calculate();
+    } catch (error) {
+      console.error("Calculation error:", error);
     }
   };
 
-  const clear = () => {
-    setDisplay('0');
-    setPreviousValue(null);
-    setOperation(null);
-    setWaitingForNewValue(false);
+  const handleClearClick = () => {
+    try {
+      clear();
+    } catch (error) {
+      console.error("Clear error:", error);
+    }
   };
+
+  // Determine if calculator should be disabled (e.g., during error state)
+  const isDisabled = state.display === "Error";
 
   return (
-    <div className="calculator">
-      <div className="display">{display}</div>
-      <div className="buttons">
-        <button onClick={clear} className="clear">C</button>
-        <button onClick={() => inputOperation('/')} className="operation">/</button>
-        <button onClick={() => inputNumber('7')}>7</button>
-        <button onClick={() => inputNumber('8')}>8</button>
-        <button onClick={() => inputNumber('9')}>9</button>
-        <button onClick={() => inputOperation('*')} className="operation">*</button>
-        <button onClick={() => inputNumber('4')}>4</button>
-        <button onClick={() => inputNumber('5')}>5</button>
-        <button onClick={() => inputNumber('6')}>6</button>
-        <button onClick={() => inputOperation('-')} className="operation">-</button>
-        <button onClick={() => inputNumber('1')}>1</button>
-        <button onClick={() => inputNumber('2')}>2</button>
-        <button onClick={() => inputNumber('3')}>3</button>
-        <button onClick={() => inputOperation('+')} className="operation">+</button>
-        <button onClick={() => inputNumber('0')} className="zero">0</button>
-        <button onClick={performCalculation} className="equals">=</button>
-      </div>
+    <div className="calculator" role="application" aria-label="Calculator">
+      <Display
+        value={state.display}
+        className={isDisabled ? "calculator-display--error" : ""}
+      />
+
+      <ButtonGrid
+        onNumberClick={handleNumberClick}
+        onOperationClick={handleOperationClick}
+        onEqualsClick={handleEqualsClick}
+        onClearClick={handleClearClick}
+        disabled={false} // Keep buttons enabled even in error state for better UX
+      />
     </div>
   );
 };

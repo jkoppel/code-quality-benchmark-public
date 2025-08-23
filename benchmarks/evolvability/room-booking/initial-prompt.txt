@@ -2,6 +2,7 @@ Create a React room-booking app. Users may browse a list of rooms, and may view 
 
 Hardcode that there are 5 rooms: Anaconda, Baboon, Ballroom 1, Ballroom 2, and Ballroom 3.
 In addition, someone may book the Grand Ballroom, which results from joining all 3 ballrooms.
+You must be able to unbook a room, you must be able to book for both hour and half-hour granularity, and you must be able to view bookings on different dates.
 
 
 Configure it so that running `npm run start -- --port=$PORT` opens the app in a browser window with port $PORT.

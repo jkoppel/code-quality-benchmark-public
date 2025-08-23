@@ -1,0 +1,7 @@
+claude-2 and all 3 codex completions had the bug where, when you create a new pane, existing panes get wiped.
+
+It strangely reported the claude-3 generation as failed, but it clearly suceeded. Possibly an error in the git commit afterwards, as its changes are uncommitted.
+claude-3 actual results: 2 files changed, 131 insertions(+), 22 deletions(-)
+
+
+Total score: 313
