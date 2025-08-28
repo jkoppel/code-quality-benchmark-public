@@ -17,6 +17,13 @@ npm install
 npm run build
 ```
 
+## Running the benchmark
+
+`npm run benchmark <folder containing initial and update prompts> <agent runner script>`
+
+`npm run benchmark:existing <folder containing initial and update prompts> <refactored program>`
+(where the refactored program was refactored / created elsewhere)
+
 ## Core API
 
 ### `eval(initialPrompt, codingAgent, updatePrompt, config?)`
