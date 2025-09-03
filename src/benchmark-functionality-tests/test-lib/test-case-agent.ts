@@ -9,6 +9,7 @@ import type { SutConfig } from "./runner";
   Test Case Agent
 ***************************************/
 
+/** Each test case gets a new instance of the TestCaseAgent */
 export class TestCaseAgent {
   constructor(
     private readonly sutConfig: SutConfig,
@@ -22,6 +23,10 @@ export class TestCaseAgent {
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
+    return unimplemented();
+  }
+
+  async queryWithVision<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
     return unimplemented();
   }
 }

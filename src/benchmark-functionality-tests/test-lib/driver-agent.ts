@@ -10,7 +10,7 @@ import { Logger } from "../../utils/logger";
 
 type DriverAgentConfig = Pick<Options, "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers">;
 
-/** The underlying agent behind the test runner */
+/** The underlying driver for the test case agent */
 export class DriverAgent {
   constructor(
     private readonly config: DriverAgentConfig,
@@ -23,10 +23,25 @@ export class DriverAgent {
     return this.config;
   }
 
-  async ask(prompt: string): Promise<string> {
+  // TODO: Think more about how to incorporate session mgmt
+  // TODO: Use abort controller option to implement timeout
+
+  // MAYBE
+  // async askWithVisionPlaywright(prompt: string): Promise<string> {
+  //   return unimplemented();
+  // }
+
+  async ask(
+    prompt: string,
+    /** config / options to override with */
+    config?: DriverAgentConfig,
+  ): Promise<string> {
+    const options = config ?? this.config;
     return unimplemented();
   }
 }
+
+// Playwright MCP
 
 type PlaywrightMCPCapability = "verify" | "vision";
 
