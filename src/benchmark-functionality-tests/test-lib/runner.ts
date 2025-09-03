@@ -2,6 +2,7 @@ import unimplemented from "ts-unimplemented";
 import { Logger } from "../../utils/logger";
 import type { DriverAgent } from "./driver-agent";
 import type { TestSuiteResults } from "./report";
+import type { Suite } from "./suite";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -21,29 +22,7 @@ export class TestRunner {
     private readonly logger: Logger = Logger.getInstance(),
   ) {}
 
-  private async withResource<T>(
-    acquire: () => Promise<Resource<T>>,
-    use: (resource: T) => Promise<void>,
-  ): Promise<void> {
-    const { resource, cleanup } = await acquire();
-    try {
-      await use(resource);
-    } finally {
-      await cleanup();
-    }
-  }
-
-  private async withSutDevServer<T>(
-    startServer: () => Promise<{ server: T; stop: () => Promise<void> }>,
-    runTests: (server: T) => Promise<void>,
-  ): Promise<void> {
-    return this.withResource(async (): Promise<Resource<T>> => {
-      const { server, stop } = await startServer();
-      return { resource: server, cleanup: stop };
-    }, runTests);
-  }
-
-  async runTestSuite(): Promise<TestSuiteResults> {
+  async runTestSuite(tests: Suite): Promise<TestSuiteResults> {
     const partialResults: Pick<TestSuiteResults, "name" | "timestamp"> = {
       name: "TODO",
       timestamp: new Date().toISOString(),
@@ -64,6 +43,29 @@ export class TestRunner {
     );
 
     return unimplemented();
+  }
+
+  // Helpers
+  private async withSutDevServer<T>(
+    startServer: () => Promise<{ server: T; stop: () => Promise<void> }>,
+    runTests: (server: T) => Promise<void>,
+  ): Promise<void> {
+    return this.withResource(async (): Promise<Resource<T>> => {
+      const { server, stop } = await startServer();
+      return { resource: server, cleanup: stop };
+    }, runTests);
+  }
+
+  private async withResource<T>(
+    acquire: () => Promise<Resource<T>>,
+    use: (resource: T) => Promise<void>,
+  ): Promise<void> {
+    const { resource, cleanup } = await acquire();
+    try {
+      await use(resource);
+    } finally {
+      await cleanup();
+    }
   }
 }
 
