@@ -13,6 +13,7 @@
     "dev": "tsc --watch",
     "benchmark": "npm run build && node dist/benchmark-runner.js",
     "benchmark:existing": "npm run build && node dist/benchmark-runner-existing.js",
+    "benchmark:test-functionality": "npm run build && node dist/benchmark-test-functionality.js",
     "clean": "rm -rf dist"
   },
   "keywords": [
