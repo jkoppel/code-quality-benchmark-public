@@ -77,3 +77,5 @@ benchmarks/**/node_modules
 
 # Playwright
 **/.playwright-mcp
+
+**/ym-notes/
