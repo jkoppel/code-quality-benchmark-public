@@ -28,10 +28,12 @@
     "@anthropic-ai/claude-code": "^1.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/tmp": "^0.2.6",
+    "execa": "^9.6.0",
     "fs-extra": "^11.3.1",
     "pino": "^9.9.0",
     "pino-pretty": "^13.1.1",
-    "tmp": "^0.2.5"
+    "tmp": "^0.2.5",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
