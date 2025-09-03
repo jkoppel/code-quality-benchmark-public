@@ -1,7 +1,12 @@
 import type { TestResult } from "./report";
 import type { TestCaseAgent } from "./test-case-agent";
 
-export interface TestCase {
+export interface VisionTestCase {
+  description: string;
+  run(agent: TestCaseAgent): Promise<TestResult>;
+}
+
+export interface NonVisionTestCase {
   description: string;
   run(agent: TestCaseAgent): Promise<TestResult>;
 }

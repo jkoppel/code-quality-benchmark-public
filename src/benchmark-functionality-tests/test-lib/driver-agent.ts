@@ -8,7 +8,10 @@ import { Logger } from "../../utils/logger";
 
 // Specializing the following to Claude Code for now
 
-type DriverAgentConfig = Pick<Options, "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers">;
+export type DriverAgentConfig = Pick<
+  Options,
+  "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers" | "resume"
+>;
 
 /** The underlying driver for the test case agent */
 export class DriverAgent {

@@ -2,7 +2,6 @@ import unimplemented from "ts-unimplemented";
 import { Logger } from "../../utils/logger";
 import type { DriverAgent } from "./driver-agent";
 import type { TestSuiteResults } from "./report";
-import { TestCaseAgent } from "./test-case-agent";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -16,15 +15,11 @@ export interface TestRunnerConfig {
 }
 
 export class TestRunner {
-  private testCaseAgent: TestCaseAgent;
-
   constructor(
     private readonly config: TestRunnerConfig,
-    driver: DriverAgent,
+    private readonly driver: DriverAgent,
     private readonly logger: Logger = Logger.getInstance(),
-  ) {
-    this.testCaseAgent = new TestCaseAgent(config.sutConfig, driver);
-  }
+  ) {}
 
   private async withResource<T>(
     acquire: () => Promise<Resource<T>>,
