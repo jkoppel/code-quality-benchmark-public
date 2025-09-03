@@ -115,9 +115,13 @@ This runs the example script that demonstrates creating a calculator program and
 ## Development
 
 ```bash
-npm run dev    # Watch mode for development
-npm run build  # Build the project
-npm run clean  # Clean build artifacts
+npm run dev        # Watch mode for development
+npm run build      # Build the project
+npm run clean      # Clean build artifacts
+
+npm run check      # TypeScript type checking
+npm run lint       # ESLint code linting
+npm run check:all  # Run both type checking and linting
 ```
 
 ## License
