@@ -74,3 +74,6 @@ evaluation-results.json
 
 # Files within premade versions of benchmarks
 benchmarks/**/node_modules
+
+# Playwright
+**/.playwright-mcp
