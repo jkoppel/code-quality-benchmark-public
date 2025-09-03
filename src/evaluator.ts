@@ -1,5 +1,5 @@
 import * as tmp from 'tmp';
-import * as fs from 'fs-extra';
+import fs from 'fs-extra';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import {
@@ -10,11 +10,11 @@ import {
   DiffStats,
   EvaluationError,
   EvaluationMetadata
-} from './types';
-import { Logger } from './utils/logger';
-import { ClaudeAgent } from './agents/feature-addition/claude-agent';
-import { codexAgent } from './agents/feature-addition/codex-agent';
-// import { geminiAgent } from './agents/feature-addition/gemini-agent';
+} from './types.js';
+import { Logger } from './utils/logger.js';
+import { ClaudeAgent } from './agents/feature-addition/claude-agent.js';
+import { codexAgent } from './agents/feature-addition/codex-agent.js';
+// import { geminiAgent } from './agents/feature-addition/gemini-agent.js';
 
 // Don't automatically cleanup - we want to keep benchmark results
 // tmp.setGracefulCleanup();
@@ -436,4 +436,4 @@ async function applyUpdatesToInstances(
   return resultsWithDiffs;
 }
 
-export { EvaluationConfig, EvaluationResult, CodingAgent } from './types';
+export { EvaluationConfig, EvaluationResult, CodingAgent } from './types.js';

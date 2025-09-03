@@ -3,8 +3,8 @@ import {
   ClaudeAgentConfig, 
   InstanceResult
 } from '../../types';
-import { Logger } from '../../utils/logger';
-import { SYSTEM_PROMPT, getFullPrompt } from './common-prompts';
+import { Logger } from '../../utils/logger.js';
+import { SYSTEM_PROMPT, getFullPrompt } from './common-prompts.js';
 
 export class ClaudeAgent {
   private readonly logger: Logger;

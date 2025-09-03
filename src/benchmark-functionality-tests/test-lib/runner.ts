@@ -1,8 +1,8 @@
 import unimplemented from "ts-unimplemented";
-import { Logger } from "../../utils/logger";
-import type { DriverAgent } from "./driver-agent";
-import type { TestSuiteResults } from "./report";
-import type { Suite } from "./suite";
+import { Logger } from "../../utils/logger.js";
+import type { DriverAgent } from "./driver-agent.js";
+import type { TestSuiteResults } from "./report.js";
+import type { Suite } from "./suite.js";
 
 /** Config for the system under test */
 export interface SutConfig {

@@ -1,4 +1,4 @@
-import { EvaluationConfig } from '../types';
+import { EvaluationConfig } from '../types.js';
 
 export const DEFAULT_EVALUATION_CONFIG: EvaluationConfig = {
   timeout: 300000, // 5 minutes

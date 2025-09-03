@@ -1,10 +1,10 @@
-export { evaluate as eval, evaluateUpdates } from './evaluator';
+export { evaluate as eval, evaluateUpdates } from './evaluator.js';
 export { 
   runBenchmarkWithNewCode, 
   runBenchmarkWithExistingCode,
   readBenchmarkPrompts,
   outputBenchmarkResults
-} from './benchmark-lib';
+} from './benchmark-lib.js';
 
 export {
   CodingAgent,
@@ -15,8 +15,8 @@ export {
   ClaudeAgentConfig,
   EvaluationError,
   AgentExecutionError
-} from './types';
+} from './types.js';
 
-export { Logger, LogLevel, LogEntry } from './utils/logger';
-export { ClaudeAgent } from './agents/feature-addition/claude-agent';
-export { createShellAgent, defaultShellAgent } from './agents/shell-agent';
+export { Logger, LogLevel, LogEntry } from './utils/logger.js';
+export { ClaudeAgent } from './agents/feature-addition/claude-agent.js';
+export { createShellAgent, defaultShellAgent } from './agents/shell-agent.js';

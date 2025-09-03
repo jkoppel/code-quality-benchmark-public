@@ -1,13 +1,13 @@
 import unimplemented from "ts-unimplemented";
 import type { z } from "zod";
-import { Logger } from "../../utils/logger";
-import type { DriverAgent, DriverAgentConfig } from "./driver-agent";
+import { Logger } from "../../utils/logger.js";
+import type { DriverAgent, DriverAgentConfig } from "./driver-agent.js";
 import {
   NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS,
   VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS,
-} from "./driver-agent";
-import type { TestResult } from "./report";
-import type { SutConfig } from "./runner";
+} from "./driver-agent.js";
+import type { TestResult } from "./report.js";
+import type { SutConfig } from "./runner.js";
 
 /*************************************
   Test Case Agent

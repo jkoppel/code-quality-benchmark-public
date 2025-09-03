@@ -1,5 +1,5 @@
-import { eval as evaluate, evaluateUpdates, CodingAgent } from './index';
-import * as fs from 'fs-extra';
+import { eval as evaluate, evaluateUpdates, CodingAgent } from './index.js';
+import fs from 'fs-extra';
 import * as path from 'path';
 import * as tmp from 'tmp';
 import { execSync } from 'child_process';
