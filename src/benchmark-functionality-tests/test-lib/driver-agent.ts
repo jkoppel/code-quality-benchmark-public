@@ -62,10 +62,10 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
 // Claude Code config / options
 
 const CORE_TEST_CASE_AGENT_OPTIONS = {
-  permissionMode: "bypassPermissions" satisfies PermissionMode, // NOTE THIS
+  permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
   maxTurns: 15, // TODO: Tune this
   executable: "node",
-};
+} as const;
 
 export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
   ...CORE_TEST_CASE_AGENT_OPTIONS,
