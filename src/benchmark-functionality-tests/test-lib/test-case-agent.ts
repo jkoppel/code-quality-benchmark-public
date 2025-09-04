@@ -90,6 +90,7 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
   };
 }
 
+// TODO: add a prompt explaining that this is a test case agent that will be used to ...
 const CORE_TEST_CASE_AGENT_CONFIG = {
   permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
   maxTurns: 15, // TODO: Tune this
@@ -103,6 +104,7 @@ export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig
   },
 };
 
+// TODO: Prob want to add a system prompt offering guidance for when to use Playwright vision caps, and to do that instead of e.g. eval js where possible
 export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
   ...CORE_TEST_CASE_AGENT_CONFIG,
   mcpServers: {
