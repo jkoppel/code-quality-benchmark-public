@@ -3,6 +3,7 @@ import type { TestResult } from '../../../test-lib/report.js';
 import type { NonVisionTestCaseAgent } from '../../../test-lib/test-case-agent.js';
 
 const toyTest: NonVisionTestCase = {
+  type: 'non-vision',
   description: 'Toy test that always passes',
   async run(_agent: NonVisionTestCaseAgent): Promise<TestResult> {
     return {

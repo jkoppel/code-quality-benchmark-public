@@ -1,15 +1,17 @@
 import type { TestResult } from "./report.js";
 import type { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
-import { parseBenchmarkPath, getTestSuite } from "./test-registry.js";
+import { getTestSuite, parseBenchmarkPath } from "./test-registry.js";
 
 export type TestCase = VisionTestCase | NonVisionTestCase;
 
 export interface VisionTestCase {
+  type: "vision";
   description: string;
   run(agent: VisionTestCaseAgent): Promise<TestResult>;
 }
 
 export interface NonVisionTestCase {
+  type: "non-vision";
   description: string;
   run(agent: NonVisionTestCaseAgent): Promise<TestResult>;
 }
