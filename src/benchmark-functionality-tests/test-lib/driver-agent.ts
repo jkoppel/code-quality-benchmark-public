@@ -32,7 +32,7 @@ export class DriverAgent {
     private readonly config: DriverAgentConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    logger.debug(`DriverAgent (for testing functionality) initialized with ${config}`);
+    logger.debug(`DriverAgent (for testing functionality) initialized with ${JSON.stringify(config)}`);
   }
 
   getConfig() {
