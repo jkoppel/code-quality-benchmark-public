@@ -152,11 +152,6 @@ mcpServers: {
 The tool expects a TestResult object with: name, outcome.status, outcome.howTested, etc."
 ```
 
-Benefits:
-- Claude gets immediate validation feedback if structure is wrong
-- No JSON parsing or markdown extraction needed
-- Type-safe validation via Zod
-- Self-correcting - Claude can retry with proper format
-
 Blocked by: relevant functions not exported from SDK even tho in sdk.d.ts
+also xml approach seems ok
 */
