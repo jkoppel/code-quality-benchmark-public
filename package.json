@@ -13,6 +13,7 @@
     "dev": "tsc --watch",
     "benchmark": "npm run build && node dist/benchmark-runner.js",
     "benchmark:existing": "npm run build && node dist/benchmark-runner-existing.js",
+    "benchmark:test-functionality": "npm run build && node dist/benchmark-test-functionality.js",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -28,10 +29,14 @@
     "@anthropic-ai/claude-code": "^1.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/tmp": "^0.2.6",
+    "execa": "^9.6.0",
     "fs-extra": "^11.3.1",
     "pino": "^9.9.0",
     "pino-pretty": "^13.1.1",
-    "tmp": "^0.2.5"
+    "tmp": "^0.2.5",
+    "ts-pattern": "^5.8.0",
+    "ts-unimplemented": "^2.0.0",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
