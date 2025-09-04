@@ -62,7 +62,7 @@ export class TestRunner {
 
 		return {
 			name: suite.getName(),
-			timestamp: new Date().toISOString(),
+			timestamp: new Date(startTime).toISOString(),
 			summary: {
 				total: results.length,
 				passed,

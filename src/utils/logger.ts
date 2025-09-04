@@ -4,6 +4,15 @@ import path from 'path';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+function validateLogLevel(envValue: string | undefined): LogLevel | null {
+  if (!envValue) return null;
+  const validLevels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+  if (validLevels.includes(envValue as LogLevel)) {
+    return envValue as LogLevel;
+  }
+  throw new Error(`Invalid LOG_LEVEL: ${envValue}. Valid values are: ${validLevels.join(', ')}`);
+}
+
 export interface LogEntry {
   timestamp: Date;
   level: LogLevel;
@@ -44,7 +53,7 @@ export class Logger {
   private static instance: Logger;
   private pino: pino.Logger;
 
-  constructor(logLevel: LogLevel = 'info') {
+  constructor(logLevel: LogLevel = validateLogLevel(process.env.LOG_LEVEL) || 'info') {
     this.pino = pinoLogger;
     this.setLogLevel(logLevel);
   }

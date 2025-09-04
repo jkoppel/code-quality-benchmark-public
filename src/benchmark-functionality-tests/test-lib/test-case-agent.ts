@@ -1,9 +1,9 @@
-import unimplemented from "ts-unimplemented";
-import type { z } from "zod";
+import type { PermissionMode } from "@anthropic-ai/claude-code";
+import type * as z from "zod";
 import { Logger } from "../../utils/logger.js";
 import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
-import type { PermissionMode } from "@anthropic-ai/claude-code";
 import type { TestResult } from "./report.js";
+import { TestResultSchema } from "./report.js";
 import type { SutConfig } from "./runner.js";
 
 /*************************************
@@ -18,21 +18,29 @@ export interface TestCaseAgent {
 
 // TODO: Either have different query methods for whether to use vision-enabled Playwright, or have different TestCaseAgents
 
+// TODO: Check if need to use sutConfig in some way here -- or maybe limit it to runner...
+
+const makeCoreCheckPrompt = (instructions: string): string => `Check the following: ${instructions}`;
+
 export class NonVisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
     private readonly sutConfig: SutConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    this.driver = new DriverAgent(NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS, logger);
+    this.driver = new DriverAgent(NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, logger);
   }
 
   async check(instructions: string): Promise<TestResult> {
-    return unimplemented();
+    this.logger.debug(`NonVisionTestCaseAgent.check: ${instructions}`);
+
+    const result = await this.driver.query(makeCoreCheckPrompt(instructions), TestResultSchema);
+    this.logger.debug(`NonVisionTestCaseAgent.check result: ${JSON.stringify(result)}`);
+    return result;
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
-    return unimplemented()
+    return await this.driver.query(prompt, outputSchema);
   }
 }
 
@@ -42,15 +50,20 @@ export class VisionTestCaseAgent implements TestCaseAgent {
     private readonly sutConfig: SutConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    this.driver = new DriverAgent(VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS, logger);
+    this.driver = new DriverAgent(VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, logger);
   }
 
   async check(instructions: string): Promise<TestResult> {
-    return unimplemented();
+    this.logger.debug(`VisionTestCaseAgent.check: ${instructions}`);
+
+    // TODO: Add stuff about vision caps?
+    const result = await this.driver.query(makeCoreCheckPrompt(instructions), TestResultSchema);
+    this.logger.debug(`VisionTestCaseAgent.check result: ${JSON.stringify(result)}`);
+    return result;
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
-    return unimplemented();
+    return await this.driver.query(prompt, outputSchema);
   }
 }
 
@@ -71,22 +84,74 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
   };
 }
 
-const CORE_TEST_CASE_AGENT_OPTIONS = {
+// TODO: add a prompt explaining that this is a test case agent that will be used to ...
+const CORE_TEST_CASE_AGENT_CONFIG = {
   permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
   maxTurns: 15, // TODO: Tune this
   executable: "node",
 } as const;
 
-export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_OPTIONS,
+export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
+  ...CORE_TEST_CASE_AGENT_CONFIG,
   mcpServers: {
     ...makePlaywrightMCPConfig(["verify"]),
   },
 };
 
-export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_OPTIONS,
+// TODO: Prob want to add a system prompt offering guidance for when to use Playwright vision caps, and to do that instead of e.g. eval js where possible
+export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
+  ...CORE_TEST_CASE_AGENT_CONFIG,
   mcpServers: {
     ...makePlaywrightMCPConfig(["verify", "vision"]),
   },
 };
+
+/*
+FUTURE WORK: Tool-based validation approach
+============================================
+
+The ideal solution would be to use Claude Code SDK's createSdkMcpServer and tool functions
+to create a submit_response tool that validates JSON input automatically. This would:
+
+1. Eliminate markdown parsing issues entirely
+2. Provide self-correcting behavior - Claude gets validation errors and can retry
+3. Use proper Zod schema validation built into the tool system
+
+Example implementation (currently blocked by SDK bug https://github.com/anthropics/claude-code/issues/6710):
+
+```typescript
+import { createSdkMcpServer, tool } from "@anthropic-ai/claude-code";
+
+const submitResponseTool = tool(
+  'submit_response',
+  'Submit your test result using this tool. The input must be a valid TestResult object.',
+  TestResultSchema.shape,
+  async (args: TestResult) => {
+    // Tool automatically validates args against TestResultSchema via Zod
+    // Store result in closure variable for return
+    testResult = args;
+    return {
+      content: [{ type: 'text' as const, text: 'Test result submitted successfully' }]
+    };
+  }
+);
+
+const validationMcpServer = createSdkMcpServer({
+  name: 'validate-response-format',
+  tools: [submitResponseTool]
+});
+
+// Add to DriverAgent config:
+mcpServers: {
+  'validate-response-format': validationMcpServer,
+  ...existingServers
+}
+
+// Updated prompt:
+"You must use the submit_response tool to submit your test result.
+The tool expects a TestResult object with: name, outcome.status, outcome.howTested, etc."
+```
+
+Blocked by: relevant functions not exported from SDK even tho in sdk.d.ts
+also xml approach seems ok
+*/
