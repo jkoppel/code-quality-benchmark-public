@@ -1,7 +1,7 @@
 import type { Options } from "@anthropic-ai/claude-code";
 import { query } from "@anthropic-ai/claude-code";
 import { match } from "ts-pattern";
-import type { Result } from "../../utils/helper-types.js";
+import * as z from "zod";
 import { Logger } from "../../utils/logger.js";
 
 /*************************************
@@ -15,11 +15,35 @@ export type DriverAgentConfig = Pick<
   "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers" | "resume"
 >;
 
-export type DriverAgentError =
-  | { type: "error_max_turns" }
-  | { type: "error_during_execution"; message?: string }
-  | { type: "unexpected_termination" }; // Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)
+/*************************************
+    Custom DriverAgentErrors
+***************************************/
 
+// We throw errors because errors here are likely reflect either
+// infra issues or a badly written test case.
+// We never want to convert DriverAgentErrors to failed TestResults -- if there is a
+// DriverAgentError, there will not be a TestResult.
+
+export class DriverAgentMaxTurnsError extends Error {
+  constructor() {
+    super("Maximum turns exceeded during Claude Code session");
+    this.name = "DriverAgentMaxTurnsError";
+  }
+}
+
+export class DriverAgentExecutionError extends Error {
+  constructor(message?: string) {
+    super(message || "Error occurred during Claude Code execution");
+    this.name = "DriverAgentExecutionError";
+  }
+}
+
+export class DriverAgentUnexpectedTerminationError extends Error {
+  constructor() {
+    super("Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)");
+    this.name = "DriverAgentUnexpectedTerminationError";
+  }
+}
 /** The underlying driver for the test case agent.
  * Incorporates session management
  * (interactions with a new instance start a new Claude Code session,
@@ -53,7 +77,7 @@ export class DriverAgent {
     prompt: string,
     /** config / options to override with */
     config?: DriverAgentConfig,
-  ): Promise<Result<string, DriverAgentError>> {
+  ): Promise<string> {
     const response = query({
       prompt,
       options: this.buildQueryOptions(config),
@@ -67,40 +91,34 @@ export class DriverAgent {
       }
 
       const result = match(message)
-        .with({ type: "result", subtype: "success" }, (msg) => ({
-          type: "success" as const,
-          value: msg.result ?? "",
-        }))
-        .with({ type: "result", subtype: "error_max_turns" }, () => ({
-          type: "failure" as const,
-          error: { type: "error_max_turns" as const },
-        }))
-        .with({ type: "result", subtype: "error_during_execution" }, () => ({
-          type: "failure" as const,
-          error: { type: "error_during_execution" as const },
-        }))
+        .with({ type: "result", subtype: "success" }, (msg) => msg.result ?? "")
+        .with({ type: "result", subtype: "error_max_turns" }, () => {
+          throw new DriverAgentMaxTurnsError();
+        })
+        .with({ type: "result", subtype: "error_during_execution" }, () => {
+          throw new DriverAgentExecutionError();
+        })
         .otherwise(() => null);
 
-      if (result) return result;
+      if (result !== null) return result;
     }
 
-    return { type: "failure", error: { type: "unexpected_termination" } };
-  /** A structured variant of `ask` */
-  async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<Result<z.infer<T>, DriverAgentError>> {
+    throw new DriverAgentUnexpectedTerminationError();
+  }
+
+  async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
     const result = await this.ask(prompt);
 
-    if (result.type === "failure") {
-      return makeFailure(result.error);
-    }
-
     try {
-      const validated = outputSchema.parse(JSON.parse(result.value));
-      return makeSuccessResult(validated);
+      const validated = outputSchema.parse(JSON.parse(result));
+      return validated;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return makeExecutionError(`Validation failed: ${z.prettifyError(error)}`);
+        throw new DriverAgentExecutionError(`Validation failed: ${z.prettifyError(error)}`);
       }
-      return makeExecutionError(`Failed to parse response: ${error instanceof Error ? error.message : String(error)}`);
+      throw new DriverAgentExecutionError(
+        `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
