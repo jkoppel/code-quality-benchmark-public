@@ -1,8 +1,8 @@
+import type { PermissionMode } from "@anthropic-ai/claude-code";
 import unimplemented from "ts-unimplemented";
 import type { z } from "zod";
 import { Logger } from "../../utils/logger.js";
 import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
-import type { PermissionMode } from "@anthropic-ai/claude-code";
 import type { TestResult } from "./report.js";
 import type { SutConfig } from "./runner.js";
 
@@ -24,7 +24,7 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
     private readonly sutConfig: SutConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    this.driver = new DriverAgent(NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS, logger);
+    this.driver = new DriverAgent(NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, logger);
   }
 
   async check(instructions: string): Promise<TestResult> {
@@ -32,7 +32,7 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
-    return unimplemented()
+    return unimplemented();
   }
 }
 
@@ -42,7 +42,7 @@ export class VisionTestCaseAgent implements TestCaseAgent {
     private readonly sutConfig: SutConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    this.driver = new DriverAgent(VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS, logger);
+    this.driver = new DriverAgent(VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, logger);
   }
 
   async check(instructions: string): Promise<TestResult> {
@@ -71,21 +71,21 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
   };
 }
 
-const CORE_TEST_CASE_AGENT_OPTIONS = {
+const CORE_TEST_CASE_AGENT_CONFIG = {
   permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
   maxTurns: 15, // TODO: Tune this
   executable: "node",
 } as const;
 
-export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_OPTIONS,
+export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
+  ...CORE_TEST_CASE_AGENT_CONFIG,
   mcpServers: {
     ...makePlaywrightMCPConfig(["verify"]),
   },
 };
 
-export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_OPTIONS,
+export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
+  ...CORE_TEST_CASE_AGENT_CONFIG,
   mcpServers: {
     ...makePlaywrightMCPConfig(["verify", "vision"]),
   },
