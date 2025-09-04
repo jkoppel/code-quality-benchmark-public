@@ -122,6 +122,7 @@ npm run clean      # Clean build artifacts
 npm run check      # TypeScript type checking
 npm run lint       # ESLint code linting
 npm run check:all  # Run both type checking and linting
+npm run check:command-refs  # Check that references to npm commands are up to date
 ```
 
 ## License

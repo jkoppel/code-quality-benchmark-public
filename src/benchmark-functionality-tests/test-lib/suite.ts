@@ -1,5 +1,6 @@
-import type { TestResult } from "./report";
-import type { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent";
+import type { TestResult } from "./report.js";
+import type { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
+import { parseBenchmarkPath, getTestSuite } from "./test-registry.js";
 
 export type TestCase = VisionTestCase | NonVisionTestCase;
 
@@ -27,4 +28,9 @@ export class Suite {
   getTests() {
     return this.tests;
   }
+}
+
+export async function loadTestSuite(benchmarkPath: string): Promise<Suite> {
+  const { benchmarkSet, task } = parseBenchmarkPath(benchmarkPath);
+  return await getTestSuite(benchmarkSet, task);
 }

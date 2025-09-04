@@ -1,8 +1,8 @@
 import unimplemented from "ts-unimplemented";
-import { Logger } from "../../utils/logger";
-import type { DriverAgent } from "./driver-agent";
-import type { TestSuiteResults } from "./report";
-import type { Suite } from "./suite";
+import { Logger } from "../../utils/logger.js";
+import type { DriverAgent } from "./driver-agent.js";
+import type { TestSuiteResults } from "./report.js";
+import type { Suite } from "./suite.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -22,27 +22,50 @@ export class TestRunner {
     private readonly logger: Logger = Logger.getInstance(),
   ) {}
 
-  async runTestSuite(tests: Suite): Promise<TestSuiteResults> {
+  async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
+    const startTime = Date.now();
     const partialResults: Pick<TestSuiteResults, "name" | "timestamp"> = {
       name: "TODO",
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(startTime).toISOString(),
     };
 
-    await this.withSutDevServer(
-      async () => {
-        // TODO: Start dev server based on config
-        // const serverProcess = execa('npm', ['run', 'start'], { cwd: sutProjectPath })
-        // await waitForServerReady('http://localhost:3000')
-        throw new Error("Dev server startup not implemented yet");
+    // await this.withSutDevServer(
+    //   async () => {
+    //     // TODO: Start dev server based on config
+    //     // const serverProcess = execa('npm', ['run', 'start'], { cwd: sutProjectPath })
+    //     // await waitForServerReady('http://localhost:3000')
+    //     throw new Error("Dev server startup not implemented yet");
+    //   },
+    //   async (server) => {
+    //     // TODO: Run functionality tests against the server
+    //     // await runFunctionalityTests(server.url)
+    //     throw new Error("Test execution not implemented yet");
+    //   },
+    // );
+    const results = [];
+    
+    for (const test of suite.getTests()) {
+      const result = await test.run(this.driver as any);
+      results.push(result);
+    }
+    
+    const duration = Date.now() - startTime;
+    const passed = results.filter(r => r.outcome.status === 'passed').length;
+    const failed = results.filter(r => r.outcome.status === 'failed').length;
+    const skipped = results.filter(r => r.outcome.status === 'skipped').length;
+    
+    return {
+      name: suite.getName(),
+      timestamp: new Date().toISOString(),
+      summary: {
+        total: results.length,
+        passed,
+        failed,
+        skipped,
+        duration
       },
-      async (server) => {
-        // TODO: Run functionality tests against the server
-        // await runFunctionalityTests(server.url)
-        throw new Error("Test execution not implemented yet");
-      },
-    );
-
-    return unimplemented();
+      results
+    };
   }
 
   // Helpers

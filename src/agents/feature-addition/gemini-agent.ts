@@ -1,7 +1,10 @@
 import * as path from 'path';
-import { createShellAgent } from '../shell-agent';
-import { SYSTEM_PROMPT, getFullPrompt } from './common-prompts';
+import { fileURLToPath } from 'url';
+import { createShellAgent } from '../shell-agent.js';
+import { SYSTEM_PROMPT, getFullPrompt } from './common-prompts.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const geminiScriptPath = path.join(__dirname, '../../../agents/raw_gemini.sh');
 
 const baseGeminiAgent = createShellAgent(geminiScriptPath);

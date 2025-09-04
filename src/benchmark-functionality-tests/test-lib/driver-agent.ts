@@ -1,6 +1,6 @@
 import type { Options, PermissionMode } from "@anthropic-ai/claude-code";
 import unimplemented from "ts-unimplemented";
-import { Logger } from "../../utils/logger";
+import { Logger } from "../../utils/logger.js";
 
 /*************************************
     Driver Agent
