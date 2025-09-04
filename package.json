@@ -30,6 +30,7 @@
     "@anthropic-ai/claude-code": "^1.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/tmp": "^0.2.6",
+    "dedent": "^1.7.0",
     "execa": "^9.6.0",
     "fs-extra": "^11.3.1",
     "pino": "^9.9.0",

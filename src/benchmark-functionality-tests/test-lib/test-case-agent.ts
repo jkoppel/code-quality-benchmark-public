@@ -1,9 +1,10 @@
 import type { PermissionMode } from "@anthropic-ai/claude-code";
-import unimplemented from "ts-unimplemented";
+import dedent from "dedent";
 import type { z } from "zod";
 import { Logger } from "../../utils/logger.js";
 import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
 import type { TestResult } from "./report.js";
+import { TestResultSchema } from "./report.js";
 import type { SutConfig } from "./runner.js";
 
 /*************************************
@@ -18,6 +19,8 @@ export interface TestCaseAgent {
 
 // TODO: Either have different query methods for whether to use vision-enabled Playwright, or have different TestCaseAgents
 
+// TODO: Check if need to use sutConfig in some way here -- or maybe limit it to runner...
+
 export class NonVisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
@@ -28,11 +31,19 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
   }
 
   async check(instructions: string): Promise<TestResult> {
-    return unimplemented();
+    this.logger.debug(`NonVisionTestCaseAgent.check: ${instructions}`);
+    const response = await this.driver.ask(dedent`
+      Check the following: ${instructions}
+
+      Respond with JSON conforming to ${JSON.stringify(TestResultSchema.shape)}
+    `);
+    const result = await this.driver.query(response, TestResultSchema);
+    this.logger.debug(`NonVisionTestCaseAgent.check result: ${JSON.stringify(result)}`);
+    return result;
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
-    return unimplemented();
+    return await this.driver.query(prompt, outputSchema);
   }
 }
 
@@ -46,11 +57,19 @@ export class VisionTestCaseAgent implements TestCaseAgent {
   }
 
   async check(instructions: string): Promise<TestResult> {
-    return unimplemented();
+    this.logger.debug(`VisionTestCaseAgent.check: ${instructions}`);
+    const response = await this.driver.ask(dedent`
+      Check the following: ${instructions}
+
+      Respond with JSON conforming to ${JSON.stringify(TestResultSchema.shape)}
+    `);
+    const result = await this.driver.query(response, TestResultSchema);
+    this.logger.debug(`VisionTestCaseAgent.check result: ${JSON.stringify(result)}`);
+    return result;
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
-    return unimplemented();
+    return await this.driver.query(prompt, outputSchema);
   }
 }
 
