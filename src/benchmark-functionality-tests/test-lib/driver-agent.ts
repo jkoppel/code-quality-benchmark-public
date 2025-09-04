@@ -22,7 +22,8 @@ export type DriverAgentError =
 
 /** The underlying driver for the test case agent.
  * Incorporates session management
- * (all interactions with an instance of the DriverAgent use the same session)
+ * (interactions with a new instance start a new Claude Code session,
+ * but all interactions with an instance of the DriverAgent use the same session)
  * and allows for querying with a schema. */
 export class DriverAgent {
   private sessionId?: string;
@@ -38,19 +39,32 @@ export class DriverAgent {
     return this.config;
   }
 
-  // TODO: Think more about how to incorporate session mgmt
   // TODO: Use abort controller option to implement timeout
+
+  private buildQueryOptions(additional?: DriverAgentConfig) {
+    return {
+      ...this.getConfig(),
+      ...additional,
+      resume: this.getSessionId(), // session id managed by and only by DriverAgent
+    };
+  }
 
   async ask(
     prompt: string,
     /** config / options to override with */
     config?: DriverAgentConfig,
   ): Promise<Result<string, DriverAgentError>> {
-    const options = config ?? this.config;
-    const response = query({ prompt, options });
+    const response = query({
+      prompt,
+      options: this.buildQueryOptions(config),
+    });
 
     for await (const message of response) {
       this.logger.debug(JSON.stringify(message));
+
+      if (!this.getSessionId()) {
+        this.setSessionId(message.session_id);
+      }
 
       const result = match(message)
         .with({ type: "result", subtype: "success" }, (msg) => ({
@@ -75,5 +89,10 @@ export class DriverAgent {
 
   getSessionId(): string | undefined {
     return this.sessionId;
+  }
+
+  /** Sets the session ID if not already set */
+  private setSessionId(sessionId: string): void {
+    if (!this.sessionId) this.sessionId = sessionId;
   }
 }
