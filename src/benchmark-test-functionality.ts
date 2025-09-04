@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import * as path from "path";
-import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/suite.js";
+import {
+  DriverAgent,
+  NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS,
+} from "./benchmark-functionality-tests/test-lib/driver-agent.js";
 import { TestRunner, type TestRunnerConfig } from "./benchmark-functionality-tests/test-lib/runner.js";
-import { DriverAgent, NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS } from "./benchmark-functionality-tests/test-lib/driver-agent.js";
+import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/suite.js";
 import { Logger } from "./utils/logger.js";
 
 async function main() {
@@ -35,12 +38,11 @@ async function main() {
     const testRunner = new TestRunner(config, driverAgent, logger);
 
     // Load test suite
-    logger.info(`Loading test suite from ${resolvedBenchmarkPath}`);
+    logger.info(`Loading functional test suite for ${resolvedBenchmarkPath}`);
     const suite = await loadTestSuite(resolvedBenchmarkPath);
 
-    logger.info(`Running suite: ${suite.getName()}`);
-
     // Run test suite
+    logger.info(`Running suite: ${suite.getName()}`);
     const result = await testRunner.runTestSuite(suite);
 
     // Handle result
@@ -48,14 +50,12 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
 
     logger.info("Test execution completed");
-
   } catch (error) {
     logger.error(`Failed to run tests: ${error}`);
     process.exit(1);
   }
 }
 
-// Usage: benchmark:test-functionality <benchmark-path>
 main().catch((error) => {
   console.error("Unhandled error:", error);
   process.exit(1);
