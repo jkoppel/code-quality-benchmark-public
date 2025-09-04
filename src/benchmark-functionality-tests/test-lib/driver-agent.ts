@@ -1,4 +1,4 @@
-import type { Options, PermissionMode } from "@anthropic-ai/claude-code";
+import type { Options } from "@anthropic-ai/claude-code";
 import { query } from "@anthropic-ai/claude-code";
 import { match } from "ts-pattern";
 import type { Result } from "../../utils/helper-types.js";
@@ -20,8 +20,11 @@ export type DriverAgentError =
   | { type: "error_during_execution"; message?: string }
   | { type: "unexpected_termination" }; // Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)
 
-/** The underlying driver for the test case agent */
+/** The underlying driver for the test case agent.
+ * Incorporates session management and allows for querying with a schema. */
 export class DriverAgent {
+  private sessionId?: string;
+
   constructor(
     private readonly config: DriverAgentConfig,
     private readonly logger: Logger = Logger.getInstance(),
@@ -67,41 +70,8 @@ export class DriverAgent {
 
     return { type: "failure", error: { type: "unexpected_termination" } };
   }
+
+  getSessionId(): string | undefined {
+    return this.sessionId;
+  }
 }
-
-// Playwright MCP
-
-type PlaywrightMCPCapability = "verify" | "vision";
-
-function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
-  const PLAYWRIGHT_MCP = "@playwright/mcp@0.0.36";
-  return {
-    playwright: {
-      type: "stdio" as const,
-      command: "npx",
-      args: ["-y", PLAYWRIGHT_MCP, "--isolated", capabilities.length > 0 ? `--caps=${capabilities.join(",")}` : ""],
-    },
-  };
-}
-
-// Claude Code config / options
-
-const CORE_TEST_CASE_AGENT_OPTIONS = {
-  permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
-  maxTurns: 15, // TODO: Tune this
-  executable: "node",
-} as const;
-
-export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_OPTIONS,
-  mcpServers: {
-    ...makePlaywrightMCPConfig(["verify"]),
-  },
-};
-
-export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_OPTIONS,
-  mcpServers: {
-    ...makePlaywrightMCPConfig(["verify", "vision"]),
-  },
-};

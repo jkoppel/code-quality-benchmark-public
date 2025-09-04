@@ -1,9 +1,5 @@
 #!/usr/bin/env node
-import * as path from "path";
-import {
-  DriverAgent,
-  NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS,
-} from "./benchmark-functionality-tests/test-lib/driver-agent.js";
+import * as path from "node:path";
 import { TestRunner, type TestRunnerConfig } from "./benchmark-functionality-tests/test-lib/runner.js";
 import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/suite.js";
 import { Logger } from "./utils/logger.js";
@@ -25,17 +21,13 @@ async function main() {
   const logger = Logger.getInstance();
 
   try {
-    // Initialize test runner configuration
     const config: TestRunnerConfig = {
       sutConfig: {
         folderPath: resolvedSystemUnderTest,
         port: 3000, // TODO: Is this rly where we shld be specifying the port?
       },
     };
-
-    // Initialize driver agent and test runner
-    const driverAgent = new DriverAgent(NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_OPTIONS, logger);
-    const testRunner = new TestRunner(config, driverAgent, logger);
+    const testRunner = new TestRunner(config, logger);
 
     // Load test suite
     logger.info(`Loading functional test suite for ${resolvedBenchmarkPath}`);
