@@ -21,7 +21,9 @@ export type DriverAgentError =
   | { type: "unexpected_termination" }; // Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)
 
 /** The underlying driver for the test case agent.
- * Incorporates session management and allows for querying with a schema. */
+ * Incorporates session management
+ * (all interactions with an instance of the DriverAgent use the same session)
+ * and allows for querying with a schema. */
 export class DriverAgent {
   private sessionId?: string;
 
