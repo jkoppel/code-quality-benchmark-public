@@ -1,5 +1,6 @@
 import type { Options } from "@anthropic-ai/claude-code";
 import { query } from "@anthropic-ai/claude-code";
+import dedent from "dedent";
 import { match } from "ts-pattern";
 import * as z from "zod";
 import { Logger } from "../../utils/logger.js";
@@ -112,10 +113,19 @@ export class DriverAgent {
   }
 
   async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
-    const result = await this.ask(prompt);
+    const fullPrompt = dedent`
+      ${prompt}
+
+      You must respond with the json wrapped in <response> tags like this:
+      <response>{raw JSON response}</response>
+
+      The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema), null, 2)}`;
+
+    const result = await this.ask(fullPrompt);
 
     try {
-      const validated = outputSchema.parse(JSON.parse(result));
+      const raw = this.extractJsonFromResponse(result);
+      const validated = outputSchema.parse(JSON.parse(raw));
       return validated;
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -125,6 +135,15 @@ export class DriverAgent {
         `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  private extractJsonFromResponse(text: string): string {
+    const responseMatch = text.match(/<response>\s*([\s\S]*?)\s*<\/response>/);
+    if (responseMatch) {
+      return responseMatch[1].trim();
+    }
+
+    throw new DriverAgentExecutionError("Driver agent response was not wrapped in <response> tags");
   }
 
   getSessionId(): string | undefined {

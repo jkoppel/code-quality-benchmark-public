@@ -1,6 +1,5 @@
 import type { PermissionMode } from "@anthropic-ai/claude-code";
-import dedent from "dedent";
-import type { z } from "zod";
+import type * as z from "zod";
 import { Logger } from "../../utils/logger.js";
 import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
 import type { TestResult } from "./report.js";
@@ -21,6 +20,8 @@ export interface TestCaseAgent {
 
 // TODO: Check if need to use sutConfig in some way here -- or maybe limit it to runner...
 
+const makeCoreCheckPrompt = (instructions: string): string => `Check the following: ${instructions}`;
+
 export class NonVisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
@@ -32,12 +33,8 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
 
   async check(instructions: string): Promise<TestResult> {
     this.logger.debug(`NonVisionTestCaseAgent.check: ${instructions}`);
-    const response = await this.driver.ask(dedent`
-      Check the following: ${instructions}
 
-      Respond with JSON conforming to ${JSON.stringify(TestResultSchema.shape)}
-    `);
-    const result = await this.driver.query(response, TestResultSchema);
+    const result = await this.driver.query(makeCoreCheckPrompt(instructions), TestResultSchema);
     this.logger.debug(`NonVisionTestCaseAgent.check result: ${JSON.stringify(result)}`);
     return result;
   }
@@ -58,12 +55,9 @@ export class VisionTestCaseAgent implements TestCaseAgent {
 
   async check(instructions: string): Promise<TestResult> {
     this.logger.debug(`VisionTestCaseAgent.check: ${instructions}`);
-    const response = await this.driver.ask(dedent`
-      Check the following: ${instructions}
 
-      Respond with JSON conforming to ${JSON.stringify(TestResultSchema.shape)}
-    `);
-    const result = await this.driver.query(response, TestResultSchema);
+    // TODO: Add stuff about vision caps?
+    const result = await this.driver.query(makeCoreCheckPrompt(instructions), TestResultSchema);
     this.logger.debug(`VisionTestCaseAgent.check result: ${JSON.stringify(result)}`);
     return result;
   }
@@ -111,3 +105,58 @@ export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
     ...makePlaywrightMCPConfig(["verify", "vision"]),
   },
 };
+
+/*
+FUTURE WORK: Tool-based validation approach
+============================================
+
+The ideal solution would be to use Claude Code SDK's createSdkMcpServer and tool functions
+to create a submit_response tool that validates JSON input automatically. This would:
+
+1. Eliminate markdown parsing issues entirely
+2. Provide self-correcting behavior - Claude gets validation errors and can retry
+3. Use proper Zod schema validation built into the tool system
+
+Example implementation (currently blocked by SDK bug https://github.com/anthropics/claude-code/issues/6710):
+
+```typescript
+import { createSdkMcpServer, tool } from "@anthropic-ai/claude-code";
+
+const submitResponseTool = tool(
+  'submit_response',
+  'Submit your test result using this tool. The input must be a valid TestResult object.',
+  TestResultSchema.shape,
+  async (args: TestResult) => {
+    // Tool automatically validates args against TestResultSchema via Zod
+    // Store result in closure variable for return
+    testResult = args;
+    return {
+      content: [{ type: 'text' as const, text: 'Test result submitted successfully' }]
+    };
+  }
+);
+
+const validationMcpServer = createSdkMcpServer({
+  name: 'validate-response-format',
+  tools: [submitResponseTool]
+});
+
+// Add to DriverAgent config:
+mcpServers: {
+  'validate-response-format': validationMcpServer,
+  ...existingServers
+}
+
+// Updated prompt:
+"You must use the submit_response tool to submit your test result.
+The tool expects a TestResult object with: name, outcome.status, outcome.howTested, etc."
+```
+
+Benefits:
+- Claude gets immediate validation feedback if structure is wrong
+- No JSON parsing or markdown extraction needed
+- Type-safe validation via Zod
+- Self-correcting - Claude can retry with proper format
+
+Blocked by: relevant functions not exported from SDK even tho in sdk.d.ts
+*/
