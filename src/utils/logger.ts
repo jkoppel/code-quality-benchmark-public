@@ -44,7 +44,7 @@ export class Logger {
   private static instance: Logger;
   private pino: pino.Logger;
 
-  constructor(logLevel: LogLevel = 'info') {
+  constructor(logLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info') {
     this.pino = pinoLogger;
     this.setLogLevel(logLevel);
   }
