@@ -13,9 +13,9 @@ async function main() {
   const systemUnderTest = process.argv[3];
 
   if (!benchmarkPath || !systemUnderTest) {
-    console.error("Usage: benchmark:test-functionality <benchmark-path> <attempt-at-benchmark>");
+    console.error("Usage: npm run benchmark:test-functionality <benchmark-path> <attempt-at-benchmark>");
     console.error(
-      "Example: benchmark-runner-existing benchmarks/evolvability/calculator /tmp/benchmark-xxx/original-program",
+      "Example: npm run benchmark:test-functionality benchmarks/evolvability/calculator /tmp/benchmark-xxx/original-program",
     );
     process.exit(1);
   }
