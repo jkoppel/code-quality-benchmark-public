@@ -85,6 +85,23 @@ export class DriverAgent {
     }
 
     return { type: "failure", error: { type: "unexpected_termination" } };
+  /** A structured variant of `ask` */
+  async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<Result<z.infer<T>, DriverAgentError>> {
+    const result = await this.ask(prompt);
+
+    if (result.type === "failure") {
+      return makeFailure(result.error);
+    }
+
+    try {
+      const validated = outputSchema.parse(JSON.parse(result.value));
+      return makeSuccessResult(validated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return makeExecutionError(`Validation failed: ${z.prettifyError(error)}`);
+      }
+      return makeExecutionError(`Failed to parse response: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   getSessionId(): string | undefined {
