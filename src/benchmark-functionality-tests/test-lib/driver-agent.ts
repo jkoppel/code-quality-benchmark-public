@@ -4,11 +4,11 @@ import { match } from "ts-pattern";
 import * as z from "zod";
 import { Logger } from "../../utils/logger.js";
 
-/*************************************
-    Driver Agent
-***************************************/
-
 // Specializing the following to Claude Code for now
+
+/*************************************
+    DriverAgentConfig
+***************************************/
 
 export type DriverAgentConfig = Pick<
   Options,
@@ -44,6 +44,11 @@ export class DriverAgentUnexpectedTerminationError extends Error {
     this.name = "DriverAgentUnexpectedTerminationError";
   }
 }
+
+/*************************************
+           Driver Agent
+***************************************/
+
 /** The underlying driver for the test case agent.
  * Incorporates session management
  * (interactions with a new instance start a new Claude Code session,
