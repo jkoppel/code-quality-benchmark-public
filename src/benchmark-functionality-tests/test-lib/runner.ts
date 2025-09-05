@@ -1,233 +1,210 @@
+/**
+ * Test runner for functional tests
+ *
+ * Some of the code here is adapted from Playwright
+ * - waitForServerReady() function
+ * - Process shutdown pattern in startDevServer()
+ *
+ * The adapted-from-Playwright portions (and only those) are
+ * copyright (c) Microsoft Corporation
+ * Licensed under the Apache License, Version 2.0
+ * Source: https://github.com/microsoft/playwright
+ */
+
 import { match } from "ts-pattern";
-import { execa, type ExecaChildProcess, type ExecaError } from "execa";
+import detect from "detect-port";
 import { Logger } from "../../utils/logger.js";
+import { launchProcess } from "../../utils/process-launcher.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite } from "./suite.js";
-import {
-	NonVisionTestCaseAgent,
-	VisionTestCaseAgent,
-} from "./test-case-agent.js";
+import { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
-	folderPath: string;
+  folderPath: string;
   /** Port at which we will try to start the dev server of the app under test */
-	port: number;
+  port: number;
 }
 
 export interface TestRunnerConfig {
-	sutConfig: SutConfig;
-	// timeoutMs: number;
+  sutConfig: SutConfig;
+  // timeoutMs: number;
 }
 
 export class TestRunner {
-	constructor(
-		private readonly config: TestRunnerConfig,
-		private readonly logger: Logger = Logger.getInstance(),
-	) {}
+  constructor(
+    private readonly config: TestRunnerConfig,
+    private readonly logger: Logger = Logger.getInstance(),
+  ) {}
 
-	async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
-		const startTime = Date.now();
+  async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
+    const startTime = Date.now();
 
-		// await this.withSutDevServer(
-		//   async () => {
-		//     // TODO: Start dev server based on config
-		//     // const serverProcess = execa('npm', ['run', 'start'], { cwd: sutProjectPath })
-		//     // await waitForServerReady('http://localhost:3000')
-		//     throw new Error("Dev server startup not implemented yet");
-		//   },
-		//   async (server) => {
-		//     // TODO: Run function
-		//   /** Port that we will try to start the dev server of the app under testality tests against the server
-		//     // await runFunctionalityTests(server.url)
-		//     throw new Error("Test execution not implemented yet");
-		//   },
-		// );
-		const results = await Promise.all(
-			suite.getTests().map(async (test) => {
-				return match(test)
-					.with({ type: "vision" }, (visionTest) =>
-						visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger))
-					)
-					.with({ type: "non-vision" }, (nonVisionTest) =>
-						nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger))
-					)
-					.exhaustive();
-			}),
-		);
+    await using _server = await startDevServer(this.config.sutConfig, this.logger);
 
-		const duration = Date.now() - startTime;
-		const passed = results.filter((r) => r.outcome.status === "passed").length;
-		const failed = results.filter((r) => r.outcome.status === "failed").length;
-		const skipped = results.filter(
-			(r) => r.outcome.status === "skipped",
-		).length;
+    const results = await Promise.all(
+      suite.getTests().map(async (test) => {
+        return await match(test)
+          .with(
+            { type: "vision" },
+            async (visionTest) => await visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger)),
+          )
+          .with(
+            { type: "non-vision" },
+            async (nonVisionTest) =>
+              await nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger)),
+          )
+          .exhaustive();
+      }),
+    );
 
-		return {
-			name: suite.getName(),
-			timestamp: new Date(startTime).toISOString(),
-			summary: {
-				total: results.length,
-				passed,
-				failed,
-				skipped,
-				duration,
-			},
-			results,
-		};
-	}
+    const duration = Date.now() - startTime;
+    const passed = results.filter((r) => r.outcome.status === "passed").length;
+    const failed = results.filter((r) => r.outcome.status === "failed").length;
+    const skipped = results.filter((r) => r.outcome.status === "skipped").length;
 
-	// Helpers
-	private async withSutDevServer(
-		runTests: (server: DevServerInfo) => Promise<void>,
-	): Promise<void> {
-		return this.withResource(async (): Promise<Resource<DevServerInfo>> => {
-			return await startDevServer(this.config.sutConfig, this.logger);
-		}, runTests);
-	}
-
-	private async withResource<T>(
-		acquire: () => Promise<Resource<T>>,
-		use: (resource: T) => Promise<void>,
-	): Promise<void> {
-		const { resource, cleanup } = await acquire();
-		try {
-			await use(resource);
-		} finally {
-			await cleanup();
-		}
-	}
+    return {
+      name: suite.getName(),
+      timestamp: new Date(startTime).toISOString(),
+      summary: {
+        total: results.length,
+        passed,
+        failed,
+        skipped,
+        duration,
+      },
+      results,
+    };
+  }
 }
 
 /***********************
    Helpers
 ************************/
 
-// TODO: Prob extract the following to top-level utils
-
-export interface Resource<T> {
-	resource: T;
-	cleanup: () => Promise<void>;
+interface DevServerHandle {
+  [Symbol.asyncDispose](): Promise<void>;
 }
 
-interface DevServerInfo {
-	port: number;
-	process: ExecaChildProcess;
+const DEFAULT_ENVIRONMENT_VARIABLES = {
+  BROWSER: "none", // Prevent create-react-app from opening browser
+  FORCE_COLOR: "1",
+  DEBUG_COLORS: "1",
+};
+
+async function startDevServer(sutConfig: SutConfig, logger: Logger): Promise<DevServerHandle> {
+  // Check port availability first
+  const availablePort = await detect(sutConfig.port);
+
+  if (availablePort !== sutConfig.port) {
+    throw new Error(
+      `Port ${sutConfig.port.toString()} is already in use. ` +
+        `Please stop the process using this port or configure a different port. ` +
+        `Next available port is ${availablePort.toString()}.`,
+    );
+  }
+
+  logger.info(`Port ${sutConfig.port.toString()} is available`);
+  logger.info(`Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`);
+
+  const serverUrl = `http://localhost:${sutConfig.port}`;
+
+  // Using process launcher adapted from Playwright,
+  // because a naive, vibe-coded approach had issues with stopping the dev server
+  const { launchedProcess, gracefullyClose } = await launchProcess({
+    // Crucial assumption: all the apps under test have a `npm run start` script
+    command: "npm",
+    args: ["run", "start"],
+    env: {
+      ...DEFAULT_ENVIRONMENT_VARIABLES,
+      ...process.env,
+      PORT: sutConfig.port.toString(),
+    },
+    shell: false,
+    handleSIGINT: true,
+    handleSIGTERM: true,
+    handleSIGHUP: true,
+    stdio: "pipe",
+    tempDirectories: [],
+    cwd: sutConfig.folderPath,
+    attemptToGracefullyClose: async () => {
+      // Send SIGTERM to process group (-pid) to kill npm + webpack + all child processes
+      if (process.platform === "win32") {
+        throw new Error("Use default force kill on Windows");
+      }
+
+      process.kill(-launchedProcess.pid!, "SIGTERM");
+
+      // Wait up to 5 seconds for graceful shutdown
+      return new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Graceful shutdown timed out"));
+        }, 5000);
+
+        launchedProcess.once("close", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+      });
+    },
+    onExit: (exitCode, signal) => {
+      if (exitCode && exitCode !== 0) {
+        logger.warn(`Dev server exited with code ${exitCode}, signal ${signal || "none"}`);
+      } else {
+        logger.info("Dev server exited cleanly");
+      }
+    },
+    log: (message) => {
+      // Parse and format dev server output
+      if (message.includes("[out]")) {
+        logger.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
+      } else if (message.includes("[err]")) {
+        logger.error(message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"));
+      } else {
+        logger.debug(message);
+      }
+    },
+  });
+
+  // Wait for server to be ready
+  logger.info(`Waiting for server to be ready at ${serverUrl}...`);
+  await waitForServerReady(serverUrl);
+  logger.info("Dev server is ready");
+
+  return {
+    async [Symbol.asyncDispose]() {
+      logger.info("Stopping dev server...");
+      await gracefullyClose();
+      logger.info("Dev server stopped");
+    },
+  };
 }
 
-async function startDevServer(
-	sutConfig: SutConfig,
-	logger: Logger,
-): Promise<Resource<DevServerInfo>> {
-	// Assumption: Every app under test can be started with PORT=${...} npm run start
-	logger.info(`Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port}`);
-	
-	const controller = new AbortController();
-	
-	const subprocess = execa('npm', ['run', 'start'], {
-		cwd: sutConfig.folderPath,
-		env: { ...process.env, PORT: sutConfig.port.toString() },
-		stdout: 'pipe',
-		stderr: 'pipe',
-		cleanup: true,
-		cancelSignal: controller.signal,
-	});
+/** Adapted from https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts */
+async function waitForServerReady(url: string, timeoutMs = 30000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  const delays = [100, 250, 500];
+  // c.f. Playwright:  https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts#L186
 
-	// Process stdout lines in real-time
-	(async () => {
-		try {
-			if (subprocess.stdout) {
-				for await (const line of subprocess.stdout) {
-					if (line.trim()) {
-						logger.info(`[DEV-SERVER] ${line}`);
-					}
-				}
-			}
-		} catch {
-			// Stream closed or process terminated, expected behavior
-		}
-	})();
+  // TODO: not sure about this way of checking for readiness
+  while (Date.now() < deadline) {
+    try {
+      // Try main URL first
+      let response = await fetch(url);
+      if (response.ok) return;
 
-	// Process stderr lines in real-time
-	(async () => {
-		try {
-			if (subprocess.stderr) {
-				for await (const line of subprocess.stderr) {
-					if (line.trim()) {
-						logger.error(`[DEV-SERVER-ERROR] ${line}`);
-					}
-				}
-			}
-		} catch {
-			// Stream closed or process terminated, expected behavior
-		}
-	})();
+      // Fallback to /index.html for SPAs (common pattern)
+      if (response.status === 404 && new URL(url).pathname === "/") {
+        response = await fetch(url + "index.html");
+        if (response.ok) return;
+      }
+    } catch {
+      // Server not ready yet, continue polling
+    }
 
-	const serverInfo: DevServerInfo = {
-		port: sutConfig.port,
-		process: subprocess,
-	};
+    const delay = delays.shift() || 1000; // Progressive backoff, cap at 1s
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
 
-	const cleanup = async () => {
-		logger.info('Stopping dev server...');
-		
-		try {
-			controller.abort();
-			await subprocess;
-		} catch (error: unknown) {
-			const execaError = error as ExecaError;
-			if (execaError.isCanceled) {
-				logger.info('Dev server cancelled successfully');
-			} else if (execaError.signal === 'SIGTERM' || execaError.signal === 'SIGKILL') {
-				logger.info(`Dev server terminated with signal ${execaError.signal}`);
-			} else if (execaError.exitCode) {
-				logger.warn(`Dev server exited with code ${execaError.exitCode}`);
-			} else {
-				logger.error('Error stopping dev server:', error);
-			}
-		}
-	};
-
-	// Wait for the server to be ready
-	const serverUrl = `http://localhost:${sutConfig.port}`;
-	try {
-		logger.info(`Waiting for server to be ready at ${serverUrl}...`);
-		
-		// Race between server readiness and process failure
-		await Promise.race([
-			waitForServerReady(serverUrl),
-			subprocess.catch((error: unknown) => {
-				const execaError = error as ExecaError;
-				throw new Error(`Dev server process failed during startup: ${execaError.shortMessage || execaError.message}`);
-			})
-		]);
-		
-		logger.info('Dev server is ready');
-	} catch (error) {
-		// Cleanup on failure
-		await cleanup();
-		throw new Error(`Failed to start dev server: ${error}`);
-	}
-
-	return { resource: serverInfo, cleanup };
-}
-
-async function waitForServerReady(
-	url: string,
-	timeoutMs = 30000,
-): Promise<void> {
-	const start = Date.now();
-
-	while (Date.now() - start < timeoutMs) {
-		try {
-			const response = await fetch(url);
-			if (response.ok) return;
-		} catch {
-			// Server not ready yet, continue polling
-		}
-
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
-
-	throw new Error(`Server at ${url} failed to start within ${timeoutMs}ms`);
+  throw new Error(`Server at ${url} failed to start within ${timeoutMs.toString()}ms`);
 }
