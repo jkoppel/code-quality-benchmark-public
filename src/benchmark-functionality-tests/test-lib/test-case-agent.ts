@@ -13,7 +13,7 @@ import type { SutConfig } from "./runner.js";
 /** Each test case gets a new instance of the TestCaseAgent */
 export interface TestCaseAgent {
   check(instructions: string): Promise<TestResult>;
-  query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>>;
+  query<T extends z.ZodType>(prompt: string, outputSchema: T): Promise<z.infer<T>>;
 }
 
 // TODO: Either have different query methods for whether to use vision-enabled Playwright, or have different TestCaseAgents
@@ -39,7 +39,7 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
     return result;
   }
 
-  async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
+  async query<T extends z.ZodType>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
     return await this.driver.query(prompt, outputSchema);
   }
 }
@@ -62,7 +62,7 @@ export class VisionTestCaseAgent implements TestCaseAgent {
     return result;
   }
 
-  async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
+  async query<T extends z.ZodType>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
     return await this.driver.query(prompt, outputSchema);
   }
 }

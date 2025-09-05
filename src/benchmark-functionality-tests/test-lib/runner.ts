@@ -40,6 +40,7 @@ export class TestRunner {
   async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
     const startTime = Date.now();
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     await using _server = await startDevServer(this.config.sutConfig, this.logger);
 
     const results = await Promise.all(
@@ -107,7 +108,7 @@ async function startDevServer(sutConfig: SutConfig, logger: Logger): Promise<Dev
   logger.info(`Port ${sutConfig.port.toString()} is available`);
   logger.info(`Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`);
 
-  const serverUrl = `http://localhost:${sutConfig.port}`;
+  const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
 
   // Using process launcher adapted from Playwright,
   // because a naive, vibe-coded approach had issues with stopping the dev server
@@ -133,7 +134,11 @@ async function startDevServer(sutConfig: SutConfig, logger: Logger): Promise<Dev
         throw new Error("Use default force kill on Windows");
       }
 
-      process.kill(-launchedProcess.pid!, "SIGTERM");
+      if (launchedProcess.pid) {
+        process.kill(-launchedProcess.pid, "SIGTERM");
+      } else {
+        throw new Error("Process PID not available for graceful shutdown");
+      }
 
       // Wait up to 5 seconds for graceful shutdown
       return new Promise<void>((resolve, reject) => {
@@ -149,7 +154,7 @@ async function startDevServer(sutConfig: SutConfig, logger: Logger): Promise<Dev
     },
     onExit: (exitCode, signal) => {
       if (exitCode && exitCode !== 0) {
-        logger.warn(`Dev server exited with code ${exitCode}, signal ${signal || "none"}`);
+        logger.warn(`Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`);
       } else {
         logger.info("Dev server exited cleanly");
       }

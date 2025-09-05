@@ -112,7 +112,7 @@ export class DriverAgent {
       }
 
       const result = match(message)
-        .with({ type: "result", subtype: "success" }, (msg) => msg.result ?? "")
+        .with({ type: "result", subtype: "success" }, (msg) => msg.result || "")
         .with({ type: "result", subtype: "error_max_turns" }, () => {
           throw new DriverAgentMaxTurnsError();
         })
@@ -127,7 +127,7 @@ export class DriverAgent {
     throw new DriverAgentUnexpectedTerminationError();
   }
 
-  async query<T extends z.ZodTypeAny>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
+  async query<T extends z.ZodType>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
     const fullPrompt = dedent`
       ${prompt}
 

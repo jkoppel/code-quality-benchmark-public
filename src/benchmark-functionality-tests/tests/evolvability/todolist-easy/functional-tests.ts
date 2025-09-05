@@ -5,6 +5,7 @@ import type { NonVisionTestCaseAgent } from "../../../test-lib/test-case-agent.j
 const toyTest: NonVisionTestCase = {
   type: "non-vision" as const,
   description: "Toy test that always passes",
+  // eslint-disable-next-line @typescript-eslint/require-await
   async run(): Promise<TestResult> {
     return {
       name: "Toy test that always passes",

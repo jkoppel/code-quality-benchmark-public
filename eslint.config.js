@@ -7,6 +7,10 @@ export default tseslint.config(
   ...tseslint.configs.strict,
   ...tseslint.configs.strictTypeChecked,
   {
+    // Ignore third-party adapted files
+    ignores: ["src/utils/process-launcher.ts"],
+  },
+  {
     files: ["src/**/*.ts"],
     languageOptions: {
       parserOptions: {
