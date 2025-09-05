@@ -39,16 +39,16 @@ async function main() {
 
     // Handle result
     logger.info(`✓ Suite "${suite.getName()}" completed successfully`);
-    console.log(JSON.stringify(result, null, 2));
+    logger.info(JSON.stringify(result, null, 2));
 
     logger.info("Test execution completed");
   } catch (error) {
-    logger.error(`Failed to run tests: ${error}`);
+    logger.error(`Failed to run tests: ${String(error)}`);
     process.exit(1);
   }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error("Unhandled error:", error);
   process.exit(1);
 });

@@ -1,130 +1,215 @@
+/**
+ * Test runner for functional tests
+ *
+ * Some of the code here is adapted from Playwright
+ * - waitForServerReady() function
+ * - Process shutdown pattern in startDevServer()
+ *
+ * The adapted-from-Playwright portions (and only those) are
+ * copyright (c) Microsoft Corporation
+ * Licensed under the Apache License, Version 2.0
+ * Source: https://github.com/microsoft/playwright
+ */
+
 import { match } from "ts-pattern";
+import detect from "detect-port";
 import { Logger } from "../../utils/logger.js";
+import { launchProcess } from "../../utils/process-launcher.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite } from "./suite.js";
-import {
-	NonVisionTestCaseAgent,
-	VisionTestCaseAgent,
-} from "./test-case-agent.js";
+import { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
-	folderPath: string;
-	port: number;
+  folderPath: string;
+  /** Port at which we will try to start the dev server of the app under test */
+  port: number;
 }
 
 export interface TestRunnerConfig {
-	sutConfig: SutConfig;
-	// timeoutMs: number;
+  sutConfig: SutConfig;
+  // timeoutMs: number;
 }
 
 export class TestRunner {
-	constructor(
-		private readonly config: TestRunnerConfig,
-		private readonly logger: Logger = Logger.getInstance(),
-	) {}
+  constructor(
+    private readonly config: TestRunnerConfig,
+    private readonly logger: Logger = Logger.getInstance(),
+  ) {}
 
-	async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
-		const startTime = Date.now();
+  async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
+    const startTime = Date.now();
 
-		// await this.withSutDevServer(
-		//   async () => {
-		//     // TODO: Start dev server based on config
-		//     // const serverProcess = execa('npm', ['run', 'start'], { cwd: sutProjectPath })
-		//     // await waitForServerReady('http://localhost:3000')
-		//     throw new Error("Dev server startup not implemented yet");
-		//   },
-		//   async (server) => {
-		//     // TODO: Run functionality tests against the server
-		//     // await runFunctionalityTests(server.url)
-		//     throw new Error("Test execution not implemented yet");
-		//   },
-		// );
-		const results = await Promise.all(
-			suite.getTests().map(async (test) => {
-				return match(test)
-					.with({ type: "vision" }, (visionTest) =>
-						visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger))
-					)
-					.with({ type: "non-vision" }, (nonVisionTest) =>
-						nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger))
-					)
-					.exhaustive();
-			}),
-		);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    await using _server = await startDevServer(this.config.sutConfig, this.logger);
 
-		const duration = Date.now() - startTime;
-		const passed = results.filter((r) => r.outcome.status === "passed").length;
-		const failed = results.filter((r) => r.outcome.status === "failed").length;
-		const skipped = results.filter(
-			(r) => r.outcome.status === "skipped",
-		).length;
+    const results = await Promise.all(
+      suite.getTests().map(async (test) => {
+        return await match(test)
+          .with(
+            { type: "vision" },
+            async (visionTest) => await visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger)),
+          )
+          .with(
+            { type: "non-vision" },
+            async (nonVisionTest) =>
+              await nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger)),
+          )
+          .exhaustive();
+      }),
+    );
 
-		return {
-			name: suite.getName(),
-			timestamp: new Date(startTime).toISOString(),
-			summary: {
-				total: results.length,
-				passed,
-				failed,
-				skipped,
-				duration,
-			},
-			results,
-		};
-	}
+    const duration = Date.now() - startTime;
+    const passed = results.filter((r) => r.outcome.status === "passed").length;
+    const failed = results.filter((r) => r.outcome.status === "failed").length;
+    const skipped = results.filter((r) => r.outcome.status === "skipped").length;
 
-	// Helpers
-	private async withSutDevServer<T>(
-		startServer: () => Promise<{ server: T; stop: () => Promise<void> }>,
-		runTests: (server: T) => Promise<void>,
-	): Promise<void> {
-		return this.withResource(async (): Promise<Resource<T>> => {
-			const { server, stop } = await startServer();
-			return { resource: server, cleanup: stop };
-		}, runTests);
-	}
-
-	private async withResource<T>(
-		acquire: () => Promise<Resource<T>>,
-		use: (resource: T) => Promise<void>,
-	): Promise<void> {
-		const { resource, cleanup } = await acquire();
-		try {
-			await use(resource);
-		} finally {
-			await cleanup();
-		}
-	}
+    return {
+      name: suite.getName(),
+      timestamp: new Date(startTime).toISOString(),
+      summary: {
+        total: results.length,
+        passed,
+        failed,
+        skipped,
+        duration,
+      },
+      results,
+    };
+  }
 }
 
 /***********************
    Helpers
 ************************/
 
-// TODO: Prob extract the following to top-level utils
-
-export interface Resource<T> {
-	resource: T;
-	cleanup: () => Promise<void>;
+interface DevServerHandle {
+  [Symbol.asyncDispose](): Promise<void>;
 }
 
-async function waitForServerReady(
-	url: string,
-	timeoutMs = 30000,
-): Promise<void> {
-	const start = Date.now();
+const DEFAULT_ENVIRONMENT_VARIABLES = {
+  BROWSER: "none", // Prevent create-react-app from opening browser
+  FORCE_COLOR: "1",
+  DEBUG_COLORS: "1",
+};
 
-	while (Date.now() - start < timeoutMs) {
-		try {
-			const response = await fetch(url);
-			if (response.ok) return;
-		} catch {
-			// Server not ready yet, continue polling
-		}
+async function startDevServer(sutConfig: SutConfig, logger: Logger): Promise<DevServerHandle> {
+  // Check port availability first
+  const availablePort = await detect(sutConfig.port);
 
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
+  if (availablePort !== sutConfig.port) {
+    throw new Error(
+      `Port ${sutConfig.port.toString()} is already in use. ` +
+        `Please stop the process using this port or configure a different port. ` +
+        `Next available port is ${availablePort.toString()}.`,
+    );
+  }
 
-	throw new Error(`Server at ${url} failed to start within ${timeoutMs}ms`);
+  logger.info(`Port ${sutConfig.port.toString()} is available`);
+  logger.info(`Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`);
+
+  const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
+
+  // Using process launcher adapted from Playwright,
+  // because a naive, vibe-coded approach had issues with stopping the dev server
+  const { launchedProcess, gracefullyClose } = await launchProcess({
+    // Crucial assumption: all the apps under test have a `npm run start` script
+    command: "npm",
+    args: ["run", "start"],
+    env: {
+      ...DEFAULT_ENVIRONMENT_VARIABLES,
+      ...process.env,
+      PORT: sutConfig.port.toString(),
+    },
+    shell: false,
+    handleSIGINT: true,
+    handleSIGTERM: true,
+    handleSIGHUP: true,
+    stdio: "pipe",
+    tempDirectories: [],
+    cwd: sutConfig.folderPath,
+    attemptToGracefullyClose: async () => {
+      // Send SIGTERM to process group (-pid) to kill npm + webpack + all child processes
+      if (process.platform === "win32") {
+        throw new Error("Use default force kill on Windows");
+      }
+
+      if (launchedProcess.pid) {
+        process.kill(-launchedProcess.pid, "SIGTERM");
+      } else {
+        throw new Error("Process PID not available for graceful shutdown");
+      }
+
+      // Wait up to 5 seconds for graceful shutdown
+      return new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Graceful shutdown timed out"));
+        }, 5000);
+
+        launchedProcess.once("close", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+      });
+    },
+    onExit: (exitCode, signal) => {
+      if (exitCode && exitCode !== 0) {
+        logger.warn(`Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`);
+      } else {
+        logger.info("Dev server exited cleanly");
+      }
+    },
+    log: (message) => {
+      // Parse and format dev server output
+      if (message.includes("[out]")) {
+        logger.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
+      } else if (message.includes("[err]")) {
+        logger.error(message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"));
+      } else {
+        logger.debug(message);
+      }
+    },
+  });
+
+  // Wait for server to be ready
+  logger.info(`Waiting for server to be ready at ${serverUrl}...`);
+  await waitForServerReady(serverUrl);
+  logger.info("Dev server is ready");
+
+  return {
+    async [Symbol.asyncDispose]() {
+      logger.info("Stopping dev server...");
+      await gracefullyClose();
+      logger.info("Dev server stopped");
+    },
+  };
+}
+
+/** Adapted from https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts */
+async function waitForServerReady(url: string, timeoutMs = 30000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  const delays = [100, 250, 500];
+  // c.f. Playwright:  https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts#L186
+
+  // TODO: not sure about this way of checking for readiness
+  while (Date.now() < deadline) {
+    try {
+      // Try main URL first
+      let response = await fetch(url);
+      if (response.ok) return;
+
+      // Fallback to /index.html for SPAs (common pattern)
+      if (response.status === 404 && new URL(url).pathname === "/") {
+        response = await fetch(url + "index.html");
+        if (response.ok) return;
+      }
+    } catch {
+      // Server not ready yet, continue polling
+    }
+
+    const delay = delays.shift() || 1000; // Progressive backoff, cap at 1s
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+
+  throw new Error(`Server at ${url} failed to start within ${timeoutMs.toString()}ms`);
 }

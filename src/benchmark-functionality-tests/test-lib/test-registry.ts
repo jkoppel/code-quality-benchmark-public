@@ -44,16 +44,17 @@ const TEST_PATH_REGISTRY = {
 
 /** Dynamically import the functional test suite for the benchmark set */
 export async function getTestSuite(benchmarkSet: string, task: string): Promise<Suite> {
-  const key = `${benchmarkSet}/${task}` as keyof typeof TEST_PATH_REGISTRY;
-  const testPath = TEST_PATH_REGISTRY[key];
-
-  if (!testPath) {
+  const key = `${benchmarkSet}/${task}`;
+  
+  if (!(key in TEST_PATH_REGISTRY)) {
     const availableKeys = Object.keys(TEST_PATH_REGISTRY).join(", ");
     throw new Error(`No test suite found for ${key}. Available: ${availableKeys}`);
   }
 
+  const testPath = TEST_PATH_REGISTRY[key as keyof typeof TEST_PATH_REGISTRY];
+
   // Using dynamic import to avoid circular dependencies since test files import the Suite type from ./suite.js
   // TODO: add tests / checks of the registry, and perhaps run these checks on npm run check
-  const testModule = await import(testPath);
+  const testModule = await import(testPath) as { default: Suite };
   return testModule.default;
 }
