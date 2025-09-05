@@ -3,7 +3,7 @@ import { type NonVisionTestCase, Suite } from "../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../test-lib/test-case-agent.js";
 
 const toyTest: NonVisionTestCase = {
-  type: "non-vision",
+  type: "non-vision" as const,
   description: "Toy test that always passes",
   async run(): Promise<TestResult> {
     return {
@@ -18,7 +18,7 @@ const toyTest: NonVisionTestCase = {
 
 // Simple test case to check if can call CC
 const agentAlwaysPassesTest: NonVisionTestCase = {
-  type: "non-vision",
+  type: "non-vision" as const,
   description: "Simple agent response test",
   async run(agent: NonVisionTestCaseAgent): Promise<TestResult> {
     return await agent.check("Respond with a test result indicating this test passed");
