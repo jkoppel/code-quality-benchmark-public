@@ -16,6 +16,7 @@ export type DriverAgentConfig = Pick<
   "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers" | "resume"
 >;
 
+
 /*************************************
     Custom DriverAgentErrors
 ***************************************/

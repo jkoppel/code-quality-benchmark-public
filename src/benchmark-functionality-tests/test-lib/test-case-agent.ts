@@ -28,7 +28,10 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
     private readonly sutConfig: SutConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    this.driver = new DriverAgent(NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, logger);
+    this.driver = new DriverAgent(
+      { ...NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, cwd: sutConfig.folderPath },
+      logger,
+    );
   }
 
   async check(instructions: string): Promise<TestResult> {
@@ -50,7 +53,10 @@ export class VisionTestCaseAgent implements TestCaseAgent {
     private readonly sutConfig: SutConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    this.driver = new DriverAgent(VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, logger);
+    this.driver = new DriverAgent(
+      { ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG, cwd: sutConfig.folderPath },
+      logger,
+    );
   }
 
   async check(instructions: string): Promise<TestResult> {
