@@ -8,7 +8,9 @@ const benchmarkPath = process.argv[2];
 const existingCodePath = process.argv[3];
 
 if (!benchmarkPath || !existingCodePath) {
-  console.error("Usage: npm run benchmark:existing <benchmark-path> <existing-code-path>");
+  console.error(
+    "Usage: npm run benchmark:existing <benchmark-path> <existing-code-path>",
+  );
   console.error(
     "Example: npm run benchmark:existing benchmarks/evolvability/calculator /tmp/benchmark-xxx/original-program",
   );
@@ -18,7 +20,9 @@ if (!benchmarkPath || !existingCodePath) {
 const resolvedBenchmarkPath = path.resolve(benchmarkPath);
 const resolvedCodePath = path.resolve(existingCodePath);
 
-runBenchmarkWithExistingCode(resolvedBenchmarkPath, resolvedCodePath).catch((error) => {
-  console.error("Benchmark failed:", error);
-  process.exit(1);
-});
+runBenchmarkWithExistingCode(resolvedBenchmarkPath, resolvedCodePath).catch(
+  (error) => {
+    console.error("Benchmark failed:", error);
+    process.exit(1);
+  },
+);

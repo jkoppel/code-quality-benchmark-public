@@ -9,8 +9,12 @@ const benchmarkPath = process.argv[2];
 const agentScriptPath = process.argv[3];
 
 if (!benchmarkPath || !agentScriptPath) {
-  console.error("Usage: npm run benchmark <benchmark-path> <agent-script-path>");
-  console.error("Example: npm run benchmark benchmarks/evolvability/calculator ./my-agent.sh");
+  console.error(
+    "Usage: npm run benchmark <benchmark-path> <agent-script-path>",
+  );
+  console.error(
+    "Example: npm run benchmark benchmarks/evolvability/calculator ./my-agent.sh",
+  );
   process.exit(1);
 }
 

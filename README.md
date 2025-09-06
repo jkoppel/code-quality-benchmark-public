@@ -5,6 +5,7 @@ A TypeScript library for evaluating AI coding agents on code quality by testing 
 ## Overview
 
 This library provides a framework for:
+
 1. Creating an initial program using a coding agent
 2. Creating multiple copies of that program
 3. Using Claude Code SDK to apply updates to each copy
@@ -31,13 +32,16 @@ npm run build
 The main evaluation function that orchestrates the benchmark process.
 
 #### Parameters:
+
 - `initialPrompt`: String describing the program to create
 - `codingAgent`: Function that generates code based on a prompt
 - `updatePrompt`: String describing the updates to apply
 - `config`: Optional configuration object
 
 #### Returns:
+
 An `EvaluationResult` object containing:
+
 - Original program path
 - Results from each update instance
 - Execution metadata
@@ -47,29 +51,26 @@ An `EvaluationResult` object containing:
 ### Using Shell Script Agent
 
 ```typescript
-import { eval, createShellAgent } from 'code-quality-benchmark';
+import { eval, createShellAgent } from "code-quality-benchmark";
 
 // Create a coding agent from a shell script
-const codingAgent = createShellAgent('./my-coding-script.sh');
+const codingAgent = createShellAgent("./my-coding-script.sh");
 
-const result = await eval(
-  "Create a calculator app",
-  codingAgent,
-  "Add error handling and validation",
-  {
-    logLevel: 'debug',
-    cleanupAfterRun: false
-  }
-);
+const result = await eval("Create a calculator app", codingAgent, "Add error handling and validation", {
+  logLevel: "debug",
+  cleanupAfterRun: false,
+});
 ```
 
 ### Shell Script Interface
 
 The shell script receives:
+
 - **Arguments**: `$1` = prompt, `$2` = folder path
 - **Environment Variables**: `CODING_PROMPT`, `CODING_FOLDER`
 
 Example shell script:
+
 ```bash
 #!/bin/bash
 PROMPT="$1"

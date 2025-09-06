@@ -16,7 +16,6 @@ export type DriverAgentConfig = Pick<
   "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers" | "resume"
 >;
 
-
 /*************************************
     Custom DriverAgentErrors
 ***************************************/
@@ -57,7 +56,9 @@ export class DriverAgentExecutionError extends Error {
 
 export class DriverAgentUnexpectedTerminationError extends Error {
   constructor() {
-    super("Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)");
+    super(
+      "Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)",
+    );
     this.name = "DriverAgentUnexpectedTerminationError";
   }
 }
@@ -78,7 +79,9 @@ export class DriverAgent {
     private readonly config: DriverAgentConfig,
     private readonly logger: Logger = Logger.getInstance(),
   ) {
-    logger.debug(`DriverAgent (for testing functionality) initialized with ${JSON.stringify(config)}`);
+    logger.debug(
+      `DriverAgent (for testing functionality) initialized with ${JSON.stringify(config)}`,
+    );
   }
 
   getConfig() {
@@ -128,7 +131,10 @@ export class DriverAgent {
     throw new DriverAgentUnexpectedTerminationError();
   }
 
-  async query<T extends z.ZodType>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
+  async query<T extends z.ZodType>(
+    prompt: string,
+    outputSchema: T,
+  ): Promise<z.infer<T>> {
     const fullPrompt = dedent`
       ${prompt}
 
@@ -145,7 +151,9 @@ export class DriverAgent {
       return validated;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        throw new DriverAgentExecutionError(`Validation failed: ${z.prettifyError(error)}`);
+        throw new DriverAgentExecutionError(
+          `Validation failed: ${z.prettifyError(error)}`,
+        );
       }
       throw new DriverAgentExecutionError(
         `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
@@ -159,7 +167,9 @@ export class DriverAgent {
       return responseMatch[1].trim();
     }
 
-    throw new DriverAgentExecutionError("Driver agent response was not wrapped in <response> tags");
+    throw new DriverAgentExecutionError(
+      "Driver agent response was not wrapped in <response> tags",
+    );
   }
 
   getSessionId(): string | undefined {
