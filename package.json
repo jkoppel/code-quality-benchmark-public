@@ -8,8 +8,9 @@
   "scripts": {
     "build": "tsc",
     "check": "tsc --noEmit --pretty",
-    "check:all": "npm run check && npm run lint",
-    "lint": "eslint src/",
+    "check:all": "npm run check && biome check .",
+    "lint": "biome lint src/",
+    "format": "biome format --write .",
     "dev": "tsc --watch",
     "benchmark": "npm run build && node dist/benchmark-runner.js",
     "benchmark:existing": "npm run build && node dist/benchmark-runner-existing.js",
@@ -42,11 +43,8 @@
     "zod": "^4.1.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.3",
     "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^8.42.0",
-    "@typescript-eslint/parser": "^8.42.0",
-    "eslint": "^9.34.0",
-    "typescript": "^5.9.2",
-    "typescript-eslint": "^8.42.0"
+    "typescript": "^5.9.2"
   }
 }
