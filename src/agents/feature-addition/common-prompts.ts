@@ -6,7 +6,11 @@ Follow these guidelines:
 4. Handle errors appropriately
 5. Follow the language's best practices and conventions`;
 
-export function getFullPrompt(updatePrompt: string, folderPath: string, port: number): string {
+export function getFullPrompt(
+  updatePrompt: string,
+  folderPath: string,
+  port: number,
+): string {
   return `
 Working directory: ${folderPath}
 

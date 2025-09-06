@@ -1,16 +1,18 @@
-import pino from 'pino';
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
+import pino from "pino";
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 function validateLogLevel(envValue: string | undefined): LogLevel | null {
   if (!envValue) return null;
-  const validLevels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+  const validLevels: LogLevel[] = ["debug", "info", "warn", "error"];
   if (validLevels.includes(envValue as LogLevel)) {
     return envValue as LogLevel;
   }
-  throw new Error(`Invalid LOG_LEVEL: ${envValue}. Valid values are: ${validLevels.join(', ')}`);
+  throw new Error(
+    `Invalid LOG_LEVEL: ${envValue}. Valid values are: ${validLevels.join(", ")}`,
+  );
 }
 
 export interface LogEntry {
@@ -20,7 +22,7 @@ export interface LogEntry {
   context?: Record<string, unknown>;
 }
 
-const logs = './logs';
+const logs = "./logs";
 if (!fs.existsSync(logs)) {
   fs.mkdirSync(logs);
 }
@@ -28,32 +30,34 @@ if (!fs.existsSync(logs)) {
 const transport = pino.transport({
   targets: [
     {
-      target: 'pino-pretty',
-      level: 'debug',
+      target: "pino-pretty",
+      level: "debug",
       options: {
         colorize: true,
-        ignore: 'pid,hostname',
+        ignore: "pid,hostname",
         destination: process.stderr.fd,
       },
     },
     {
-      target: 'pino/file',
-      level: 'debug',
+      target: "pino/file",
+      level: "debug",
       options: {
-        destination: path.join(logs, 'benchmark.log'),
+        destination: path.join(logs, "benchmark.log"),
       },
     },
   ],
 });
 
 const pinoLogger = pino(transport);
-pinoLogger.level = 'trace';
+pinoLogger.level = "trace";
 
 export class Logger {
   private static instance: Logger;
   private pino: pino.Logger;
 
-  constructor(logLevel: LogLevel = validateLogLevel(process.env.LOG_LEVEL) || 'info') {
+  constructor(
+    logLevel: LogLevel = validateLogLevel(process.env.LOG_LEVEL) || "info",
+  ) {
     this.pino = pinoLogger;
     this.setLogLevel(logLevel);
   }
@@ -69,7 +73,7 @@ export class Logger {
   }
 
   setLogLevel(level: LogLevel): void {
-    this.pino.level = level === 'warn' ? 'warn' : level;
+    this.pino.level = level === "warn" ? "warn" : level;
   }
 
   debug(message: string, context?: Record<string, unknown>): void {
@@ -105,32 +109,32 @@ export class Logger {
   }
 
   getLogs(): LogEntry[] {
-    console.warn('getLogs() is not supported with pino logger');
+    console.warn("getLogs() is not supported with pino logger");
     return [];
   }
 
   clearLogs(): void {
-    console.warn('clearLogs() is not supported with pino logger');
+    console.warn("clearLogs() is not supported with pino logger");
   }
 
   getLogsByLevel(_level: LogLevel): LogEntry[] {
-    console.warn('getLogsByLevel() is not supported with pino logger');
+    console.warn("getLogsByLevel() is not supported with pino logger");
     return [];
   }
 
   getLogsAfter(_timestamp: Date): LogEntry[] {
-    console.warn('getLogsAfter() is not supported with pino logger');
+    console.warn("getLogsAfter() is not supported with pino logger");
     return [];
   }
 
   formatLog(entry: LogEntry): string {
     const timestamp = entry.timestamp.toISOString();
-    const contextStr = entry.context ? ` ${JSON.stringify(entry.context)}` : '';
+    const contextStr = entry.context ? ` ${JSON.stringify(entry.context)}` : "";
     return `[${timestamp}] [${entry.level.toUpperCase()}] ${entry.message}${contextStr}`;
   }
 
   exportLogs(): string {
-    console.warn('exportLogs() is not supported with pino logger');
-    return '';
+    console.warn("exportLogs() is not supported with pino logger");
+    return "";
   }
 }

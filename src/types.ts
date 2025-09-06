@@ -1,9 +1,13 @@
-export type CodingAgent = (prompt: string, folderPath: string, port?: number) => Promise<void>;
+export type CodingAgent = (
+  prompt: string,
+  folderPath: string,
+  port?: number,
+) => Promise<void>;
 
 export interface EvaluationConfig {
   workspaceRoot?: string;
   timeout?: number;
-  logLevel?: 'debug' | 'info' | 'warn' | 'error';
+  logLevel?: "debug" | "info" | "warn" | "error";
   claudeConfig?: ClaudeAgentConfig;
 }
 
@@ -52,17 +56,16 @@ export class EvaluationError extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly details?: unknown
+    public readonly details?: unknown,
   ) {
     super(message);
-    this.name = 'EvaluationError';
+    this.name = "EvaluationError";
   }
 }
 
 export class AgentExecutionError extends EvaluationError {
   constructor(message: string, details?: unknown) {
-    super(message, 'AGENT_EXECUTION_ERROR', details);
-    this.name = 'AgentExecutionError';
+    super(message, "AGENT_EXECUTION_ERROR", details);
+    this.name = "AgentExecutionError";
   }
 }
-

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /*********************************
     For report
@@ -18,26 +18,30 @@ export interface TestSuiteResults {
     skipped: number;
     duration: number;
   };
-  results: TestResult[]
+  results: TestResult[];
 }
 
 export const TestResultSchema = z.object({
   name: z.string(),
-  outcome: z.discriminatedUnion('status', [
+  outcome: z.discriminatedUnion("status", [
     z.object({
-      status: z.literal('passed'),
-      howTested: z.string().describe('Description of what was done to test this, if not obvious')
+      status: z.literal("passed"),
+      howTested: z
+        .string()
+        .describe("Description of what was done to test this, if not obvious"),
     }),
     z.object({
-      status: z.literal('failed'),
+      status: z.literal("failed"),
       reason: z.string(),
-      howTested: z.string().describe('Description of what was done to test this, if not obvious')
+      howTested: z
+        .string()
+        .describe("Description of what was done to test this, if not obvious"),
     }),
     z.object({
-      status: z.literal('skipped'),
-      reason: z.string()
-    })
-  ])
+      status: z.literal("skipped"),
+      reason: z.string(),
+    }),
+  ]),
 });
 
 export type TestResult = z.infer<typeof TestResultSchema>;

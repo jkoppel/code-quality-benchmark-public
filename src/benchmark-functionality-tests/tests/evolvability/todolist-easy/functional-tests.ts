@@ -11,7 +11,8 @@ const toyTest: NonVisionTestCase = {
       name: "Toy test that always passes",
       outcome: {
         status: "passed",
-        howTested: "This is a constant test that always returns passed for e2e testing",
+        howTested:
+          "This is a constant test that always returns passed for e2e testing",
       },
     };
   },
@@ -22,8 +23,13 @@ const agentAlwaysPassesTest: NonVisionTestCase = {
   type: "non-vision" as const,
   description: "Simple agent response test",
   async run(agent: NonVisionTestCaseAgent): Promise<TestResult> {
-    return await agent.check("Respond with a test result indicating this test passed");
+    return await agent.check(
+      "Respond with a test result indicating this test passed",
+    );
   },
 };
 
-export default new Suite("Todolist Easy Toy Tests", [toyTest, agentAlwaysPassesTest]);
+export default new Suite("Todolist Easy Toy Tests", [
+  toyTest,
+  agentAlwaysPassesTest,
+]);

@@ -54,7 +54,11 @@ export const gracefullyCloseSet = new Set<() => Promise<void>>();
 const killSet = new Set<() => void>();
 
 export async function gracefullyCloseAll() {
-  await Promise.all(Array.from(gracefullyCloseSet).map((gracefullyClose) => gracefullyClose().catch((e) => {})));
+  await Promise.all(
+    Array.from(gracefullyCloseSet).map((gracefullyClose) =>
+      gracefullyClose().catch((e) => {}),
+    ),
+  );
 }
 
 export function gracefullyProcessExitDoNotHang(code: number) {
@@ -109,7 +113,9 @@ const processHandlers = {
   SIGTERM: sigtermHandler,
   SIGHUP: sighupHandler,
 };
-function addProcessHandlerIfNeeded(name: "exit" | "SIGINT" | "SIGTERM" | "SIGHUP") {
+function addProcessHandlerIfNeeded(
+  name: "exit" | "SIGINT" | "SIGTERM" | "SIGHUP",
+) {
   if (!installedHandlers.has(name)) {
     installedHandlers.add(name);
     process.on(name, processHandlers[name]);
@@ -117,14 +123,21 @@ function addProcessHandlerIfNeeded(name: "exit" | "SIGINT" | "SIGTERM" | "SIGHUP
 }
 function removeProcessHandlersIfNeeded() {
   if (killSet.size) return;
-  for (const handler of installedHandlers) process.off(handler, processHandlers[handler]);
+  for (const handler of installedHandlers)
+    process.off(handler, processHandlers[handler]);
   installedHandlers.clear();
 }
 
-export async function launchProcess(options: LaunchProcessOptions): Promise<LaunchResult> {
+export async function launchProcess(
+  options: LaunchProcessOptions,
+): Promise<LaunchResult> {
   const stdio: ("ignore" | "pipe")[] =
-    options.stdio === "pipe" ? ["ignore", "pipe", "pipe", "pipe", "pipe"] : ["pipe", "pipe", "pipe"];
-  options.log(`<launching> ${options.command} ${options.args ? options.args.join(" ") : ""}`);
+    options.stdio === "pipe"
+      ? ["ignore", "pipe", "pipe", "pipe", "pipe"]
+      : ["pipe", "pipe", "pipe"];
+  options.log(
+    `<launching> ${options.command} ${options.args ? options.args.join(" ") : ""}`,
+  );
   const spawnOptions: childProcess.SpawnOptions = {
     // On non-windows platforms, `detached: true` makes child process a leader of a new
     // process group, making it possible to kill child process tree with `.kill(-pid)` command.
@@ -135,10 +148,16 @@ export async function launchProcess(options: LaunchProcessOptions): Promise<Laun
     shell: options.shell,
     stdio,
   };
-  const spawnedProcess = childProcess.spawn(options.command, options.args || [], spawnOptions);
+  const spawnedProcess = childProcess.spawn(
+    options.command,
+    options.args || [],
+    spawnOptions,
+  );
 
   const cleanup = async () => {
-    options.log(`[pid=${spawnedProcess.pid || "N/A"}] starting temporary directories cleanup (if any needed cleanup)`);
+    options.log(
+      `[pid=${spawnedProcess.pid || "N/A"}] starting temporary directories cleanup (if any needed cleanup)`,
+    );
     const errors = await removeFolders(options.tempDirectories);
     for (let i = 0; i < options.tempDirectories.length; ++i) {
       if (errors[i])
@@ -146,7 +165,9 @@ export async function launchProcess(options: LaunchProcessOptions): Promise<Laun
           `[pid=${spawnedProcess.pid || "N/A"}] exception while removing ${options.tempDirectories[i]}: ${errors[i]}`,
         );
     }
-    options.log(`[pid=${spawnedProcess.pid || "N/A"}] finished temporary directories cleanup`);
+    options.log(
+      `[pid=${spawnedProcess.pid || "N/A"}] finished temporary directories cleanup`,
+    );
   };
 
   // Prevent Unhandled 'error' event.
@@ -179,7 +200,9 @@ export async function launchProcess(options: LaunchProcessOptions): Promise<Laun
   let fulfillCleanup = () => {};
   const waitForCleanup = new Promise<void>((f) => (fulfillCleanup = f));
   spawnedProcess.once("close", (exitCode, signal) => {
-    options.log(`[pid=${spawnedProcess.pid}] <process did exit: exitCode=${exitCode}, signal=${signal}>`);
+    options.log(
+      `[pid=${spawnedProcess.pid}] <process did exit: exitCode=${exitCode}, signal=${signal}>`,
+    );
     processClosed = true;
     gracefullyCloseSet.delete(gracefullyClose);
     killSet.delete(killProcessAndCleanup);
@@ -226,15 +249,29 @@ export async function launchProcess(options: LaunchProcessOptions): Promise<Laun
       // Force kill the browser.
       try {
         if (process.platform === "win32") {
-          const taskkillProcess = childProcess.spawnSync(`taskkill /pid ${spawnedProcess.pid} /T /F`, { shell: true });
-          const [stdout, stderr] = [taskkillProcess.stdout.toString(), taskkillProcess.stderr.toString()];
-          if (stdout) options.log(`[pid=${spawnedProcess.pid}] taskkill stdout: ${stdout}`);
-          if (stderr) options.log(`[pid=${spawnedProcess.pid}] taskkill stderr: ${stderr}`);
+          const taskkillProcess = childProcess.spawnSync(
+            `taskkill /pid ${spawnedProcess.pid} /T /F`,
+            { shell: true },
+          );
+          const [stdout, stderr] = [
+            taskkillProcess.stdout.toString(),
+            taskkillProcess.stderr.toString(),
+          ];
+          if (stdout)
+            options.log(
+              `[pid=${spawnedProcess.pid}] taskkill stdout: ${stdout}`,
+            );
+          if (stderr)
+            options.log(
+              `[pid=${spawnedProcess.pid}] taskkill stderr: ${stderr}`,
+            );
         } else {
           process.kill(-spawnedProcess.pid, "SIGKILL");
         }
       } catch (e) {
-        options.log(`[pid=${spawnedProcess.pid}] exception while trying to kill process: ${e}`);
+        options.log(
+          `[pid=${spawnedProcess.pid}] exception while trying to kill process: ${e}`,
+        );
         // the process might have already stopped
       }
     } else {
@@ -246,15 +283,21 @@ export async function launchProcess(options: LaunchProcessOptions): Promise<Laun
 
   function killProcessAndCleanup() {
     killProcess();
-    options.log(`[pid=${spawnedProcess.pid || "N/A"}] starting temporary directories cleanup`);
+    options.log(
+      `[pid=${spawnedProcess.pid || "N/A"}] starting temporary directories cleanup`,
+    );
     for (const dir of options.tempDirectories) {
       try {
         fs.rmSync(dir, { force: true, recursive: true, maxRetries: 5 });
       } catch (e) {
-        options.log(`[pid=${spawnedProcess.pid || "N/A"}] exception while removing ${dir}: ${e}`);
+        options.log(
+          `[pid=${spawnedProcess.pid || "N/A"}] exception while removing ${dir}: ${e}`,
+        );
       }
     }
-    options.log(`[pid=${spawnedProcess.pid || "N/A"}] finished temporary directories cleanup`);
+    options.log(
+      `[pid=${spawnedProcess.pid || "N/A"}] finished temporary directories cleanup`,
+    );
   }
 
   function killAndWait() {
@@ -262,7 +305,11 @@ export async function launchProcess(options: LaunchProcessOptions): Promise<Laun
     return waitForCleanup;
   }
 
-  return { launchedProcess: spawnedProcess, gracefullyClose, kill: killAndWait };
+  return {
+    launchedProcess: spawnedProcess,
+    gracefullyClose,
+    kill: killAndWait,
+  };
 }
 
 export function envArrayToObject(env: { name: string; value: string }[]): Env {
