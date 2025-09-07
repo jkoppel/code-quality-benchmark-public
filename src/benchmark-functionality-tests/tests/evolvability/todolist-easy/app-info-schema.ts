@@ -1,4 +1,5 @@
 import * as z from "zod";
+import dedent from "dedent";
 
 /*********************************
       UI Info
@@ -33,11 +34,14 @@ const BaseTaskInfo = z.object({
     .describe(
       "All the statuses for a task implemented by this todo app -- make sure to capture all of them",
     ),
-  viewsForStatus: z
-    .array(UIInfo)
-    .describe(`All the views of or UIs that the app exposes for the status of the task. Example:
-      [ { shortDescription: "Checkbox to mark task as done" },
-        { shortDescription: "Status dropdown menu", howToAccess: "Click 'Edit' button on task" } ]`),
+  viewsForStatus: z.array(UIInfo).describe(
+    dedent`
+        All the views of or UIs that the app exposes for the status of the task.
+        Use a UIInfo for each distinct view/UI.
+        Example:
+        [ { shortDescription: "Checkbox to mark task as done" },
+          { shortDescription: "Status dropdown menu", howToAccess: "Click 'Edit' button on task" } ]`,
+  ),
 });
 
 /** Info about the schema / model of a todo item in the final todo list app */
@@ -97,7 +101,7 @@ const TodoListInfo = z.object({
     .string()
     .optional()
     .describe(
-      "Notes about things that seem very clearly buggy. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs. The notes should include enough detail to be usable also by someone who can explore the UI but who doesn't have access to the code.",
+      "Notes about things that seem very clearly buggy. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs. The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.",
     ),
 });
 
