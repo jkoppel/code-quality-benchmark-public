@@ -150,7 +150,7 @@ export class DriverAgent {
 
       The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema), null, 2)}`;
 
-    const result = await this.ask(fullPrompt);
+    const result = await this.ask(fullPrompt, config);
 
     try {
       const raw = this.extractJsonFromResponse(result);
