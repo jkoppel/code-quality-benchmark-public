@@ -164,7 +164,14 @@ async function startDevServer(
     // - Vite apps ignore PORT env var but accept --port CLI argument
     // This approach works for both since each ignores what it doesn't need
     command: "npm",
-    args: ["run", "start", "--", "--port", sutConfig.port.toString(), "--no-open"],
+    args: [
+      "run",
+      "start",
+      "--",
+      "--port",
+      sutConfig.port.toString(),
+      "--no-open",
+    ],
     env: {
       ...DEFAULT_ENVIRONMENT_VARIABLES,
       ...process.env,

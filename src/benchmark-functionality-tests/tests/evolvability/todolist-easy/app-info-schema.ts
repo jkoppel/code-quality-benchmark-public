@@ -104,4 +104,4 @@ const TodoListInfo = z.object({
 export const TodoListAppInfo = z.object({
   todoListInfo: TodoListInfo,
   taskInfo: TaskInfo,
-})
+});
