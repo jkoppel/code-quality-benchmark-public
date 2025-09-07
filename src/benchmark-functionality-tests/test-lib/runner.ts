@@ -42,12 +42,7 @@ export class TestRunner {
 
   async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
     const startTime = Date.now();
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    await using _server = await startDevServer(
-      this.config.sutConfig,
-      this.logger,
-    );
+    await using _server = await startDevServer(this.config.sutConfig, this.logger);
 
     const results = await Promise.all(
       suite.getTests().map(async (test) => {

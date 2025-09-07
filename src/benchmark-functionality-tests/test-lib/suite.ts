@@ -3,7 +3,6 @@ import type {
   NonVisionTestCaseAgent,
   VisionTestCaseAgent,
 } from "./test-case-agent.js";
-import { getTestSuite, parseBenchmarkPath } from "./test-registry.js";
 
 export type TestCase = VisionTestCase | NonVisionTestCase;
 

@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 import * as path from "node:path";
-import {
-  TestRunner,
-  type TestRunnerConfig,
-} from "./benchmark-functionality-tests/test-lib/runner.js";
-import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/suite.js";
+import { TestRunner, type TestRunnerConfig } from "./benchmark-functionality-tests/test-lib/runner.js";
+import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/test-registry.js";
 import { Logger } from "./utils/logger.js";
 
 async function main() {
@@ -12,9 +9,7 @@ async function main() {
   const systemUnderTest = process.argv[3];
 
   if (!benchmarkPath || !systemUnderTest) {
-    console.error(
-      "Usage: npm run benchmark:test-functionality <benchmark-path> <attempt-at-benchmark>",
-    );
+    console.error("Usage: npm run benchmark:test-functionality <benchmark-path> <attempt-at-benchmark>");
     console.error(
       "Example: npm run benchmark:test-functionality benchmarks/evolvability/calculator /tmp/benchmark-xxx/original-program",
     );
