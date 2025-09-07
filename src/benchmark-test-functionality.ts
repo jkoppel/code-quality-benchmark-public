@@ -4,7 +4,7 @@ import {
   TestRunner,
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
-import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/suite.js";
+import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/test-registry.js";
 import { Logger } from "./utils/logger.js";
 
 async function main() {
@@ -31,6 +31,7 @@ async function main() {
         folderPath: resolvedSystemUnderTest,
         port: 3000, // TODO: Is this rly where we shld be specifying the port?
       },
+      logger,
     };
     const testRunner = new TestRunner(config, logger);
 

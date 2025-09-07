@@ -15,6 +15,7 @@ import detect from "detect-port";
 import { match } from "ts-pattern";
 import { Logger } from "../../utils/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
+import { FixtureAgent, FixturesEnv } from "./fixture.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite } from "./suite.js";
 import {
@@ -31,24 +32,40 @@ export interface SutConfig {
 
 export interface TestRunnerConfig {
   sutConfig: SutConfig;
+  logger: Logger;
   // timeoutMs: number;
 }
 
 export class TestRunner {
-  constructor(
-    private readonly config: TestRunnerConfig,
-    private readonly logger: Logger = Logger.getInstance(),
-  ) {}
+  constructor(private readonly config: TestRunnerConfig) {}
+
+  getLogger() {
+    return this.config.logger;
+  }
 
   async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
     const startTime = Date.now();
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     await using _server = await startDevServer(
       this.config.sutConfig,
-      this.logger,
+      this.getLogger(),
     );
 
+    // Set up fixtures
+    const fixturesEnv = new FixturesEnv(
+      new Map(
+        await Promise.all(
+          suite.getFixtureMakers().map(async (fixtureMaker) => {
+            const fixture = await fixtureMaker.initialize(
+              // Each fixture gets its own FixtureAgent instance
+              new FixtureAgent(this.config.sutConfig, this.getLogger()),
+            );
+            return [fixtureMaker.id, fixture] as const;
+          }),
+        ),
+      ),
+    );
+
+    // Run tests
     const results = await Promise.all(
       suite.getTests().map(async (test) => {
         return await match(test)
@@ -56,14 +73,24 @@ export class TestRunner {
             { type: "vision" },
             async (visionTest) =>
               await visionTest.run(
-                new VisionTestCaseAgent(this.config.sutConfig, this.logger),
+                new VisionTestCaseAgent(
+                  this.config.sutConfig,
+                  this.getLogger(),
+                ),
+                fixturesEnv,
+                this.config,
               ),
           )
           .with(
             { type: "non-vision" },
             async (nonVisionTest) =>
               await nonVisionTest.run(
-                new NonVisionTestCaseAgent(this.config.sutConfig, this.logger),
+                new NonVisionTestCaseAgent(
+                  this.config.sutConfig,
+                  this.getLogger(),
+                ),
+                fixturesEnv,
+                this.config,
               ),
           )
           .exhaustive();

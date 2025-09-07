@@ -12,6 +12,11 @@
 
 import type { Suite } from "./suite.js";
 
+export async function loadTestSuite(benchmarkPath: string): Promise<Suite> {
+  const { benchmarkSet, task } = parseBenchmarkPath(benchmarkPath);
+  return await getTestSuite(benchmarkSet, task);
+}
+
 /**
  * Parses a benchmark path following the convention: benchmarks/<benchmarkSet>/<task>
  *

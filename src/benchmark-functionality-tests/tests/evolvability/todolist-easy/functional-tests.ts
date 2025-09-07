@@ -1,6 +1,41 @@
+import * as z from "zod";
+import type {
+  FixtureAgent,
+  FixtureMaker,
+  FixturesEnv,
+} from "../../../test-lib/fixture.js";
 import type { TestResult } from "../../../test-lib/report.js";
 import { type NonVisionTestCase, Suite } from "../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../test-lib/test-case-agent.js";
+import { TodoListAppInfo } from "./app-info-schema.js";
+import dedent from "dedent";
+import type { TestRunnerConfig } from "../../../test-lib/runner.js";
+
+/*************************************
+    Fixture
+***************************************/
+
+const appInfoFixtureId = "todoListAppInfo";
+
+const todoAppFixtureMaker: FixtureMaker = {
+  id: appInfoFixtureId,
+  async initialize(agent: FixtureAgent) {
+    return await agent.query(
+      dedent`
+        You are a senior developer trying to get a preliminary understanding of this app. You have access to the code of the app in this directory; you can also use Playwright MCP (the dev sever has already been started for you).
+        Your task:
+        1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to get the info requested in the following schema.
+        2. Collect and return that information.
+        If there's stuff you can't figure out, try to at least offer suggestions for what paths through the UI to investigate or look at.
+        Your goal is *not* to actually test the app -- it's merely to get a high level understanding of it and flag potential issues for others to investigate in more depth.`,
+      TodoListAppInfo,
+    );
+  },
+};
+
+/*************************************
+    Test Cases
+***************************************/
 
 const toyTest: NonVisionTestCase = {
   type: "non-vision" as const,
@@ -18,18 +53,39 @@ const toyTest: NonVisionTestCase = {
   },
 };
 
-// Simple test case to check if can call CC
-const agentAlwaysPassesTest: NonVisionTestCase = {
+// // Simple test case to check if can call CC
+// const agentAlwaysPassesTest: NonVisionTestCase = {
+//   type: "non-vision" as const,
+//   description: "Simple agent response test",
+//   async run(agent: NonVisionTestCaseAgent): Promise<TestResult> {
+//     return await agent.check("Respond with a test result indicating this test passed");
+//   },
+// };
+
+const canUseFixturesTest: NonVisionTestCase = {
   type: "non-vision" as const,
-  description: "Simple agent response test",
-  async run(agent: NonVisionTestCaseAgent): Promise<TestResult> {
-    return await agent.check(
-      "Respond with a test result indicating this test passed",
-    );
+  description: "Test that can use fixtures",
+  async run(
+    agent: NonVisionTestCaseAgent,
+    fixtures: FixturesEnv,
+    config: TestRunnerConfig,
+  ): Promise<TestResult> {
+    const fixture = fixtures.get(appInfoFixtureId) as z.infer<
+      typeof TodoListAppInfo
+    >;
+    config.logger.info("Using fixture", fixture);
+    return {
+      name: "Toy const pass 2",
+      outcome: {
+        status: "passed",
+        howTested:
+          "This is a constant test that always returns passed for e2e testing",
+      },
+    };
   },
 };
 
 export default new Suite("Todolist Easy Toy Tests", [
   toyTest,
-  agentAlwaysPassesTest,
-]);
+  canUseFixturesTest,
+]).withFixtures([todoAppFixtureMaker]);
