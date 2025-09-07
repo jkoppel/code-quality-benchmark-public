@@ -159,8 +159,12 @@ async function startDevServer(
   // because a naive, vibe-coded approach had issues with stopping the dev server
   const { launchedProcess, gracefullyClose } = await launchProcess({
     // Crucial assumption: all the apps under test have a `npm run start` script
+    // We pass both PORT env var and --port CLI args to support different dev server types:
+    // - CRA apps (react-scripts) respect the PORT environment variable
+    // - Vite apps ignore PORT env var but accept --port CLI argument
+    // This approach works for both since each ignores what it doesn't need
     command: "npm",
-    args: ["run", "start"],
+    args: ["run", "start", "--", "--port", sutConfig.port.toString(), "--no-open"],
     env: {
       ...DEFAULT_ENVIRONMENT_VARIABLES,
       ...process.env,
