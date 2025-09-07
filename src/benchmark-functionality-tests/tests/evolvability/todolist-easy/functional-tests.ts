@@ -175,6 +175,31 @@ const stateSynchDueDate = makeStateSynchTest(
   (appInfo) => appInfo.taskInfo.viewsForDueDate,
 );
 
+// Status variety test
+
+const checkMoreThanDoneNotDoneStatuses: NonVisionTestCase = {
+  type: "non-vision" as const,
+  description: "Test that the app has more than done/not-done statuses",
+  async run(
+    agent: NonVisionTestCaseAgent,
+    fixtures: FixturesEnv,
+    config: TestRunnerConfig,
+  ): Promise<TestResult> {
+    const appInfo = fixtures.get(appInfoFixtureId) as z.infer<
+      typeof TodoListAppInfo
+    >;
+    const availableStatuses = appInfo.taskInfo.statuses;
+
+    return agent.check(dedent`
+      ${makeBackground(config)}
+      The app has these available statuses: ${JSON.stringify(availableStatuses)}
+
+      Check if this todo app supports more sophisticated status tracking than just basic done/not-done functionality.
+      Mark the test as passing if there are more statuses than done/not-done.
+      Mark as failing if there's only done/not-done (or worse).`);
+  },
+};
+
 // Attribute isolation tests
 
 const attributeIsolationPriority = makeAttributeIsolationTest(
@@ -195,10 +220,14 @@ const attributeIsolationDueDate = makeAttributeIsolationTest(
   "Change task 1's due date to a different date",
 );
 
-export default new Suite("Todolist Easy Toy Tests", [
+export default new Suite("Todolist Functionality Tests", [
+  // Basic
+  checkMoreThanDoneNotDoneStatuses,
+  // State synch
   stateSynchStatus,
   stateSynchPriority,
   stateSynchDueDate,
+  // Changing one attribute of a task doesn't affect attributes of other tasks
   attributeIsolationPriority,
   attributeIsolationStatus,
   attributeIsolationDueDate,
