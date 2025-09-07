@@ -29,6 +29,7 @@ export interface SutConfig {
 
 export interface TestRunnerConfig {
   sutConfig: SutConfig;
+  logger: Logger;
   // timeoutMs: number;
 }
 
@@ -46,7 +47,7 @@ export class TestRunner {
     const fixturesEnv = new FixturesEnv(
       new Map(
         await Promise.all(
-          suite.getFixtureInfos().map(async (fixtureMaker) => {
+          suite.getFixtureMakers().map(async (fixtureMaker) => {
             const fixture = await fixtureMaker.initialize(
               // Each fixture gets its own FixtureAgent instance
               new FixtureAgent(this.config.sutConfig, this.logger),
@@ -64,12 +65,12 @@ export class TestRunner {
           .with(
             { type: "vision" },
             async (visionTest) =>
-              await visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger), fixturesEnv),
+              await visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger), fixturesEnv, this.config),
           )
           .with(
             { type: "non-vision" },
             async (nonVisionTest) =>
-              await nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger), fixturesEnv),
+              await nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger), fixturesEnv, this.config),
           )
           .exhaustive();
       }),
