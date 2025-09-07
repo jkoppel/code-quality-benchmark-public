@@ -40,6 +40,11 @@ const appInfoReconFixtureMaker: FixtureMaker = {
     Test Case Factory
 ***************************************/
 
+const makeBackground = (config: SutConfig) => dedent`
+      You're testing a Todolist app.
+      You have access to the code of the app in this directory; you can also use Playwright MCP.
+      The dev server has been started at port ${config.port}`;
+
 function makeStateSynchTest(
   testName: string,
   stateName: string,
@@ -124,11 +129,6 @@ function makeAttributeIsolationTest(
 /*************************************
     Test Cases
 ***************************************/
-
-const makeBackground = (config: SutConfig) => dedent`
-      You're testing a Todolist app.
-      You have access to the code of the app in this directory; you can also use Playwright MCP.
-      The dev server has been started at port ${config.port}`;
 
 // const toyTest: NonVisionTestCase = {
 //   type: "non-vision" as const,
