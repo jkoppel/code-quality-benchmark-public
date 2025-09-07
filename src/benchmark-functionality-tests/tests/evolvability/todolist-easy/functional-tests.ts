@@ -27,7 +27,7 @@ const todoAppFixtureMaker: FixtureMaker = {
         1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to get the info requested in the following schema.
         2. Collect and return that information.
         If there's stuff you can't figure out, try to at least offer suggestions for what paths through the UI to investigate or look at.
-        Your goal is *not* to actually test the app -- it's merely to get a high level understanding of it and flag potential issues for others to investigate in more depth.`,
+        Your goal is *not* to actually test the app -- it's merely to enumerate all the UI / views for the various pieces of state and flag potential issues for others to investigate in more depth. That is, although you aren't testing the app, you still need to thoroughly explore and record how the key pieces of state are exposed to users.`,
       TodoListAppInfo,
     );
   },

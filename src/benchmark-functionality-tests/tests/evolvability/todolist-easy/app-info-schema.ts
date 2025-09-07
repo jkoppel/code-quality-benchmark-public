@@ -41,7 +41,7 @@ const BaseTaskInfo = z.object({
 });
 
 /** Info about the schema / model of a todo item in the final todo list app */
-export const TaskInfo = BaseTaskInfo.extend({
+const TaskInfo = BaseTaskInfo.extend({
   priorityLevels: z
     .array(z.string())
     .describe(
@@ -82,7 +82,7 @@ export const TaskInfo = BaseTaskInfo.extend({
       Todo List
 **********************************/
 
-export const TodoListAppInfo = z.object({
+const TodoListInfo = z.object({
   viewsForAddingTask: z
     .array(UIInfo)
     .describe(
@@ -97,6 +97,11 @@ export const TodoListAppInfo = z.object({
     .string()
     .optional()
     .describe(
-      "Notes about things that seem very clearly buggy. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs.",
+      "Notes about things that seem very clearly buggy. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs. The notes should include enough detail to be usable also by someone who can explore the UI but who doesn't have access to the code.",
     ),
 });
+
+export const TodoListAppInfo = z.object({
+  todoListInfo: TodoListInfo,
+  taskInfo: TaskInfo,
+})
