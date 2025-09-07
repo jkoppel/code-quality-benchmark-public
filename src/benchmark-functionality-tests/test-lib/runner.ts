@@ -39,14 +39,17 @@ export interface TestRunnerConfig {
 export class TestRunner {
   constructor(
     private readonly config: TestRunnerConfig,
-    private readonly logger: Logger = Logger.getInstance(),
   ) {}
+
+  getLogger() {
+    return this.config.logger;
+  }
 
   async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
     const startTime = Date.now();
     await using _server = await startDevServer(
       this.config.sutConfig,
-      this.logger,
+      this.getLogger(),
     );
 
     // Set up fixtures
@@ -56,7 +59,7 @@ export class TestRunner {
           suite.getFixtureMakers().map(async (fixtureMaker) => {
             const fixture = await fixtureMaker.initialize(
               // Each fixture gets its own FixtureAgent instance
-              new FixtureAgent(this.config.sutConfig, this.logger),
+              new FixtureAgent(this.config.sutConfig, this.getLogger()),
             );
             return [fixtureMaker.id, fixture] as const;
           }),
@@ -72,7 +75,7 @@ export class TestRunner {
             { type: "vision" },
             async (visionTest) =>
               await visionTest.run(
-                new VisionTestCaseAgent(this.config.sutConfig, this.logger),
+                new VisionTestCaseAgent(this.config.sutConfig, this.getLogger()),
                 fixturesEnv,
                 this.config,
               ),
@@ -81,7 +84,7 @@ export class TestRunner {
             { type: "non-vision" },
             async (nonVisionTest) =>
               await nonVisionTest.run(
-                new NonVisionTestCaseAgent(this.config.sutConfig, this.logger),
+                new NonVisionTestCaseAgent(this.config.sutConfig, this.getLogger()),
                 fixturesEnv,
                 this.config,
               ),
