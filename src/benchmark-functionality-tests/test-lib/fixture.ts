@@ -7,7 +7,7 @@ import { VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG } from "./test-case-agent.
 
 export interface FixtureMaker {
   id: string;
-  initialize(agent: FixtureAgent): Promise<unknown>;
+  initialize(agent: FixtureAgent, sutConfig: SutConfig): Promise<unknown>;
 }
 
 export class FixturesEnv {

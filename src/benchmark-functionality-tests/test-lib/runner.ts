@@ -58,6 +58,7 @@ export class TestRunner {
             const fixture = await fixtureMaker.initialize(
               // Each fixture gets its own FixtureAgent instance
               new FixtureAgent(this.config.sutConfig, this.getLogger()),
+              this.config.sutConfig,
             );
             return [fixtureMaker.id, fixture] as const;
           }),
