@@ -42,10 +42,36 @@ async function main() {
     const result = await testRunner.runTestSuite(suite);
 
     // Handle result
-    logger.info(`✓ Suite "${suite.getName()}" completed successfully`);
+    if (result.summary.failed > 0) {
+      logger.error(
+        `✗ Suite "${suite.getName()}" failed: ${result.summary.failed}/${result.summary.total} tests failed`,
+      );
+
+      // Log each failing test
+      const failedTests = result.results.filter(
+        (r) => r.outcome.status === "failed",
+      );
+      failedTests.forEach((test) => {
+        if (test.outcome.status === "failed") {
+          logger.error(`  • ${test.name}: ${test.outcome.reason}`);
+        }
+      });
+    } else if (result.summary.skipped > 0) {
+      logger.warn(`⊘ ${result.summary.skipped} test(s) were skipped`);
+      const skippedTests = result.results.filter(
+        (r) => r.outcome.status === "skipped",
+      );
+      skippedTests.forEach((test) => {
+        if (test.outcome.status === "skipped") {
+          logger.warn(`  • ${test.name}: ${test.outcome.reason}`);
+        }
+      });
+    } else {
+      logger.info(`✓ All tests in suite ${suite.getName()} passed`);
+    }
     logger.info(JSON.stringify(result, null, 2));
 
-    logger.info("Test execution completed");
+    logger.info(`Test execution for ${suite.getName()} completed`);
   } catch (error) {
     logger.error(`Failed to run tests: ${String(error)}`);
     process.exit(1);
