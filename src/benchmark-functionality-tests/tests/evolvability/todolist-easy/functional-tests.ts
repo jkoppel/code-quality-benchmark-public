@@ -17,7 +17,7 @@ import type { TestRunnerConfig, SutConfig } from "../../../test-lib/runner.js";
 
 const appInfoFixtureId = "todoListAppInfo";
 
-const todoAppFixtureMaker: FixtureMaker = {
+const appInfoReconFixtureMaker: FixtureMaker = {
   id: appInfoFixtureId,
   async initialize(agent: FixtureAgent, config: SutConfig) {
     return await agent.query(
@@ -90,5 +90,5 @@ const canUseFixturesTest: NonVisionTestCase = {
 
 export default new Suite("Todolist Easy Toy Tests", [
   toyTest,
-  canUseFixturesTest,
-]).withFixtures([todoAppFixtureMaker]);
+  stateSynchStatus,
+]).withFixtures([appInfoReconFixtureMaker]);
