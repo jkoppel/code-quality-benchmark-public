@@ -48,9 +48,8 @@ const makeBackground = (config: SutConfig) => dedent`
 function makeStateSynchTest(
   testName: string,
   stateName: string,
-  viewsExtractor: (
-    appInfo: z.infer<typeof TodoListAppInfo>,
-  ) => z.infer<typeof TodoListAppInfo>["taskInfo"]["viewsForStatus"],
+  viewsExtractor: (appInfo: z.infer<typeof TodoListAppInfo>) => string,
+  overallGoal: string = `Your overall goal is to test synchronization of ${stateName.toLowerCase()}, broadly construed, as well as any synchronizations of this state with other key pieces of state`,
 ): NonVisionTestCase {
   return {
     type: "non-vision" as const,
@@ -69,9 +68,23 @@ function makeStateSynchTest(
 
       return agent.check(dedent`
         ${makeBackground(config)}
-        Here is some information that someone else gathered about the views of or UI elements for the ${stateName}: ${JSON.stringify(views)}
-        If the ${stateName} is only exposed in one way, mark the test as passing.
-        If the ${stateName} is exposed in more than one way in the UI, check if this state has been synchronized correctly across the different views. E.g., see if after changing the state via one view, the updated state is also reflected in the other view.`);
+        Here is some information that someone else gathered about the views of or UI elements for the ${stateName} (and related things):
+        ${views}
+
+        ${overallGoal}
+        In particular:
+        1. Skim the relevant code for more context -- it'll help with knowing what to focus on testing.
+        2. Think about what UI paths you have to explore to *thoroughly* test such synchronization before doing it.
+        E.g., if the ${stateName} is exposed in two ways, check if (i) changing it via one way also updates the other view and (ii) changing it via the other view also updates the first view.
+
+        Then evaluate as follows:
+        * If the ${stateName} is only exposed in one way and there are no interactions with other pieces of state, mark the test as passing.
+        * If the ${stateName} is exposed in more than one way in the UI, check if this state has been synchronized correctly across the different views.
+        
+        Examples of synchronization failures:
+        - For an app with both an icon/badge and a text label for the status: Status icon updates but text label doesn't change
+        - For an app with both a detailed view and a summary view: Status changes in the detailed view but not in the summary view
+        `);
     },
   };
 }
@@ -146,33 +159,26 @@ function makeAttributeIsolationTest(
 //   },
 // };
 
-// // Simple test case to check if can call CC
-// const agentAlwaysPassesTest: NonVisionTestCase = {
-//   type: "non-vision" as const,
-//   description: "Simple agent response test",
-//   async run(agent: NonVisionTestCaseAgent): Promise<TestResult> {
-//     return await agent.check("Respond with a test result indicating this test passed");
-//   },
-// };
-
 // State Synch tests
 
 const stateSynchStatus = makeStateSynchTest(
   "Test state synchronization of task status state (if applicable)",
   "status of a task",
-  (appInfo) => appInfo.taskInfo.viewsForStatus,
+  (appInfo) => dedent`
+  ${JSON.stringify(appInfo.taskInfo.viewsForStatus)}
+  ${JSON.stringify(appInfo.todoListInfo)}`,
 );
 
 const stateSynchPriority = makeStateSynchTest(
   "Test state synchronization of task priority state (if applicable)",
   "priority of a task",
-  (appInfo) => appInfo.taskInfo.viewsForPriority,
+  (appInfo) => JSON.stringify(appInfo.taskInfo.viewsForPriority),
 );
 
 const stateSynchDueDate = makeStateSynchTest(
   "Test state synchronization of task due date state (if applicable)",
   "due date of a task",
-  (appInfo) => appInfo.taskInfo.viewsForDueDate,
+  (appInfo) => JSON.stringify(appInfo.taskInfo.viewsForDueDate),
 );
 
 // Status variety test
