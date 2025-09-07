@@ -15,12 +15,10 @@ import detect from "detect-port";
 import { match } from "ts-pattern";
 import { Logger } from "../../utils/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
+import { FixtureAgent, FixturesEnv } from "./fixture.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite } from "./suite.js";
-import {
-  NonVisionTestCaseAgent,
-  VisionTestCaseAgent,
-} from "./test-case-agent.js";
+import { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -44,22 +42,34 @@ export class TestRunner {
     const startTime = Date.now();
     await using _server = await startDevServer(this.config.sutConfig, this.logger);
 
+    // Set up fixtures
+    const fixturesEnv = new FixturesEnv(
+      new Map(
+        await Promise.all(
+          suite.getFixtureInfos().map(async (fixtureMaker) => {
+            const fixture = await fixtureMaker.initialize(
+              // Each fixture gets its own FixtureAgent instance
+              new FixtureAgent(this.config.sutConfig, this.logger),
+            );
+            return [fixtureMaker.id, fixture] as const;
+          }),
+        ),
+      ),
+    );
+
+    // Run tests
     const results = await Promise.all(
       suite.getTests().map(async (test) => {
         return await match(test)
           .with(
             { type: "vision" },
             async (visionTest) =>
-              await visionTest.run(
-                new VisionTestCaseAgent(this.config.sutConfig, this.logger),
-              ),
+              await visionTest.run(new VisionTestCaseAgent(this.config.sutConfig, this.logger), fixturesEnv),
           )
           .with(
             { type: "non-vision" },
             async (nonVisionTest) =>
-              await nonVisionTest.run(
-                new NonVisionTestCaseAgent(this.config.sutConfig, this.logger),
-              ),
+              await nonVisionTest.run(new NonVisionTestCaseAgent(this.config.sutConfig, this.logger), fixturesEnv),
           )
           .exhaustive();
       }),
@@ -68,9 +78,7 @@ export class TestRunner {
     const duration = Date.now() - startTime;
     const passed = results.filter((r) => r.outcome.status === "passed").length;
     const failed = results.filter((r) => r.outcome.status === "failed").length;
-    const skipped = results.filter(
-      (r) => r.outcome.status === "skipped",
-    ).length;
+    const skipped = results.filter((r) => r.outcome.status === "skipped").length;
 
     return {
       name: suite.getName(),
@@ -101,10 +109,7 @@ const DEFAULT_ENVIRONMENT_VARIABLES = {
   DEBUG_COLORS: "1",
 };
 
-async function startDevServer(
-  sutConfig: SutConfig,
-  logger: Logger,
-): Promise<DevServerHandle> {
+async function startDevServer(sutConfig: SutConfig, logger: Logger): Promise<DevServerHandle> {
   // Check port availability first
   const availablePort = await detect(sutConfig.port);
 
@@ -117,9 +122,7 @@ async function startDevServer(
   }
 
   logger.info(`Port ${sutConfig.port.toString()} is available`);
-  logger.info(
-    `Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`,
-  );
+  logger.info(`Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`);
 
   const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
 
@@ -167,9 +170,7 @@ async function startDevServer(
     },
     onExit: (exitCode, signal) => {
       if (exitCode && exitCode !== 0) {
-        logger.warn(
-          `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
-        );
+        logger.warn(`Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`);
       } else {
         logger.info("Dev server exited cleanly");
       }
@@ -179,9 +180,7 @@ async function startDevServer(
       if (message.includes("[out]")) {
         logger.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
       } else if (message.includes("[err]")) {
-        logger.error(
-          message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
-        );
+        logger.error(message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"));
       } else {
         logger.debug(message);
       }
@@ -203,10 +202,7 @@ async function startDevServer(
 }
 
 /** Adapted from https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts */
-async function waitForServerReady(
-  url: string,
-  timeoutMs = 30000,
-): Promise<void> {
+async function waitForServerReady(url: string, timeoutMs = 30000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   const delays = [100, 250, 500];
   // c.f. Playwright:  https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts#L186
@@ -231,7 +227,5 @@ async function waitForServerReady(
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
-  throw new Error(
-    `Server at ${url} failed to start within ${timeoutMs.toString()}ms`,
-  );
+  throw new Error(`Server at ${url} failed to start within ${timeoutMs.toString()}ms`);
 }

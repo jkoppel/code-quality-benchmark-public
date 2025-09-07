@@ -1,28 +1,35 @@
+import type { FixtureMaker, FixturesEnv } from "./fixture.js";
 import type { TestResult } from "./report.js";
-import type {
-  NonVisionTestCaseAgent,
-  VisionTestCaseAgent,
-} from "./test-case-agent.js";
+import type { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
+
+/**************************
+      Test Case
+***************************/
 
 export type TestCase = VisionTestCase | NonVisionTestCase;
 
 export interface VisionTestCase {
   type: "vision";
   description: string;
-  run(agent: VisionTestCaseAgent): Promise<TestResult>;
+  run(agent: VisionTestCaseAgent, fixtures: FixturesEnv): Promise<TestResult>;
 }
 
 export interface NonVisionTestCase {
   type: "non-vision";
   description: string;
-  run(agent: NonVisionTestCaseAgent): Promise<TestResult>;
+  run(agent: NonVisionTestCaseAgent, fixtures: FixturesEnv): Promise<TestResult>;
 }
+
+/**************************
+        Suite
+***************************/
 
 export class Suite {
   constructor(
     /** Descriptive name */
     private name: string,
     private tests: TestCase[],
+    private fixtureInfos: FixtureMaker[] = [],
   ) {}
 
   getName() {
@@ -32,9 +39,12 @@ export class Suite {
   getTests() {
     return this.tests;
   }
-}
 
-export async function loadTestSuite(benchmarkPath: string): Promise<Suite> {
-  const { benchmarkSet, task } = parseBenchmarkPath(benchmarkPath);
-  return await getTestSuite(benchmarkSet, task);
+  withFixtures(infos: FixtureMaker[]) {
+    this.fixtureInfos = infos;
+  }
+
+  getFixtureInfos() {
+    return this.fixtureInfos;
+  }
 }
