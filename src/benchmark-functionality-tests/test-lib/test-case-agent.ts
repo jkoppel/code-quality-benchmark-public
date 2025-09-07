@@ -115,6 +115,7 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
         "-y",
         PLAYWRIGHT_MCP,
         "--isolated",
+        "--headless",
         capabilities.length > 0 ? `--caps=${capabilities.join(",")}` : "",
       ],
     },
