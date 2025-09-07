@@ -33,7 +33,7 @@ async function main() {
       },
       logger,
     };
-    const testRunner = new TestRunner(config, logger);
+    const testRunner = new TestRunner(config);
 
     // Load test suite
     logger.info(`Loading functional test suite for ${resolvedBenchmarkPath}`);
