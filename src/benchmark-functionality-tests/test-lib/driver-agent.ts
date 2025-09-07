@@ -90,22 +90,27 @@ export class DriverAgent {
 
   // TODO: Use abort controller option to implement timeout
 
-  private buildQueryOptions(additional?: DriverAgentConfig) {
-    return {
-      ...this.getConfig(),
-      ...additional,
-      resume: this.getSessionId(), // session id managed by and only by DriverAgent
-    };
-  }
+  // private buildQueryOptions(additional?: Partial<DriverAgentConfig>) {
+  //   return {
+  //     ...this.getConfig(),
+  //     ...additional,
+  //     resume: this.getSessionId(), // session id managed by and only by DriverAgent
+  //   };
+  // }
 
   async ask(
     prompt: string,
-    /** config / options to override with */
-    config?: DriverAgentConfig,
+    /** Additional config / options */
+    config?: Partial<DriverAgentConfig>,
   ): Promise<string> {
+    const options =  {
+      ...this.getConfig(),
+      ...config,
+      resume: this.getSessionId(), // session id managed by and only by DriverAgent
+    };
     const response = query({
       prompt,
-      options: this.buildQueryOptions(config),
+      options,
     });
 
     for await (const message of response) {
@@ -134,6 +139,8 @@ export class DriverAgent {
   async query<T extends z.ZodType>(
     prompt: string,
     outputSchema: T,
+    /** Additional config / options */
+    config?: Partial<DriverAgentConfig>,
   ): Promise<z.infer<T>> {
     const fullPrompt = dedent`
       ${prompt}
