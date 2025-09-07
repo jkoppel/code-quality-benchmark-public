@@ -28,7 +28,7 @@ async function main() {
   try {
     const config: TestRunnerConfig = {
       folderPath: resolvedSystemUnderTest,
-      port: 3000, // TODO: Is this rly where we shld be specifying the port?
+      port: 3000,
       logger,
     };
     const testRunner = new TestRunner(config);
