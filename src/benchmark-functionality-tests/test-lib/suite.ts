@@ -1,6 +1,9 @@
 import type { FixtureMaker, FixturesEnv } from "./fixture.js";
 import type { TestResult } from "./report.js";
-import type { NonVisionTestCaseAgent, VisionTestCaseAgent } from "./test-case-agent.js";
+import type {
+  NonVisionTestCaseAgent,
+  VisionTestCaseAgent,
+} from "./test-case-agent.js";
 import type { TestRunnerConfig } from "./runner.js";
 
 /**************************
@@ -12,13 +15,21 @@ export type TestCase = VisionTestCase | NonVisionTestCase;
 export interface VisionTestCase {
   type: "vision";
   description: string;
-  run(agent: VisionTestCaseAgent, fixtures: FixturesEnv, config: TestRunnerConfig): Promise<TestResult>;
+  run(
+    agent: VisionTestCaseAgent,
+    fixtures: FixturesEnv,
+    config: TestRunnerConfig,
+  ): Promise<TestResult>;
 }
 
 export interface NonVisionTestCase {
   type: "non-vision";
   description: string;
-  run(agent: NonVisionTestCaseAgent, fixtures: FixturesEnv, config: TestRunnerConfig): Promise<TestResult>;
+  run(
+    agent: NonVisionTestCaseAgent,
+    fixtures: FixturesEnv,
+    config: TestRunnerConfig,
+  ): Promise<TestResult>;
 }
 
 /**************************

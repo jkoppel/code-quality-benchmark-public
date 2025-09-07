@@ -26,7 +26,9 @@ export class FixturesEnv {
   Fixture Agent
 ***************************************/
 
-const FIXTURE_AGENT_CONFIG = { ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG };
+const FIXTURE_AGENT_CONFIG = {
+  ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
+};
 
 // TODO: Add prompt with info about vision caps
 export class FixtureAgent {
@@ -45,7 +47,10 @@ export class FixtureAgent {
   }
 
   // TODO: can think about limiting what tools agent can get
-  async query<T extends z.ZodType>(prompt: string, outputSchema: T): Promise<z.infer<T>> {
+  async query<T extends z.ZodType>(
+    prompt: string,
+    outputSchema: T,
+  ): Promise<z.infer<T>> {
     return await this.driver.query(prompt, outputSchema);
   }
 }
