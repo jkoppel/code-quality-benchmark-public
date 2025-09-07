@@ -103,7 +103,7 @@ export class DriverAgent {
     /** Additional config / options */
     config?: Partial<DriverAgentConfig>,
   ): Promise<string> {
-    const options =  {
+    const options = {
       ...this.getConfig(),
       ...config,
       resume: this.getSessionId(), // session id managed by and only by DriverAgent
