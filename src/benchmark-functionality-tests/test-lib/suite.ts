@@ -41,7 +41,7 @@ export class Suite {
     /** Descriptive name */
     private name: string,
     private tests: TestCase[],
-    private fixtureInfos: FixtureMaker[] = [],
+    private fixtureMakers: FixtureMaker[] = [],
   ) {}
 
   getName() {
@@ -52,11 +52,12 @@ export class Suite {
     return this.tests;
   }
 
-  withFixtures(infos: FixtureMaker[]) {
-    this.fixtureInfos = infos;
+  withFixtures(makers: FixtureMaker[]) {
+    this.fixtureMakers = makers;
+    return this;
   }
 
-  getFixtureInfos() {
-    return this.fixtureInfos;
+  getFixtureMakers() {
+    return this.fixtureMakers;
   }
 }
