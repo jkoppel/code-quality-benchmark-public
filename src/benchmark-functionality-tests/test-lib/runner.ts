@@ -37,9 +37,7 @@ export interface TestRunnerConfig {
 }
 
 export class TestRunner {
-  constructor(
-    private readonly config: TestRunnerConfig,
-  ) {}
+  constructor(private readonly config: TestRunnerConfig) {}
 
   getLogger() {
     return this.config.logger;
@@ -75,7 +73,10 @@ export class TestRunner {
             { type: "vision" },
             async (visionTest) =>
               await visionTest.run(
-                new VisionTestCaseAgent(this.config.sutConfig, this.getLogger()),
+                new VisionTestCaseAgent(
+                  this.config.sutConfig,
+                  this.getLogger(),
+                ),
                 fixturesEnv,
                 this.config,
               ),
@@ -84,7 +85,10 @@ export class TestRunner {
             { type: "non-vision" },
             async (nonVisionTest) =>
               await nonVisionTest.run(
-                new NonVisionTestCaseAgent(this.config.sutConfig, this.getLogger()),
+                new NonVisionTestCaseAgent(
+                  this.config.sutConfig,
+                  this.getLogger(),
+                ),
                 fixturesEnv,
                 this.config,
               ),
