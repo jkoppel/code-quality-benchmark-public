@@ -30,23 +30,33 @@ const createViewsField = (viewsDescription: string) =>
     pathsToCode: z
       .array(z.string())
       .describe("Paths to relevant parts of the codebase"),
-    notes: z
+    notes: Notes,
+  });
+
+const Notes = z.discriminatedUnion("notesType", [
+  z.object({
+    notesType: z.literal("noObviousBugs"),
+  }),
+  z.object({
+    notesType: z.literal("potentialBugs"),
+    explanation: z
       .string()
       .min(1)
-      .optional()
-      .describe(dedent`
-        Notes about potential bugs in how the app handles this feature. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues.
-        Communication guidelines:
-        * No need to add notes if you didn't spot obvious bugs.
-        * The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.
-        * Important: Explain what the specification of the app is, in concrete terms, before discussing the bug(s) -- your audience will not be as aware of the specs.
-
-        <example explanation>
-        (This is for apps that have both a status dropdown and a checkbox for marking a task as done.) There are two views for whether a task is done: (i) the checkbox being checked and (ii) the status dropdown being set to "Done".
-        Changing either of these views should update the other view accordingly.
-        </example explanation>
-      `),
-  });
+      .describe(
+        dedent`
+          Notes about potential bugs in how the app handles this feature. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues.
+          Communication guidelines:
+          * Only add notes if there are obvious bugs.
+          * The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.
+          * Important: Explain what the specification of the app is, in concrete terms, before discussing the bug(s) -- your audience will not be as aware of the specs.
+          <example explanation>
+          (This is for apps that have both a status dropdown and a checkbox for marking a task as done.) There are two views for whether a task is done: (i) the checkbox being checked and (ii) the status dropdown being set to "Done".
+          Changing either of these views should update the other view accordingly.
+          </example explanation>
+        `,
+      ),
+  }),
+]);
 
 /*********************************
       Task
@@ -91,17 +101,12 @@ const TaskInfo = BaseTaskInfo.extend({
 
 const TodoListInfo = z.object({
   viewsForAddingTask: createViewsField(
-    "All the views of or UIs that the app exposes for adding a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to add tasks.",
+    "All the views that the app exposes for adding a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to add tasks.",
   ),
   viewsForRemovingTask: createViewsField(
-    "All the views of or UIs that the app exposes for removing a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to remove tasks.",
+    "All the views that the app exposes for removing a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to remove tasks.",
   ),
-  notes: z
-    .string()
-    .optional()
-    .describe(
-      "Notes about things that seem very clearly buggy. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs. The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.",
-    ),
+  notes: Notes,
 });
 
 export const TodoListAppInfo = z.object({
