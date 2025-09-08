@@ -9,7 +9,7 @@ const UIInfo = z.object({
   shortDescription: z
     .string()
     .describe(
-      `Description of the view or UI, e.g. "An 'Add' button that adds a new task to the list"`,
+      `Short description of the view or UI, e.g. "An 'Add' button that adds a task."`,
     ),
   howToAccess: z.optional(
     z
