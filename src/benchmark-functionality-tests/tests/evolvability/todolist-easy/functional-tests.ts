@@ -11,13 +11,22 @@ import { TodoListAppInfo } from "./app-info-schema.js";
 import dedent from "dedent";
 import type { TestRunnerConfig, SutConfig } from "../../../test-lib/runner.js";
 
+/*************************************
+    Common prompt building blocks
+***************************************/
+
 const makeToolsInfoPrompt = (config: SutConfig) => dedent`
   You have access to the app's code in this directory; you can also use Playwright MCP.
   The dev server has been started at port ${config.port}.`;
 
-/*************************************
-    Fixture
-***************************************/
+const makeBackgroundPrompt = (config: SutConfig) => dedent`
+    You're testing a Todolist app.
+    ${makeToolsInfoPrompt(config)}`;
+
+/**************************************************************
+    Fixture: A scout agent that gathers key info about the sut,
+    info that then informs further downstream testing
+***************************************************************/
 
 const appInfoFixtureId = "todoListAppInfo";
 
@@ -60,10 +69,6 @@ const appInfoReconFixtureMaker: FixtureMaker = {
 /*************************************
     Test Case Factory
 ***************************************/
-
-const makeBackgroundPrompt = (config: SutConfig) => dedent`
-      You're testing a Todolist app.
-      ${makeToolsInfoPrompt(config)}`;
 
 function makeStateSynchTest(
   testName: string,
@@ -161,22 +166,6 @@ function makeAttributeIsolationTest(
     Test Cases
 ***************************************/
 
-// const toyTest: NonVisionTestCase = {
-//   type: "non-vision" as const,
-//   description: "Toy test that always passes",
-//   // eslint-disable-next-line @typescript-eslint/require-await
-//   async run(): Promise<TestResult> {
-//     return {
-//       name: "Toy test that always passes",
-//       outcome: {
-//         status: "passed",
-//         howTested:
-//           "This is a constant test that always returns passed for e2e testing",
-//       },
-//     };
-//   },
-// };
-
 // State Synch tests
 
 const stateSynchStatus = makeStateSynchTest(
@@ -199,7 +188,7 @@ const stateSynchDueDate = makeStateSynchTest(
   (appInfo) => JSON.stringify(appInfo.taskInfo.viewsForDueDate),
 );
 
-// Status variety test
+// Basic tests
 
 const checkMoreThanDoneNotDoneStatuses: NonVisionTestCase = {
   type: "non-vision" as const,
@@ -218,7 +207,7 @@ const checkMoreThanDoneNotDoneStatuses: NonVisionTestCase = {
       ${makeBackgroundPrompt(config)}
       The app has these available statuses: ${JSON.stringify(availableStatuses)}
 
-      Check if this todo app supports more sophisticated status tracking than just basic done/not-done functionality.
+      Check if this todo app supports more statuses than just done/not-done.
       Mark the test as passing if there are more statuses than done/not-done.
       Mark as failing if there's only done/not-done (or worse).`);
   },
