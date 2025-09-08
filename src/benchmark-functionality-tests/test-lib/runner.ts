@@ -97,6 +97,7 @@ export class TestRunner {
 
     return {
       name: suite.getName(),
+      sutFolderPath: this.config.folderPath,
       timestamp: new Date(startTime).toISOString(),
       summary: {
         total: results.length,
