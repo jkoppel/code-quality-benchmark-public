@@ -15,7 +15,7 @@ const UIInfo = z.object({
     z
       .string()
       .describe(
-        `How to get to the UI, if it's not obvious; e.g.: "It's the leftmost dropdown menu that appears after clicking on 'Edit' on a task"`,
+        `How to get to the UI, if it's not obvious; e.g.: "the leftmost dropdown menu that appears after clicking on 'Edit' on a task"`,
       ),
   ),
 });
@@ -34,9 +34,18 @@ const createViewsField = (viewsDescription: string) =>
       .string()
       .min(1)
       .optional()
-      .describe(
-        "Notes about potential bugs in how the app handles this feature. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs. The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.",
-      ),
+      .describe(dedent`
+        Notes about potential bugs in how the app handles this feature. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues.
+        Communication guidelines:
+        * No need to add notes if you didn't spot obvious bugs.
+        * The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.
+        * Important: Explain what the specification of the app is, in concrete terms, before discussing the bug(s) -- your audience will not be as aware of the specs.
+
+        <example explanation>
+        (This is for apps that have both a status dropdown and a checkbox for marking a task as done.) There are two views for whether a task is done: (i) the checkbox being checked and (ii) the status dropdown being set to "Done".
+        Changing either of these views should update the other view accordingly.
+        </example explanation>
+      `),
   });
 
 /*********************************
@@ -52,10 +61,12 @@ const BaseTaskInfo = z.object({
   viewsForStatus: createViewsField(
     dedent`
       All the views of or UIs that the app exposes for the status of the task.
-      Use a UIInfo for each distinct view/UI.
-      Example:
+      Use a UIInfo for each view/UI.
+      <example>
       [ { shortDescription: "Checkbox to mark task as done" },
-        { shortDescription: "Status dropdown menu", howToAccess: "Click 'Edit' button on task" } ]`,
+        { shortDescription: "Status dropdown menu that allows for marking task as done", howToAccess: "Click 'Edit' button on task" } ]
+      </example>
+      `,
   ),
 });
 

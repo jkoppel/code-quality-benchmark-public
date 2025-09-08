@@ -11,6 +11,10 @@ import { TodoListAppInfo } from "./app-info-schema.js";
 import dedent from "dedent";
 import type { TestRunnerConfig, SutConfig } from "../../../test-lib/runner.js";
 
+const makeToolsInfoPrompt = (config: SutConfig) => dedent`
+  You have access to the app's code in this directory; you can also use Playwright MCP.
+  The dev server has been started at port ${config.port}.`;
+
 /*************************************
     Fixture
 ***************************************/
@@ -22,15 +26,32 @@ const appInfoReconFixtureMaker: FixtureMaker = {
   async initialize(agent: FixtureAgent, config: SutConfig) {
     return await agent.query(
       dedent`
-        You are a senior developer trying to get a preliminary understanding of this app.
-        You have access to the code of the app in this directory; you can also use Playwright MCP.
-        The dev server has been started at port ${config.port}.
-        Your task:
-        1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to get the info requested in the following schema.
+        You are a senior developer trying to piece together a preliminary understanding of this program,
+        to help downstream testers test its functionality.
+
+        <spec-of-system-under-test>
+        This is a React todo list app where you can add, remove, and edit tasks.
+        A user should be able to create and delete todo items, view the TodoList, and mark items as done.
+        The app has also been extended to support the following features:
+          * Assigning more statuses to todo items, in addition to the existing done/not-done (e.g.: in-progress, under review, blocked)
+          * Assign priorities to todo items
+          * Adding due dates to todo items
+        </spec-of-system-under-test>
+        This specification deliberately leaves a lot open. For instance,
+        some apps might expose a task’s status via both a checkbox and a dropdown menu;
+        others might only have one way to observe and change it.
+        That's where you come in. Part of your job is to investigate and explain the design decisions that
+        the system under test has made, especially with regards to state and how it is exposed to users
+        (see the following schema for exactly what info to collect).
+
+        More concretely, here's what you should do.
+        ${makeToolsInfoPrompt(config)}
+        0. Read the schema to understand exactly what information you need to collect.
+        1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to collect the requested information; in particular, what you need to do to uncover key decision decisions regarding state, how it's exposed, and potential functional bugs.
         2. Collect and return that information.
         If there's stuff you can't figure out, try to at least offer suggestions for what paths through the UI to investigate or look at.
-        Your goal is *not* to actually test the app -- it's merely to enumerate all the UI / views for the various pieces of state and flag potential issues for other testers to investigate in more depth.
-        That said, although you aren't testing the app, you still need to thoroughly explore and record how the key pieces of state are exposed to users.`,
+        Your goal is *not* to actually test the app -- it's merely to investigate the decision decisions, enumerate all the UI / views for the various pieces of state, and flag potential issues for other testers to investigate in more depth.
+        That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
       TodoListAppInfo,
     );
   },
@@ -40,10 +61,9 @@ const appInfoReconFixtureMaker: FixtureMaker = {
     Test Case Factory
 ***************************************/
 
-const makeBackground = (config: SutConfig) => dedent`
+const makeBackgroundPrompt = (config: SutConfig) => dedent`
       You're testing a Todolist app.
-      You have access to the code of the app in this directory; you can also use Playwright MCP.
-      The dev server has been started at port ${config.port}`;
+      ${makeToolsInfoPrompt(config)}`;
 
 function makeStateSynchTest(
   testName: string,
@@ -67,20 +87,20 @@ function makeStateSynchTest(
       const views = viewsExtractor(appInfo);
 
       return agent.check(dedent`
-        ${makeBackground(config)}
+        ${makeBackgroundPrompt(config)}
         Here is some information that someone else gathered about the views of or UI elements for the ${stateName} (and related things):
         ${views}
 
         ${overallGoal}
         In particular:
         1. Skim the relevant code for more context -- it'll help with knowing what to focus on testing.
-        2. Think about what UI paths you have to explore to *thoroughly* test such synchronization before doing it.
+        2. Think about the specification and what UI paths you have to explore to *thoroughly* test such synchronization before doing it.
         E.g., if the ${stateName} is exposed in two ways, check if (i) changing it via one way also updates the other view and (ii) changing it via the other view also updates the first view.
 
         Then evaluate as follows:
         * If the ${stateName} is only exposed in one way and there are no interactions with other pieces of state, mark the test as passing.
         * If the ${stateName} is exposed in more than one way in the UI, check if this state has been synchronized correctly across the different views.
-        
+
         Examples of synchronization failures:
         - For an app with both an icon/badge and a text label for the status: Status icon updates but text label doesn't change
         - For an app with both a detailed view and a summary view: Status changes in the detailed view but not in the summary view
@@ -105,8 +125,6 @@ function makeAttributeIsolationTest(
       const appInfo = fixtures.get(appInfoFixtureId) as z.infer<
         typeof TodoListAppInfo
       >;
-      config.logger.debug("AppInfo fixture", appInfo);
-
       const availableStatuses = appInfo.taskInfo.statuses;
       const availablePriorities = appInfo.taskInfo.priorityLevels;
       const taskConfigs = generateDiverseTaskConfigs(
@@ -115,7 +133,7 @@ function makeAttributeIsolationTest(
       );
 
       const prompt = dedent`
-        ${makeBackground(config)}
+        ${makeBackgroundPrompt(config)}
         Test attribute isolation for ${attributeName}.
 
         Available statuses in this app: ${JSON.stringify(availableStatuses)}
@@ -197,7 +215,7 @@ const checkMoreThanDoneNotDoneStatuses: NonVisionTestCase = {
     const availableStatuses = appInfo.taskInfo.statuses;
 
     return agent.check(dedent`
-      ${makeBackground(config)}
+      ${makeBackgroundPrompt(config)}
       The app has these available statuses: ${JSON.stringify(availableStatuses)}
 
       Check if this todo app supports more sophisticated status tracking than just basic done/not-done functionality.
