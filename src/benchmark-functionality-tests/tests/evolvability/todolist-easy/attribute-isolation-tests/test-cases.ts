@@ -1,19 +1,9 @@
 import { makeAttributeIsolationTest } from "./test-factory.js";
+import { PriorityTaskAttribute, DueDateTaskAttribute, StatusTaskAttribute } from "../shared/task-attribute.js";
 
-export const attributeIsolationPriority = makeAttributeIsolationTest(
-  "Test that changing a task's priority doesn't affect other tasks",
-  "priority",
-  "Change task 1's priority to a different value from the available priorities",
-);
+export const attributeIsolationPriority =
+  makeAttributeIsolationTest(new PriorityTaskAttribute());
 
-export const attributeIsolationStatus = makeAttributeIsolationTest(
-  "Test that changing a task's status doesn't affect other tasks",
-  "status",
-  "Change task 1's status to a different value from the available statuses",
-);
+export const attributeIsolationStatus = makeAttributeIsolationTest(new StatusTaskAttribute());
 
-export const attributeIsolationDueDate = makeAttributeIsolationTest(
-  "Test that changing a task's due date doesn't affect other tasks",
-  "dueDate",
-  "Change task 1's due date to a different date",
-);
+export const attributeIsolationDueDate = makeAttributeIsolationTest(new DueDateTaskAttribute());
