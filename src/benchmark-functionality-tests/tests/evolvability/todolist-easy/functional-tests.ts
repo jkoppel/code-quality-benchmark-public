@@ -82,7 +82,7 @@ function makeStateSynchTest(
       const appInfo = fixtures.get(appInfoFixtureId) as z.infer<
         typeof TodoListAppInfo
       >;
-      config.logger.debug("AppInfo fixture", appInfo);
+      config.logger.debugWith(appInfo, "AppInfo fixture");
 
       const views = viewsExtractor(appInfo);
 
@@ -151,7 +151,7 @@ function makeAttributeIsolationTest(
         Mark the test as passing if changing task 1's ${attributeName} doesn't affect any attributes of the other tasks.
         Mark as failing if any other task's attributes changed.`;
 
-      config.logger.debug("Attribute isolation test prompt", { prompt });
+      config.logger.debugWith({ prompt }, "Attribute isolation test prompt");
       return agent.check(prompt);
     },
   };

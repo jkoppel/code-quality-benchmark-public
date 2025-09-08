@@ -115,7 +115,7 @@ export class DriverAgent {
     });
 
     for await (const message of response) {
-      this.logger.debug(JSON.stringify(message));
+      this.logger.debug({ claudeMessage: message }, "Claude response");
 
       if (!this.getSessionId()) {
         this.setSessionId(message.session_id);

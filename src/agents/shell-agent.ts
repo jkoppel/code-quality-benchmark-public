@@ -19,11 +19,14 @@ export function createShellAgent(
     port: number = 30000,
   ): Promise<void> => {
     return new Promise((resolve, reject) => {
-      logger.info("Executing shell script agent", {
-        script: scriptPath,
-        folder: folderPath,
-        promptLength: prompt.length,
-      });
+      logger.infoWith(
+        {
+          script: scriptPath,
+          folder: folderPath,
+          promptLength: prompt.length,
+        },
+        "Executing shell script agent",
+      );
 
       // Spawn the shell script with prompt and folder path as arguments
       const child = spawn("bash", [scriptPath, prompt], {
@@ -59,10 +62,13 @@ export function createShellAgent(
       });
 
       child.on("error", (error) => {
-        logger.error("Failed to execute shell script", {
-          script: scriptPath,
-          error: error.message,
-        });
+        logger.errorWith(
+          {
+            script: scriptPath,
+            error: error.message,
+          },
+          "Failed to execute shell script",
+        );
         reject(new Error(`Failed to execute shell script: ${error.message}`));
       });
 
@@ -81,21 +87,27 @@ export function createShellAgent(
         }
 
         if (success) {
-          logger.info("Shell script executed successfully", {
-            script: scriptPath,
-            folder: folderPath,
-          });
+          logger.infoWith(
+            {
+              script: scriptPath,
+              folder: folderPath,
+            },
+            "Shell script executed successfully",
+          );
           resolve();
         } else {
           const errorMsg =
             code !== null
               ? `Shell script exited with code ${code}.`
               : `Shell script was terminated by signal ${signal}.`;
-          logger.error("Shell script failed", {
-            script: scriptPath,
-            code,
-            signal,
-          });
+          logger.errorWith(
+            {
+              script: scriptPath,
+              code,
+              signal,
+            },
+            "Shell script failed",
+          );
           reject(new Error(errorMsg));
         }
       });
