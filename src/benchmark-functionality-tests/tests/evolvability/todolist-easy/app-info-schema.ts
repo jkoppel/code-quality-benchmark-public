@@ -1,24 +1,39 @@
 import * as z from "zod";
 import dedent from "dedent";
 
-/*********************************
-      UI Info
-**********************************/
+/***********************************
+    UI Info (Observer | Mutator)
+************************************/
 
-const UIInfo = z.object({
-  shortDescription: z
-    .string()
-    .describe(
-      `Short description of the view or UI, e.g. "An 'Add' button that adds a task."`,
-    ),
-  howToAccess: z.optional(
-    z
+export const UIInfo = z.discriminatedUnion("viewType", [
+  z.object({
+    viewType: z
+      .literal("observer")
+      .describe("Read-only UI that reflects the current state."),
+    shortDescription: z
+      .string()
+      .describe(`E.g. "Read-only label showing a task's current status."`),
+    howToAccess: z
+      .string()
+      .optional()
+      .describe(
+        `How to get to the UI, if it's not obvious; e.g.: "in the task row, next to the title"`,
+      ),
+  }),
+  z.object({
+    viewType: z
+      .literal("mutator")
+      .describe(
+        "UI that not only reflects the state but also allows the user to change it.",
+      ),
+    shortDescription: z
       .string()
       .describe(
-        `How to get to the UI, if it's not obvious; e.g.: "the leftmost dropdown menu that appears after clicking on 'Edit' on a task"`,
+        `Short description of the view or UI, e.g. "A checkbox that marks a task as done/undone."`,
       ),
-  ),
-});
+    howToAccess: z.string().optional(),
+  }),
+]);
 
 /*********************************
       Views
@@ -73,8 +88,11 @@ const BaseTaskInfo = z.object({
       All the views of or UIs that the app exposes for the status of the task.
       Use a UIInfo for each view/UI.
       <example>
-      [ { shortDescription: "Checkbox to mark task as done" },
-        { shortDescription: "Status dropdown menu that allows for marking task as done", howToAccess: "Click 'Edit' button on task" } ]
+      [
+        { viewType: "observer", shortDescription: "Read-only label showing current status" },
+        { viewType: "mutator", shortDescription: "Checkbox to mark task as done" },
+        { viewType: "mutator", shortDescription: "Status dropdown menu that allows marking task as done", howToAccess: "Click 'Edit' on the task" }
+      ]
       </example>
       `,
   ),
