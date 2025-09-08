@@ -1,3 +1,5 @@
+// TODO: Improve this
+
 import { match } from "ts-pattern";
 import type {
   SDKMessage,
