@@ -71,7 +71,9 @@ async function main() {
     }
     logger.info(JSON.stringify(result, null, 2));
 
-    logger.info(`Test execution for ${suite.getName()} completed`);
+    logger.info(
+      `Test execution for ${suite.getName()} completed in ${(result.summary.duration / 1000).toFixed(1)}s`,
+    );
   } catch (error) {
     logger.error(`Failed to run tests: ${String(error)}`);
     process.exit(1);
