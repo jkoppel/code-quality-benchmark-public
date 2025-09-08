@@ -3,8 +3,8 @@ import type {
   FixtureMaker,
 } from "../../../../test-lib/fixture.js";
 import type { SutConfig } from "../../../../test-lib/runner.js";
-import { TodoListAppInfo } from "../schemas/app-info-schema.js";
-import { makeToolsInfoPrompt } from "../test-helpers/common-prompts.js";
+import { TodoListAppInfo } from "./app-info-schema.js";
+import { makeToolsInfoPrompt } from "./common-prompts.js";
 import dedent from "dedent";
 
 export const appInfoFixtureId = "todoListAppInfo";

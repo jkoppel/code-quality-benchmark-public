@@ -83,19 +83,6 @@ const BaseTaskInfo = z.object({
     .describe(
       "All the statuses for a task implemented by this todo app -- make sure to capture all of them",
     ),
-  viewsForStatus: createViewsField(
-    dedent`
-      All the views of or UIs that the app exposes for the status of the task.
-      Use a UIInfo for each view/UI.
-      <example>
-      [
-        { viewType: "observer", shortDescription: "Read-only label showing current status" },
-        { viewType: "mutator", shortDescription: "Checkbox to mark task as done" },
-        { viewType: "mutator", shortDescription: "Status dropdown menu that allows marking task as done", howToAccess: "Click 'Edit' on the task" }
-      ]
-      </example>
-      `,
-  ),
 });
 
 /** Info about the schema / model of a todo item in the final todo list app */
@@ -105,12 +92,27 @@ const TaskInfo = BaseTaskInfo.extend({
     .describe(
       "All the priority levels implemented by this todo app -- make sure to capture all of them",
     ),
-  viewsForPriority: createViewsField(
-    "All the views of or UIs that the app exposes for the priority levels of a task (also include info about how to get to the UI, if it doesn't appear immediately)",
-  ),
-  viewsForDueDate: createViewsField(
-    "All the views of or UIs that the app exposes for the due date of a task (also include info about how to get to the UI, if it doesn't appear immediately)",
-  ),
+  views: z.object({
+    status: createViewsField(
+      dedent`
+        All the views of or UIs that the app exposes for the status of the task.
+        Use a UIInfo for each view/UI.
+        <example>
+        [
+          { viewType: "observer", shortDescription: "Read-only label showing current status" },
+          { viewType: "mutator", shortDescription: "Checkbox to mark task as done" },
+          { viewType: "mutator", shortDescription: "Status dropdown menu that allows marking task as done", howToAccess: "Click 'Edit' on the task" }
+        ]
+        </example>
+        `,
+    ),
+    priority: createViewsField(
+      "All the views of or UIs that the app exposes for the priority levels of a task (also include info about how to get to the UI, if it doesn't appear immediately)",
+    ),
+    "due date": createViewsField(
+      "All the views of or UIs that the app exposes for the due date of a task (also include info about how to get to the UI, if it doesn't appear immediately)",
+    ),
+  }),
 });
 
 /*********************************
