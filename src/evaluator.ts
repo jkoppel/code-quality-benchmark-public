@@ -13,7 +13,7 @@ import {
   type EvaluationResult,
   type InstanceResult,
 } from "./types.js";
-import { Logger } from "./utils/logger.js";
+import { Logger } from "./utils/logger/logger.js";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.js';
 
@@ -65,10 +65,13 @@ export async function evaluateUpdates(
   const startTime = new Date();
   const logger = Logger.getInstance(config.logLevel);
 
-  logger.info("Starting update evaluation", {
-    originalProgramPath,
-    updatePrompt: updatePrompt.substring(0, 100),
-  });
+  logger.infoWith(
+    {
+      originalProgramPath,
+      updatePrompt: updatePrompt.substring(0, 100),
+    },
+    "Starting update evaluation",
+  );
 
   try {
     const updateResults = await applyUpdatesToInstances(
@@ -105,7 +108,7 @@ export async function evaluateUpdates(
       { spaces: 2 },
     );
 
-    logger.info("Saved complete results to:", { path: resultsPath });
+    logger.infoWith({ path: resultsPath }, "Saved complete results to:");
 
     const endTime = new Date();
     const metadata: EvaluationMetadata = {
@@ -131,12 +134,15 @@ export async function evaluateUpdates(
       stats: r.diffStats || { filesChanged: 0, insertions: 0, deletions: 0 },
     }));
 
-    logger.info("Evaluation completed successfully", {
-      duration: metadata.totalDuration,
-      successfulUpdates: updateResults.filter((r) => r.success).length,
-      failedUpdates: updateResults.filter((r) => !r.success).length,
-      diffStats,
-    });
+    logger.infoWith(
+      {
+        duration: metadata.totalDuration,
+        successfulUpdates: updateResults.filter((r) => r.success).length,
+        failedUpdates: updateResults.filter((r) => !r.success).length,
+        diffStats,
+      },
+      "Evaluation completed successfully",
+    );
 
     // Also print diff stats to console for visibility
     console.log("\n=== Git Diff Statistics & Scores ===");
@@ -156,9 +162,12 @@ export async function evaluateUpdates(
 
     return result;
   } catch (error) {
-    logger.error("Evaluation failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.errorWith(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Evaluation failed",
+    );
 
     throw error instanceof EvaluationError
       ? error
@@ -176,10 +185,13 @@ export async function evaluate(
 ): Promise<EvaluationResult> {
   const logger = Logger.getInstance(config.logLevel);
 
-  logger.info("Starting full evaluation", {
-    initialPrompt: initialPrompt.substring(0, 100),
-    updatePrompt: updatePrompt.substring(0, 100),
-  });
+  logger.infoWith(
+    {
+      initialPrompt: initialPrompt.substring(0, 100),
+      updatePrompt: updatePrompt.substring(0, 100),
+    },
+    "Starting full evaluation",
+  );
 
   let tempDir: tmp.DirResult | null = null;
 
@@ -191,7 +203,7 @@ export async function evaluate(
       keep: true,
     });
 
-    logger.debug("Created temporary workspace", { path: tempDir.name });
+    logger.debugWith({ path: tempDir.name }, "Created temporary workspace");
 
     const originalProgramPath = await generateOriginalProgram(
       initialPrompt,
@@ -213,9 +225,12 @@ export async function evaluate(
 
     return result;
   } catch (error) {
-    logger.error("Full evaluation failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.errorWith(
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Full evaluation failed",
+    );
 
     throw error instanceof EvaluationError
       ? error
@@ -227,7 +242,7 @@ export async function evaluate(
   } finally {
     // Never cleanup - we want to keep the results
     if (tempDir) {
-      logger.info("Benchmark results saved at:", { path: tempDir.name });
+      logger.infoWith({ path: tempDir.name }, "Benchmark results saved at:");
     }
   }
 }
@@ -275,10 +290,13 @@ build/
       cwd: originalFolder,
     });
 
-    logger.info("Original program generated and committed to git", {
-      path: originalFolder,
-      fileCount: files.length,
-    });
+    logger.infoWith(
+      {
+        path: originalFolder,
+        fileCount: files.length,
+      },
+      "Original program generated and committed to git",
+    );
 
     return originalFolder;
   } catch (error) {
@@ -327,7 +345,10 @@ async function applyUpdatesToInstances(
       const instanceId = `${agentConfig.name}-${i}`;
       const instancePath = path.join(workspaceDir, instanceId);
       await fs.copy(originalProgramPath, instancePath);
-      logger.debug(`Created instance ${instanceId}`, { path: instancePath });
+      logger.debugWith(
+        { path: instancePath },
+        `Created instance ${instanceId}`,
+      );
 
       allInstances.push({
         instanceId,
@@ -369,9 +390,12 @@ async function applyUpdatesToInstances(
     } catch (e) {
       success = false;
       error = e instanceof Error ? e : new Error(String(e));
-      logger.error(`Failed to apply update for ${instance.instanceId}`, {
-        error: error.message,
-      });
+      logger.errorWith(
+        {
+          error: error.message,
+        },
+        `Failed to apply update for ${instance.instanceId}`,
+      );
     }
 
     const executionTime = Date.now() - startTime;
@@ -429,9 +453,12 @@ async function applyUpdatesToInstances(
           logger.debug(`No changes to commit for ${result.instanceId}`);
         }
       } catch (error) {
-        logger.warn(`Failed to get git diff for ${result.instanceId}`, {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        logger.warnWith(
+          {
+            error: error instanceof Error ? error.message : String(error),
+          },
+          `Failed to get git diff for ${result.instanceId}`,
+        );
       }
     }
 
@@ -441,13 +468,16 @@ async function applyUpdatesToInstances(
       score,
     };
 
-    logger.info(`Instance ${result.instanceId} completed`, {
-      success: result.success,
-      executionTime: result.executionTime,
-      diffStats,
-      score,
-      agentName: result.agentName,
-    });
+    logger.infoWith(
+      {
+        success: result.success,
+        executionTime: result.executionTime,
+        diffStats,
+        score,
+        agentName: result.agentName,
+      },
+      `Instance ${result.instanceId} completed`,
+    );
 
     // Print diff stats to console immediately
     if (result.success && diffStats) {

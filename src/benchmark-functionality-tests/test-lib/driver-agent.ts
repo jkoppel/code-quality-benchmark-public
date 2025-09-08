@@ -3,7 +3,8 @@ import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
 import { match } from "ts-pattern";
 import * as z from "zod";
-import { Logger } from "../../utils/logger.js";
+import { Logger } from "../../utils/logger/logger.js";
+import { jsonStringify } from "../../utils/logger/pretty.js";
 
 // Specializing the following to Claude Code for now
 
@@ -80,7 +81,7 @@ export class DriverAgent {
     private readonly logger: Logger = Logger.getInstance(),
   ) {
     logger.debug(
-      `DriverAgent (for testing functionality) initialized with ${JSON.stringify(config)}`,
+      `DriverAgent (for testing functionality) initialized with ${jsonStringify(config)}`,
     );
   }
 
@@ -115,7 +116,7 @@ export class DriverAgent {
     });
 
     for await (const message of response) {
-      this.logger.debug(JSON.stringify(message));
+      this.logger.debug({ claudeCode: message }, "Response");
 
       if (!this.getSessionId()) {
         this.setSessionId(message.session_id);
@@ -149,7 +150,7 @@ export class DriverAgent {
       You must respond with the json wrapped in <response> tags like this:
       <response>{raw JSON response}</response>
 
-      The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema), null, 2)}`;
+      The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema))}`;
 
     const result = await this.ask(fullPrompt, config);
 

@@ -1,6 +1,6 @@
 import { query } from "@anthropic-ai/claude-code";
 import type { ClaudeAgentConfig, InstanceResult } from "../../types";
-import { Logger } from "../../utils/logger.js";
+import { Logger } from "../../utils/logger/logger.js";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.js";
 
 export class ClaudeAgent {
@@ -38,10 +38,13 @@ export class ClaudeAgent {
     let error: Error | undefined;
 
     try {
-      this.logger.info(`Starting Claude agent for instance ${instanceId}`, {
-        folderPath,
-        updatePrompt: updatePrompt.substring(0, 100),
-      });
+      this.logger.infoWith(
+        {
+          folderPath,
+          updatePrompt: updatePrompt.substring(0, 100),
+        },
+        `Starting Claude agent for instance ${instanceId}`,
+      );
 
       const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
 
@@ -59,10 +62,13 @@ export class ClaudeAgent {
           ) {
             throw new Error(`Claude execution error: ${message.subtype}`);
           }
-          this.logger.debug(`Claude completed`, {
-            instanceId,
-            duration: message.duration_ms,
-          });
+          this.logger.debugWith(
+            {
+              instanceId,
+              duration: message.duration_ms,
+            },
+            `Claude completed`,
+          );
         } else if (message.type === "user" || message.type === "assistant") {
           let content = "Message content unavailable";
 
@@ -76,10 +82,13 @@ export class ClaudeAgent {
                 : JSON.stringify(userContent);
           }
 
-          this.logger.debug(`Message from ${message.type}`, {
-            instanceId,
-            contentLength: content.length,
-          });
+          this.logger.debugWith(
+            {
+              instanceId,
+              contentLength: content.length,
+            },
+            `Message from ${message.type}`,
+          );
         }
       }
 
@@ -89,9 +98,12 @@ export class ClaudeAgent {
       );
     } catch (err) {
       error = err instanceof Error ? err : new Error(String(err));
-      this.logger.error(`Failed to apply update for instance ${instanceId}`, {
-        error: error.message,
-      });
+      this.logger.errorWith(
+        {
+          error: error.message,
+        },
+        `Failed to apply update for instance ${instanceId}`,
+      );
     }
 
     const result: InstanceResult = {

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import pino from "pino";
+import { claudeCodeSerializer } from "./serializer.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -36,6 +37,7 @@ const transport = pino.transport({
         colorize: true,
         ignore: "pid,hostname",
         destination: process.stderr.fd,
+        singleLine: false,
       },
     },
     {
@@ -48,7 +50,22 @@ const transport = pino.transport({
   ],
 });
 
-const pinoLogger = pino(transport);
+const pinoLogger = pino(
+  {
+    serializers: {
+      claudeCode: claudeCodeSerializer,
+    },
+    redact: {
+      paths: [
+        "claudeCode.message.content[*].input.api_key",
+        "claudeCode.message.content[*].input.password",
+        "claudeCode.message.content[*].input.token",
+      ],
+      censor: "[REDACTED]",
+    },
+  },
+  transport,
+);
 pinoLogger.level = "trace";
 
 export class Logger {
@@ -76,36 +93,59 @@ export class Logger {
     this.pino.level = level === "warn" ? "warn" : level;
   }
 
-  debug(message: string, context?: Record<string, unknown>): void {
-    if (context) {
-      this.pino.debug(context, message);
+  debug(
+    messageOrObj: string | Record<string, unknown>,
+    message?: string,
+  ): void {
+    if (typeof messageOrObj === "string") {
+      this.pino.debug(messageOrObj);
     } else {
-      this.pino.debug(message);
+      this.pino.debug(messageOrObj, message || "");
     }
   }
 
-  info(message: string, context?: Record<string, unknown>): void {
-    if (context) {
-      this.pino.info(context, message);
+  info(messageOrObj: string | Record<string, unknown>, message?: string): void {
+    if (typeof messageOrObj === "string") {
+      this.pino.info(messageOrObj);
     } else {
-      this.pino.info(message);
+      this.pino.info(messageOrObj, message || "");
     }
   }
 
-  warn(message: string, context?: Record<string, unknown>): void {
-    if (context) {
-      this.pino.warn(context, message);
+  warn(messageOrObj: string | Record<string, unknown>, message?: string): void {
+    if (typeof messageOrObj === "string") {
+      this.pino.warn(messageOrObj);
     } else {
-      this.pino.warn(message);
+      this.pino.warn(messageOrObj, message || "");
     }
   }
 
-  error(message: string, context?: Record<string, unknown>): void {
-    if (context) {
-      this.pino.error(context, message);
+  error(
+    messageOrObj: string | Record<string, unknown>,
+    message?: string,
+  ): void {
+    if (typeof messageOrObj === "string") {
+      this.pino.error(messageOrObj);
     } else {
-      this.pino.error(message);
+      this.pino.error(messageOrObj, message || "");
     }
+  }
+
+  // Structured logging methods with explicit context parameter
+  debugWith(context: Record<string, unknown>, message?: string): void {
+    this.pino.debug(context, message || "");
+  }
+
+  infoWith(context: Record<string, unknown>, message?: string): void {
+    this.pino.info(context, message || "");
+  }
+
+  warnWith(context: Record<string, unknown>, message?: string): void {
+    this.pino.warn(context, message || "");
+  }
+
+  errorWith(context: Record<string, unknown>, message?: string): void {
+    this.pino.error(context, message || "");
   }
 
   getLogs(): LogEntry[] {

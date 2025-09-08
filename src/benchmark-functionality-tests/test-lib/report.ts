@@ -8,9 +8,13 @@ import { z } from "zod";
 metadata like CC session id
 */
 
-export interface TestSuiteResults {
-  name: string;
+export interface Report {
+  sutFolderPath: string;
   timestamp: string;
+}
+
+export interface TestSuiteResults extends Report {
+  name: string;
   summary: {
     total: number;
     passed: number;

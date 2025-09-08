@@ -13,7 +13,7 @@
 
 import detect from "detect-port";
 import { match } from "ts-pattern";
-import { Logger } from "../../utils/logger.js";
+import { Logger } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
 import { FixtureAgent, FixturesEnv } from "./fixture.js";
 import type { TestSuiteResults } from "./report.js";
@@ -97,6 +97,7 @@ export class TestRunner {
 
     return {
       name: suite.getName(),
+      sutFolderPath: this.config.folderPath,
       timestamp: new Date(startTime).toISOString(),
       summary: {
         total: results.length,
