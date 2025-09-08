@@ -1,24 +1,39 @@
 import * as z from "zod";
 import dedent from "dedent";
 
-/*********************************
-      UI Info
-**********************************/
+/***********************************
+    UI Info (Observer | Mutator)
+************************************/
 
-const UIInfo = z.object({
-  shortDescription: z
-    .string()
-    .describe(
-      `Description of the view or UI, e.g. "An 'Add' button that adds a new task to the list"`,
-    ),
-  howToAccess: z.optional(
-    z
+export const UIInfo = z.discriminatedUnion("viewType", [
+  z.object({
+    viewType: z
+      .literal("observer")
+      .describe("Read-only UI that reflects the current state."),
+    shortDescription: z
+      .string()
+      .describe(`E.g. "Read-only label showing a task's current status."`),
+    howToAccess: z
+      .string()
+      .optional()
+      .describe(
+        `How to get to the UI, if it's not obvious; e.g.: "in the task row, next to the title"`,
+      ),
+  }),
+  z.object({
+    viewType: z
+      .literal("mutator")
+      .describe(
+        "UI that not only reflects the state but also allows the user to change it.",
+      ),
+    shortDescription: z
       .string()
       .describe(
-        `How to get to the UI, if it's not obvious; e.g.: "the leftmost dropdown menu that appears after clicking on 'Edit' on a task"`,
+        `Short description of the view or UI, e.g. "A checkbox that marks a task as done/undone."`,
       ),
-  ),
-});
+    howToAccess: z.string().optional(),
+  }),
+]);
 
 /*********************************
       Views
@@ -30,23 +45,33 @@ const createViewsField = (viewsDescription: string) =>
     pathsToCode: z
       .array(z.string())
       .describe("Paths to relevant parts of the codebase"),
-    notes: z
+    notes: Notes,
+  });
+
+const Notes = z.discriminatedUnion("notesType", [
+  z.object({
+    notesType: z.literal("noObviousBugs"),
+  }),
+  z.object({
+    notesType: z.literal("potentialBugs"),
+    explanation: z
       .string()
       .min(1)
-      .optional()
-      .describe(dedent`
-        Notes about potential bugs in how the app handles this feature. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues.
-        Communication guidelines:
-        * No need to add notes if you didn't spot obvious bugs.
-        * The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.
-        * Important: Explain what the specification of the app is, in concrete terms, before discussing the bug(s) -- your audience will not be as aware of the specs.
-
-        <example explanation>
-        (This is for apps that have both a status dropdown and a checkbox for marking a task as done.) There are two views for whether a task is done: (i) the checkbox being checked and (ii) the status dropdown being set to "Done".
-        Changing either of these views should update the other view accordingly.
-        </example explanation>
-      `),
-  });
+      .describe(
+        dedent`
+          Notes about potential bugs in how the app handles this feature. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues.
+          Communication guidelines:
+          * Only add notes if there are obvious bugs.
+          * The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.
+          * Important: Explain what the specification of the app is, in concrete terms, before discussing the bug(s) -- your audience will not be as aware of the specs.
+          <example explanation>
+          (This is for apps that have both a status dropdown and a checkbox for marking a task as done.) There are two views for whether a task is done: (i) the checkbox being checked and (ii) the status dropdown being set to "Done".
+          Changing either of these views should update the other view accordingly.
+          </example explanation>
+        `,
+      ),
+  }),
+]);
 
 /*********************************
       Task
@@ -63,8 +88,11 @@ const BaseTaskInfo = z.object({
       All the views of or UIs that the app exposes for the status of the task.
       Use a UIInfo for each view/UI.
       <example>
-      [ { shortDescription: "Checkbox to mark task as done" },
-        { shortDescription: "Status dropdown menu that allows for marking task as done", howToAccess: "Click 'Edit' button on task" } ]
+      [
+        { viewType: "observer", shortDescription: "Read-only label showing current status" },
+        { viewType: "mutator", shortDescription: "Checkbox to mark task as done" },
+        { viewType: "mutator", shortDescription: "Status dropdown menu that allows marking task as done", howToAccess: "Click 'Edit' on the task" }
+      ]
       </example>
       `,
   ),
@@ -91,17 +119,12 @@ const TaskInfo = BaseTaskInfo.extend({
 
 const TodoListInfo = z.object({
   viewsForAddingTask: createViewsField(
-    "All the views of or UIs that the app exposes for adding a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to add tasks.",
+    "All the views that the app exposes for adding a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to add tasks.",
   ),
   viewsForRemovingTask: createViewsField(
-    "All the views of or UIs that the app exposes for removing a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to remove tasks.",
+    "All the views that the app exposes for removing a task (also include info about how to get to the UI, if it doesn't appear immediately). This is an empty array iff the app does not allow the user to remove tasks.",
   ),
-  notes: z
-    .string()
-    .optional()
-    .describe(
-      "Notes about things that seem very clearly buggy. Focus on functional bugs (e.g. to do with synchronization of state), as opposed to UI/UX issues. No need to add notes if you didn't spot obvious bugs. The notes should include enough detail to be usable also by black-box testers who have access to the UI but not the code.",
-    ),
+  notes: Notes,
 });
 
 export const TodoListAppInfo = z.object({
