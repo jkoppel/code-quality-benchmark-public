@@ -1,6 +1,6 @@
 import { query } from "@anthropic-ai/claude-code";
 import type { ClaudeAgentConfig, InstanceResult } from "../../types";
-import { Logger } from "../../utils/logger.js";
+import { Logger } from "../../utils/logger/logger.js";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.js";
 
 export class ClaudeAgent {

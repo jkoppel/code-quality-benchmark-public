@@ -17,4 +17,4 @@ export {
   EvaluationResult,
   InstanceResult,
 } from "./types.js";
-export { LogEntry, Logger, LogLevel } from "./utils/logger.js";
+export { LogEntry, Logger, LogLevel } from "./utils/logger/logger.js";

@@ -1,6 +1,7 @@
 import type { PermissionMode } from "@anthropic-ai/claude-code";
 import type * as z from "zod";
-import { Logger } from "../../utils/logger.js";
+import { Logger } from "../../utils/logger/logger.js";
+import { jsonStringify } from "../../utils/logger/pretty.js";
 import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
 import type { TestResult } from "./report.js";
 import { TestResultSchema } from "./report.js";
@@ -49,7 +50,7 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
       TestResultSchema,
     );
     this.logger.debug(
-      `NonVisionTestCaseAgent.check result: ${JSON.stringify(result)}`,
+      `NonVisionTestCaseAgent.check result: ${jsonStringify(result)}`,
     );
 
     // Immediately log failed tests so user can abort without going through the rest of the suite
@@ -94,7 +95,7 @@ export class VisionTestCaseAgent implements TestCaseAgent {
       TestResultSchema,
     );
     this.logger.debug(
-      `VisionTestCaseAgent.check result: ${JSON.stringify(result)}`,
+      `VisionTestCaseAgent.check result: ${jsonStringify(result)}`,
     );
 
     // Immediately log failed tests so user can abort without going through the rest of the suite

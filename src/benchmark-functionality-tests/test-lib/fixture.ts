@@ -1,5 +1,5 @@
 import type * as z from "zod";
-import { Logger } from "../../utils/logger.js";
+import { Logger } from "../../utils/logger/logger.js";
 import { DriverAgent } from "./driver-agent.js";
 import type { SutConfig } from "./runner.js";
 // TODO: Make a separate fixture agent config?

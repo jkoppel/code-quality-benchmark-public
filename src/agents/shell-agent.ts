@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { Logger } from "../utils/logger.js";
+import { Logger } from "../utils/logger/logger.js";
 
 /**
  * Creates a CodingAgent that executes a shell script with the prompt and folder path as arguments

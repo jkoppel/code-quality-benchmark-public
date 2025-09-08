@@ -5,7 +5,7 @@ import {
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
 import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/test-registry.js";
-import { Logger } from "./utils/logger.js";
+import { Logger } from "./utils/logger/logger.js";
 
 async function main() {
   const benchmarkPath = process.argv[2];
