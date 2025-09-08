@@ -150,7 +150,7 @@ export class DriverAgent {
       You must respond with the json wrapped in <response> tags like this:
       <response>{raw JSON response}</response>
 
-      The JSON must conform to this schema: ${jsonStringify(z.toJSONSchema(outputSchema))}`;
+      The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema))}`;
 
     const result = await this.ask(fullPrompt, config);
 
