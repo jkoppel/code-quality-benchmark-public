@@ -30,8 +30,7 @@ export interface SutConfig {
   port: number;
 }
 
-export interface TestRunnerConfig {
-  sutConfig: SutConfig;
+export interface TestRunnerConfig extends SutConfig {
   logger: Logger;
   // timeoutMs: number;
 }
@@ -45,10 +44,7 @@ export class TestRunner {
 
   async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
     const startTime = Date.now();
-    await using _server = await startDevServer(
-      this.config.sutConfig,
-      this.getLogger(),
-    );
+    await using _server = await startDevServer(this.config, this.getLogger());
 
     // Set up fixtures
     const fixturesEnv = new FixturesEnv(
@@ -57,7 +53,8 @@ export class TestRunner {
           suite.getFixtureMakers().map(async (fixtureMaker) => {
             const fixture = await fixtureMaker.initialize(
               // Each fixture gets its own FixtureAgent instance
-              new FixtureAgent(this.config.sutConfig, this.getLogger()),
+              new FixtureAgent(this.config, this.getLogger()),
+              this.config,
             );
             return [fixtureMaker.id, fixture] as const;
           }),
@@ -73,10 +70,7 @@ export class TestRunner {
             { type: "vision" },
             async (visionTest) =>
               await visionTest.run(
-                new VisionTestCaseAgent(
-                  this.config.sutConfig,
-                  this.getLogger(),
-                ),
+                new VisionTestCaseAgent(this.config, this.getLogger()),
                 fixturesEnv,
                 this.config,
               ),
@@ -85,10 +79,7 @@ export class TestRunner {
             { type: "non-vision" },
             async (nonVisionTest) =>
               await nonVisionTest.run(
-                new NonVisionTestCaseAgent(
-                  this.config.sutConfig,
-                  this.getLogger(),
-                ),
+                new NonVisionTestCaseAgent(this.config, this.getLogger()),
                 fixturesEnv,
                 this.config,
               ),
@@ -164,7 +155,14 @@ async function startDevServer(
     // - Vite apps ignore PORT env var but accept --port CLI argument
     // This approach works for both since each ignores what it doesn't need
     command: "npm",
-    args: ["run", "start", "--", "--port", sutConfig.port.toString(), "--no-open"],
+    args: [
+      "run",
+      "start",
+      "--",
+      "--port",
+      sutConfig.port.toString(),
+      "--no-open",
+    ],
     env: {
       ...DEFAULT_ENVIRONMENT_VARIABLES,
       ...process.env,

@@ -90,22 +90,28 @@ export class DriverAgent {
 
   // TODO: Use abort controller option to implement timeout
 
-  private buildQueryOptions(additional?: DriverAgentConfig) {
-    return {
-      ...this.getConfig(),
-      ...additional,
-      resume: this.getSessionId(), // session id managed by and only by DriverAgent
-    };
-  }
+  // private buildQueryOptions(additional?: Partial<DriverAgentConfig>) {
+  //   return {
+  //     ...this.getConfig(),
+  //     ...additional,
+  //     resume: this.getSessionId(), // session id managed by and only by DriverAgent
+  //   };
+  // }
 
   async ask(
     prompt: string,
-    /** config / options to override with */
-    config?: DriverAgentConfig,
+    /** Additional config / options */
+    config?: Partial<DriverAgentConfig>,
   ): Promise<string> {
+    const options = {
+      ...this.getConfig(),
+      ...config,
+      resume: this.getSessionId(), // session id managed by and only by DriverAgent
+    };
+    this.logger.debug(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
     const response = query({
       prompt,
-      options: this.buildQueryOptions(config),
+      options,
     });
 
     for await (const message of response) {
@@ -134,6 +140,8 @@ export class DriverAgent {
   async query<T extends z.ZodType>(
     prompt: string,
     outputSchema: T,
+    /** Additional config / options */
+    config?: Partial<DriverAgentConfig>,
   ): Promise<z.infer<T>> {
     const fullPrompt = dedent`
       ${prompt}
@@ -143,7 +151,7 @@ export class DriverAgent {
 
       The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema), null, 2)}`;
 
-    const result = await this.ask(fullPrompt);
+    const result = await this.ask(fullPrompt, config);
 
     try {
       const raw = this.extractJsonFromResponse(result);

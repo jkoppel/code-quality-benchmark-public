@@ -51,6 +51,14 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
     this.logger.debug(
       `NonVisionTestCaseAgent.check result: ${JSON.stringify(result)}`,
     );
+
+    // Immediately log failed tests so user can abort without going through the rest of the suite
+    if (result.outcome.status === "failed") {
+      this.logger.error(
+        `🔴 TEST FAILED: ${result.name} - ${result.outcome.reason}`,
+      );
+    }
+
     return result;
   }
 
@@ -88,6 +96,14 @@ export class VisionTestCaseAgent implements TestCaseAgent {
     this.logger.debug(
       `VisionTestCaseAgent.check result: ${JSON.stringify(result)}`,
     );
+
+    // Immediately log failed tests so user can abort without going through the rest of the suite
+    if (result.outcome.status === "failed") {
+      this.logger.error(
+        `🔴 TEST FAILED: ${result.name} - ${result.outcome.reason}`,
+      );
+    }
+
     return result;
   }
 
@@ -115,6 +131,7 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
         "-y",
         PLAYWRIGHT_MCP,
         "--isolated",
+        "--headless",
         capabilities.length > 0 ? `--caps=${capabilities.join(",")}` : "",
       ],
     },
