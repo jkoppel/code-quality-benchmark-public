@@ -17,7 +17,7 @@ import dedent from "dedent";
 
 export function makeAttributeIsolationTest(attribute: TaskAttribute): TestCase {
   return {
-    description: `Test that changing a task's ${attribute.getPrettyName()} doesn't affect other tasks`,
+    descriptiveName: `Test that changing a task's ${attribute.getPrettyName()} doesn't affect other tasks`,
     async run(
       agent: NonVisionTestCaseAgent,
       context: TestContext,

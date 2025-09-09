@@ -63,11 +63,13 @@ export class TestRunner {
     // Run tests
     const results = await Promise.all(
       suite.getTests().map(async (test) => {
-        return await test.run(
+        const result = await test.run(
           new NonVisionTestCaseAgent(this.config, this.getLogger()),
           context,
           this.config,
         );
+        result.name = test.descriptiveName;
+        return result;
       }),
     );
 

@@ -67,10 +67,10 @@ export class Suite {
 // }
 
 export interface TestCase {
-  description: string;
+  descriptiveName: string;
   run(
     agent: NonVisionTestCaseAgent,
-    fixtures: TestContext,
+    context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult>;
 }
