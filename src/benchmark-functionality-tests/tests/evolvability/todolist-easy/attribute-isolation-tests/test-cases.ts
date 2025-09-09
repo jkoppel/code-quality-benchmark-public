@@ -6,13 +6,11 @@ import {
 } from "../shared/task-attribute.js";
 
 export const attributeIsolationPriority = makeAttributeIsolationTest(
-  new PriorityTaskAttribute(),
+  PriorityTaskAttribute,
 );
 
-export const attributeIsolationStatus = makeAttributeIsolationTest(
-  new StatusTaskAttribute(),
-);
+export const attributeIsolationStatus =
+  makeAttributeIsolationTest(StatusTaskAttribute);
 
-export const attributeIsolationDueDate = makeAttributeIsolationTest(
-  new DueDateTaskAttribute(),
-);
+export const attributeIsolationDueDate =
+  makeAttributeIsolationTest(DueDateTaskAttribute);
