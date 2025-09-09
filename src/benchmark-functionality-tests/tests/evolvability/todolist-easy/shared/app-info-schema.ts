@@ -109,7 +109,7 @@ const TaskInfo = BaseTaskInfo.extend({
     priority: createViewsField(
       "All the views of or UIs that the app exposes for the priority levels of a task (also include info about how to get to the UI, if it doesn't appear immediately)",
     ),
-    "due date": createViewsField(
+    dueDate: createViewsField(
       "All the views of or UIs that the app exposes for the due date of a task (also include info about how to get to the UI, if it doesn't appear immediately)",
     ),
   }),

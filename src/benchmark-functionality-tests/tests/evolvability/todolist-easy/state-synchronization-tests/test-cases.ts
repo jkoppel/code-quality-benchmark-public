@@ -9,14 +9,10 @@ import { makeStateSynchTest } from "./test-factory.js";
     'I'm feeling lucky' state synchronization test cases
 ***********************************************************/
 
-export const quickStateSynchStatus = makeStateSynchTest(
-  new StatusTaskAttribute(),
-);
+export const quickStateSynchStatus = makeStateSynchTest(StatusTaskAttribute);
 
 export const quickStateSynchPriority = makeStateSynchTest(
-  new PriorityTaskAttribute(),
+  PriorityTaskAttribute,
 );
 
-export const quickStateSynchDueDate = makeStateSynchTest(
-  new DueDateTaskAttribute(),
-);
+export const quickStateSynchDueDate = makeStateSynchTest(DueDateTaskAttribute);

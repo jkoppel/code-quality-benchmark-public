@@ -10,6 +10,8 @@ import type { TestRunnerConfig } from "./runner.js";
       Test Case
 ***************************/
 
+// TODO: May not want to distinguish at type level between tests tt require vision caps and those that don't
+
 export type TestCase = VisionTestCase | NonVisionTestCase;
 
 export interface VisionTestCase {

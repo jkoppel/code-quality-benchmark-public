@@ -20,7 +20,7 @@ export function makeAttributeIsolationTest(
 ): NonVisionTestCase {
   return {
     type: "non-vision" as const,
-    description: `Test that changing a task's ${attribute} doesn't affect other tasks`,
+    description: `Test that changing a task's ${attribute.getPrettyName()} doesn't affect other tasks`,
     async run(
       agent: NonVisionTestCaseAgent,
       fixtures: FixturesEnv,
@@ -38,7 +38,7 @@ export function makeAttributeIsolationTest(
 
       const prompt = dedent`
         ${makeBackgroundPrompt(config)}
-        Test attribute isolation for ${attribute}.
+        Test attribute isolation for ${attribute.getPrettyName()}.
 
         Available statuses in this app: ${JSON.stringify(availableStatuses)}
         Available priority levels in this app: ${JSON.stringify(availablePriorities)}
@@ -49,10 +49,10 @@ export function makeAttributeIsolationTest(
            - Task 2: ${taskConfigs[1]}
            - Task 3: ${taskConfigs[2]}
         2. Record the initial state of all 3 tasks
-        3. Change task 1's ${attribute} to a different value
+        3. Change task 1's ${attribute.getPrettyName()} to a different value
         4. Verify that tasks 2 and 3 retain ALL their original attributes (priority, due date, status)
 
-        Mark the test as passing if changing task 1's ${attribute} doesn't affect any attributes of the other tasks.
+        Mark the test as passing if changing task 1's ${attribute.getPrettyName()} doesn't affect any attributes of the other tasks.
         Mark as failing if any other task's attributes changed.`;
 
       config.logger.debugWith({ prompt }, "Attribute isolation test prompt");

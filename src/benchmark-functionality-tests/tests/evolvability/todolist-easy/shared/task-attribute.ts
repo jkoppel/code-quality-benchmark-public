@@ -1,53 +1,47 @@
-import dedent from "dedent";
 import { TodoListAppInfo } from "./app-info-schema.js";
 import * as z from "zod";
 
-export type TaskAttribute =
-  | PriorityTaskAttribute
-  | DueDateTaskAttribute
-  | StatusTaskAttribute;
+export type AttributeId = "priority" | "dueDate" | "status";
 
-abstract class BaseTaskAttribute {
-  protected abstract attribute: string;
+type AppInfo = z.infer<typeof TodoListAppInfo>;
+type AttributeViews = AppInfo["taskInfo"]["views"][AttributeId];
 
-  toString() {
-    return this.attribute;
-  }
-
-  getViews(appInfo: z.infer<typeof TodoListAppInfo>) {
-    return appInfo.taskInfo.views[
-      this.attribute as keyof typeof appInfo.taskInfo.views
-    ];
-  }
-
-  abstract getInfoForStateSynchTests(
-    appInfo: z.infer<typeof TodoListAppInfo>,
-  ): string;
+export interface TaskAttribute {
+  attributeId: AttributeId;
+  getPrettyName(): string;
+  getAttributeViews(appInfo: AppInfo): AttributeViews;
+  getInfoForStateSynchTests(appInfo: AppInfo): string;
 }
 
-export class PriorityTaskAttribute extends BaseTaskAttribute {
-  protected attribute = "priority";
+export const PriorityTaskAttribute: TaskAttribute = {
+  attributeId: "priority",
+  getPrettyName: () => "priority",
+  getAttributeViews: (app) => app.taskInfo.views.priority,
+  getInfoForStateSynchTests: (app) =>
+    JSON.stringify(app.taskInfo.views.priority),
+};
 
-  getInfoForStateSynchTests(appInfo: z.infer<typeof TodoListAppInfo>): string {
-    return JSON.stringify(this.getViews(appInfo));
-  }
-}
+export const DueDateTaskAttribute: TaskAttribute = {
+  attributeId: "dueDate",
+  getPrettyName: () => "due date",
+  getAttributeViews: (app) => app.taskInfo.views.dueDate,
+  getInfoForStateSynchTests: (app) =>
+    JSON.stringify(app.taskInfo.views.dueDate),
+};
 
-export class DueDateTaskAttribute extends BaseTaskAttribute {
-  protected attribute = "due date";
+export const StatusTaskAttribute: TaskAttribute = {
+  attributeId: "status",
+  getPrettyName: () => "status",
+  getAttributeViews: (app) => app.taskInfo.views.status,
+  getInfoForStateSynchTests: (app) =>
+    JSON.stringify({
+      views: app.taskInfo.views.status,
+      todoListInfo: app.todoListInfo,
+    }),
+};
 
-  getInfoForStateSynchTests(appInfo: z.infer<typeof TodoListAppInfo>): string {
-    return JSON.stringify(this.getViews(appInfo));
-  }
-}
-
-export class StatusTaskAttribute extends BaseTaskAttribute {
-  protected attribute = "status";
-
-  getInfoForStateSynchTests(appInfo: z.infer<typeof TodoListAppInfo>): string {
-    return dedent`
-    ${JSON.stringify(this.getViews(appInfo))}
-    ${JSON.stringify(appInfo.todoListInfo)}
-    `;
-  }
-}
+export const TaskAttributes = {
+  priority: PriorityTaskAttribute,
+  dueDate: DueDateTaskAttribute,
+  status: StatusTaskAttribute,
+};
