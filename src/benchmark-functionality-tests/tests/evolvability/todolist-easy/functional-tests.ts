@@ -2,9 +2,9 @@ import { Suite } from "../../../test-lib/suite.js";
 import { appInfoReconFixtureMaker } from "./shared/scout-fixture.js";
 import { checkMoreThanDoneNotDoneStatuses } from "./basic-tests/test-cases.js";
 import {
-  quickStateSynchStatus,
-  quickStateSynchPriority,
-  quickStateSynchDueDate,
+  chanceyStateSynchStatus,
+  chanceyStateSynchPriority,
+  chanceyStateSynchDueDate,
 } from "./state-synchronization-tests/test-cases.js";
 import {
   attributeIsolationPriority,
@@ -17,9 +17,9 @@ export default new Suite("Todolist Functionality Tests", [
   checkMoreThanDoneNotDoneStatuses,
 
   // 'I'm feeling lucky' State synchronization tests
-  quickStateSynchStatus,
-  quickStateSynchPriority,
-  quickStateSynchDueDate,
+  chanceyStateSynchStatus,
+  chanceyStateSynchPriority,
+  chanceyStateSynchDueDate,
 
   // Attribute isolation tests
   attributeIsolationPriority,

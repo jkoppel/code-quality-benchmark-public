@@ -15,7 +15,7 @@ import dedent from "dedent";
 ***********************************************************/
 
 /** Make a 'I'm feeling lucky' state synchronization test case */
-export function makeStateSynchTest(
+export function makeChanceyStateSynchTest(
   attribute: TaskAttribute,
   overallGoal: string = `Your overall goal is to test synchronization of ${attribute.getPrettyName()}, broadly construed, as well as any synchronizations of this state with other key pieces of state`,
 ): NonVisionTestCase {
