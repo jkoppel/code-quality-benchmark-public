@@ -66,8 +66,10 @@ const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
  * For each mutator, test that changing the status via that mutator
  * updates the other views accordingly.
  *
- * The key insight is that the app info identified by the discovery phase tends to be reliable,
- * and the info there is enough for us to test this sort of test synchronization without leaving too much to the coding agent.
+ * The key insight, I think, is that
+ * (i) the discovery phase allows us to collect key info about the app under test
+ * (ii) we don't actually need that much info to test this sort of test synchronization systematically, without leaving too much to the coding agent,
+ * which in effect makes the discovery task simpler / more reliable. E.g., we don't need the discovery agent to actually identify bugs -- just need it to identify key UI elements and which are mutators.
  */
 export function makePerMutatorStateSyncTestsForStatus(
   appInfo: z.infer<typeof TodoListAppInfo>,

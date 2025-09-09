@@ -37,15 +37,6 @@ export class Suite {
   getTests() {
     return this.tests;
   }
-
-  // withFixtures(makers: FixtureMaker[]) {
-  //   this.fixtureMakers = makers;
-  //   return this;
-  // }
-
-  // getFixtureMakers() {
-  //   return this.fixtureMakers;
-  // }
 }
 
 /**************************
