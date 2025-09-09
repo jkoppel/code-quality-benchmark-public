@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Logger } from "../../utils/logger/logger.js";
 
 /*********************************
     For report
@@ -54,3 +55,41 @@ export type TestResult = z.infer<typeof TestResultSchema>;
 //   name: string;
 //   tests: TestResult[];
 // }
+
+export class Reporter {
+  constructor(private logger: Logger) {}
+
+  report(results: TestSuiteResults): void {
+    if (results.summary.failed > 0) {
+      this.logger.error(
+        `✗ Suite "${results.name}" failed: ${results.summary.failed}/${results.summary.total} tests failed`,
+      );
+
+      const failedTests = results.results.filter(
+        (r) => r.outcome.status === "failed",
+      );
+      failedTests.forEach((test) => {
+        if (test.outcome.status === "failed") {
+          this.logger.error(`  • ${test.name}: ${test.outcome.reason}`);
+        }
+      });
+    } else if (results.summary.skipped > 0) {
+      this.logger.warn(`⊘ ${results.summary.skipped} test(s) were skipped`);
+      const skippedTests = results.results.filter(
+        (r) => r.outcome.status === "skipped",
+      );
+      skippedTests.forEach((test) => {
+        if (test.outcome.status === "skipped") {
+          this.logger.warn(`  • ${test.name}: ${test.outcome.reason}`);
+        }
+      });
+    } else {
+      this.logger.info(`✓ All tests in suite ${results.name} passed`);
+    }
+    this.logger.info(JSON.stringify(results, null, 2));
+
+    this.logger.info(
+      `Test execution for ${results.name} completed in ${(results.summary.duration / 1000).toFixed(1)}s`,
+    );
+  }
+}
