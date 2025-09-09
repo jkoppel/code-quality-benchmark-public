@@ -17,7 +17,6 @@ import dedent from "dedent";
 /** Make a 'I'm feeling lucky' state synchronization test case */
 export function makeChanceyStateSynchTest(
   attribute: TaskAttribute,
-  overallGoal: string = `Your overall goal is to test synchronization of ${attribute.getPrettyName()}, broadly construed, as well as any synchronizations of this state with other key pieces of state`,
 ): NonVisionTestCase {
   return {
     type: "non-vision" as const,
@@ -37,7 +36,7 @@ export function makeChanceyStateSynchTest(
         Here is some information that someone else gathered about the views of or UI elements for the ${attribute.getPrettyName()} (and related things):
         ${attribute.getInfoForStateSynchTests(appInfo)}
 
-        ${overallGoal}
+        Your overall goal is to test synchronization of ${attribute.getPrettyName()}, broadly construed, as well as any synchronizations of this state with other key pieces of state.
         In particular:
         1. Skim the relevant code for more context -- it'll help with knowing what to focus on testing.
         2. Think about the specification and what UI paths you have to explore to *thoroughly* test such synchronization before doing it.
