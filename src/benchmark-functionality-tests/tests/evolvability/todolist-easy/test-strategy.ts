@@ -18,6 +18,7 @@ import {
 import { TestContext } from "../../../test-lib/context.js";
 import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
 import dedent from "dedent";
+import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
 
 export const appInfoId = "todoListAppInfo";
 
@@ -30,16 +31,24 @@ export const strategy: SuiteGenerationStrategy = {
     return await discoverTodoListAppInfo(discoveryAgent, config);
   },
 
-  async generateSuite(config: TestRunnerConfig, context: TestContext) {
+  async generateSuite(_config: TestRunnerConfig, context: TestContext) {
     const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
 
-    // TODO: Dynamically generate tests
+    // Dynamically generate tests based on the app info:
+    // For each mutator that was identified in the previous discovery phase, we test that changing the status via that mutator updates the other views accordingly.
+    // TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
+    const dynamicTests = [
+      ...makePerMutatorStateSyncTestsForStatus(appInfo, "not-done", "done"),
+      ...makePerMutatorStateSyncTestsForStatus(appInfo, "done", "not-done"),
+    ];
 
     const staticTests = [
       // Basic tests
       checkMoreThanDoneNotDoneStatuses,
 
       // 'I'm feeling lucky' State synchronization tests
+      // These don't seem to have as high a detection rate as the per-mutator tests,
+      // but I'm keeping them around for now because these are potentially complementary (e.g. when the discovery phase doesn't work well)
       chanceyStateSynchStatus,
       chanceyStateSynchPriority,
       chanceyStateSynchDueDate,
@@ -50,7 +59,10 @@ export const strategy: SuiteGenerationStrategy = {
       attributeIsolationDueDate,
     ];
 
-    return new Suite("Todolist Functionality Tests", staticTests);
+    return new Suite("Todolist Functionality Tests", [
+      ...staticTests,
+      ...dynamicTests,
+    ]);
   },
 };
 

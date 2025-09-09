@@ -1,5 +1,8 @@
 import type * as z from "zod";
-import type { TaskAttribute } from "../shared/task-attribute.js";
+import {
+  type TaskAttribute,
+  StatusTaskAttribute,
+} from "../shared/task-attribute.js";
 import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestCase } from "../../../../test-lib/suite.js";
@@ -17,7 +20,7 @@ import dedent from "dedent";
 /** Make a 'I'm feeling lucky' state synchronization test case */
 export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
   return {
-    description: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
+    descriptiveName: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
     async run(
       agent: NonVisionTestCaseAgent,
       context: TestContext,
@@ -49,32 +52,56 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
   };
 }
 
-// /**********************************************************
-//     App Info Driven State Synchronization Test Factory
-// ***********************************************************/
-// // TODO: Not sure what a good name for this is.
+/**********************************************************
+      Per Mutator State Synchronization Test Factory
+***********************************************************/
+// TODO: Not sure what a good name for this is.
 
-// export function makeAppInfoDrivenStateSynchTests(
-//   attribute: TaskAttribute,
-// ): Array<NonVisionTestCase> {
-//   return [{
-//     type: "non-vision" as const,
-//     description: `More deterministic, more app-info-dependent, test of state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
-//     async run(
-//       agent: NonVisionTestCaseAgent,
-//       fixtures: FixturesEnv,
-//       config: TestRunnerConfig,
-//     ): Promise<TestResult> {
-//       const appInfo = fixtures.get(appInfoId) as z.infer<
-//         typeof TodoListAppInfo
-//       >;
-//       const mutators = attribute
-//         .getAttributeViews(appInfo)
-//         .views.filter((view) => view.viewType === "mutator");
+/** Don't need to check the code for these more constrained tests */
+const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
+  You can use Playwright MCP; the dev server has been started at port ${config.port}.`;
 
-//       return agent.check(dedent`
-//         ${makeBackgroundPrompt(config)}
-//         Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`);
-//     },
-//   }];
-// }
+// TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
+/** Make more thorough tests for status synchronization based on the app info.
+ * For each mutator, test that changing the status via that mutator
+ * updates the other views accordingly.
+ *
+ * The key insight is that the app info identified by the discovery phase tends to be reliable,
+ * and the info there is enough for us to test this sort of test synchronization without leaving too much to the coding agent.
+ */
+export function makePerMutatorStateSyncTestsForStatus(
+  appInfo: z.infer<typeof TodoListAppInfo>,
+  fromStatus: string,
+  toStatus: string,
+): Array<TestCase> {
+  const attribute = StatusTaskAttribute;
+  const mutators = attribute
+    .getAttributeViews(appInfo)
+    .views.filter((view) => view.viewType === "mutator");
+  return mutators.map((mutator) => {
+    return {
+      descriptiveName: `Per-mutator state synchronization test - ${attribute.getPrettyName()}`,
+      async run(
+        agent: NonVisionTestCaseAgent,
+        _context: TestContext,
+        config: TestRunnerConfig,
+      ): Promise<TestResult> {
+        return await agent.check(dedent`
+            You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
+            ${makeJustPlaywrightToolsPrompt(config)}
+            
+            Here is some information that someone else has gathered:
+            * The available statuses are ${JSON.stringify(attribute.getAttributeValuesForTesting(appInfo))}.
+            * The views or UI elements are:
+              ${attribute.getInfoForStateSynchTests(appInfo)}
+
+            Test state synchronization by
+            1. Creating a task with the status ${fromStatus}
+            2. Then change the status to ${toStatus} by using ${mutator}
+            3. Finally, check if the other views update accordingly.
+            The test passes if and only if all the other views update accordingly.
+          `);
+      },
+    };
+  });
+}
