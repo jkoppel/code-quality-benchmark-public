@@ -4,7 +4,7 @@ import {
   TestRunner,
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
-import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/test-registry.js";
+import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.js";
 import { Logger } from "./utils/logger/logger.js";
 
 async function main() {
@@ -33,22 +33,24 @@ async function main() {
     };
     const testRunner = new TestRunner(config);
 
-    // Load test suite
-    logger.info(`Loading functional test suite for ${resolvedBenchmarkPath}`);
-    const suite = await loadTestSuite(resolvedBenchmarkPath);
+    // Load test suite generation strategy
+    logger.info(
+      `Loading test suite generation strategy for ${resolvedBenchmarkPath}`,
+    );
+    const strategy = await loadSuiteGenerationStrategy(resolvedBenchmarkPath);
 
-    // Run test suite
-    logger.info(`Running suite: ${suite.getName()}`);
-    const result = await testRunner.runTestSuite(suite);
+    // Execute suite generation strategy
+    logger.info(`Executing suite generation strategy`);
+    const results = await testRunner.executeStrategy(strategy);
 
     // Handle result
-    if (result.summary.failed > 0) {
+    if (results.summary.failed > 0) {
       logger.error(
-        `✗ Suite "${suite.getName()}" failed: ${result.summary.failed}/${result.summary.total} tests failed`,
+        `✗ Suite "${results.name}" failed: ${results.summary.failed}/${results.summary.total} tests failed`,
       );
 
       // Log each failing test
-      const failedTests = result.results.filter(
+      const failedTests = results.results.filter(
         (r) => r.outcome.status === "failed",
       );
       failedTests.forEach((test) => {
@@ -56,9 +58,9 @@ async function main() {
           logger.error(`  • ${test.name}: ${test.outcome.reason}`);
         }
       });
-    } else if (result.summary.skipped > 0) {
-      logger.warn(`⊘ ${result.summary.skipped} test(s) were skipped`);
-      const skippedTests = result.results.filter(
+    } else if (results.summary.skipped > 0) {
+      logger.warn(`⊘ ${results.summary.skipped} test(s) were skipped`);
+      const skippedTests = results.results.filter(
         (r) => r.outcome.status === "skipped",
       );
       skippedTests.forEach((test) => {
@@ -67,12 +69,12 @@ async function main() {
         }
       });
     } else {
-      logger.info(`✓ All tests in suite ${suite.getName()} passed`);
+      logger.info(`✓ All tests in suite ${results.name} passed`);
     }
-    logger.info(JSON.stringify(result, null, 2));
+    logger.info(JSON.stringify(results, null, 2));
 
     logger.info(
-      `Test execution for ${suite.getName()} completed in ${(result.summary.duration / 1000).toFixed(1)}s`,
+      `Test execution for ${results.name} completed in ${(results.summary.duration / 1000).toFixed(1)}s`,
     );
   } catch (error) {
     logger.error(`Failed to run tests: ${String(error)}`);

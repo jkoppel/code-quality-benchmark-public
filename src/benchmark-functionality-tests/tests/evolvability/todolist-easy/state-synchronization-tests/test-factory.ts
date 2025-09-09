@@ -1,13 +1,13 @@
 import type * as z from "zod";
 import type { TaskAttribute } from "../shared/task-attribute.js";
-import type { FixturesEnv } from "../../../../test-lib/fixture.js";
+import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestCase } from "../../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
-import { appInfoFixtureId } from "../shared/scout-fixture.js";
+import { appInfoId } from "../test-strategy.js";
 import dedent from "dedent";
 
 /**********************************************************
@@ -20,12 +20,10 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
     description: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
     async run(
       agent: NonVisionTestCaseAgent,
-      fixtures: FixturesEnv,
+      context: TestContext,
       config: TestRunnerConfig,
     ): Promise<TestResult> {
-      const appInfo = fixtures.get(appInfoFixtureId) as z.infer<
-        typeof TodoListAppInfo
-      >;
+      const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
       config.logger.debugWith(appInfo, "AppInfo fixture");
 
       return await agent.check(dedent`
@@ -50,3 +48,33 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
     },
   };
 }
+
+// /**********************************************************
+//     App Info Driven State Synchronization Test Factory
+// ***********************************************************/
+// // TODO: Not sure what a good name for this is.
+
+// export function makeAppInfoDrivenStateSynchTests(
+//   attribute: TaskAttribute,
+// ): Array<NonVisionTestCase> {
+//   return [{
+//     type: "non-vision" as const,
+//     description: `More deterministic, more app-info-dependent, test of state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
+//     async run(
+//       agent: NonVisionTestCaseAgent,
+//       fixtures: FixturesEnv,
+//       config: TestRunnerConfig,
+//     ): Promise<TestResult> {
+//       const appInfo = fixtures.get(appInfoId) as z.infer<
+//         typeof TodoListAppInfo
+//       >;
+//       const mutators = attribute
+//         .getAttributeViews(appInfo)
+//         .views.filter((view) => view.viewType === "mutator");
+
+//       return agent.check(dedent`
+//         ${makeBackgroundPrompt(config)}
+//         Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`);
+//     },
+//   }];
+// }

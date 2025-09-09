@@ -1,7 +1,52 @@
-import type { FixtureMaker, FixturesEnv } from "./fixture.js";
+import type { DiscoveryAgent } from "./discovery-agent.js";
+import type { TestContext } from "./context.js";
 import type { TestResult } from "./report.js";
 import type { NonVisionTestCaseAgent } from "./test-case-agent.js";
 import type { TestRunnerConfig } from "./runner.js";
+
+/********************************
+    Suite Generation Strategy   
+*********************************/
+
+export interface SuiteGenerationStrategy {
+  /** Gather info on the app */
+  discover(
+    config: TestRunnerConfig,
+    discoveryAgent: DiscoveryAgent,
+  ): Promise<TestContext>;
+
+  /** Generate the Suite using the gathered info. */
+  generateSuite(config: TestRunnerConfig, context: TestContext): Promise<Suite>;
+}
+
+/**************************
+        Suite
+***************************/
+
+export class Suite {
+  constructor(
+    /** Descriptive name */
+    private name: string,
+    private tests: TestCase[],
+  ) {}
+
+  getName() {
+    return this.name;
+  }
+
+  getTests() {
+    return this.tests;
+  }
+
+  // withFixtures(makers: FixtureMaker[]) {
+  //   this.fixtureMakers = makers;
+  //   return this;
+  // }
+
+  // getFixtureMakers() {
+  //   return this.fixtureMakers;
+  // }
+}
 
 /**************************
       Test Case
@@ -25,37 +70,7 @@ export interface TestCase {
   description: string;
   run(
     agent: NonVisionTestCaseAgent,
-    fixtures: FixturesEnv,
+    fixtures: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult>;
-}
-
-/**************************
-        Suite
-***************************/
-
-export class Suite {
-  constructor(
-    /** Descriptive name */
-    private name: string,
-    private tests: TestCase[],
-    private fixtureMakers: FixtureMaker[] = [],
-  ) {}
-
-  getName() {
-    return this.name;
-  }
-
-  getTests() {
-    return this.tests;
-  }
-
-  withFixtures(makers: FixtureMaker[]) {
-    this.fixtureMakers = makers;
-    return this;
-  }
-
-  getFixtureMakers() {
-    return this.fixtureMakers;
-  }
 }

@@ -10,11 +10,13 @@
  * and `task` is the specific challenge within that set, e.g. 'todolist-easy'.
  */
 
-import type { Suite } from "./suite.js";
+import type { SuiteGenerationStrategy } from "./suite.js";
 
-export async function loadTestSuite(benchmarkPath: string): Promise<Suite> {
+export async function loadSuiteGenerationStrategy(
+  benchmarkPath: string,
+): Promise<SuiteGenerationStrategy> {
   const { benchmarkSet, task } = parseBenchmarkPath(benchmarkPath);
-  return await getTestSuite(benchmarkSet, task);
+  return await getSuiteGenerationStrategy(benchmarkSet, task);
 }
 
 /**
@@ -47,30 +49,34 @@ export function parseBenchmarkPath(benchmarkPath: string): {
   };
 }
 
-const TEST_PATH_REGISTRY = {
+const TEST_STRATEGY_REGISTRY = {
   "evolvability/todolist-easy":
-    "../tests/evolvability/todolist-easy/functional-tests.js",
-  // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/functional-tests.js',
+    "../tests/evolvability/todolist-easy/test-strategy.js",
+  // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/test-strategy.js',
 } as const;
 
-/** Dynamically import the functional test suite for the benchmark set */
-export async function getTestSuite(
+/** Dynamically import the test suite generation strategy for the benchmark set */
+export async function getSuiteGenerationStrategy(
   benchmarkSet: string,
   task: string,
-): Promise<Suite> {
+): Promise<SuiteGenerationStrategy> {
   const key = `${benchmarkSet}/${task}`;
 
-  if (!(key in TEST_PATH_REGISTRY)) {
-    const availableKeys = Object.keys(TEST_PATH_REGISTRY).join(", ");
+  if (!(key in TEST_STRATEGY_REGISTRY)) {
+    const availableKeys = Object.keys(TEST_STRATEGY_REGISTRY).join(", ");
     throw new Error(
-      `No test suite found for ${key}. Available: ${availableKeys}`,
+      `No test suite generation strategy found for ${key}. Available: ${availableKeys}`,
     );
   }
 
-  const testPath = TEST_PATH_REGISTRY[key as keyof typeof TEST_PATH_REGISTRY];
+  const strategyPath =
+    TEST_STRATEGY_REGISTRY[key as keyof typeof TEST_STRATEGY_REGISTRY];
 
   // Using dynamic import to avoid circular dependencies since test files import the Suite type from ./suite.js
   // TODO: add tests / checks of the registry, and perhaps run these checks on npm run check
-  const testModule = (await import(testPath)) as { default: Suite };
-  return testModule.default;
+  return (
+    (await import(strategyPath)) as {
+      default: SuiteGenerationStrategy;
+    }
+  ).default;
 }
