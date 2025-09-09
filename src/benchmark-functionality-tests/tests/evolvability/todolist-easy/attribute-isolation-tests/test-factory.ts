@@ -1,8 +1,8 @@
-import * as z from "zod";
+import type * as z from "zod";
 import type { TaskAttribute } from "../shared/task-attribute.js";
 import type { FixturesEnv } from "../../../../test-lib/fixture.js";
 import type { TestResult } from "../../../../test-lib/report.js";
-import type { NonVisionTestCase } from "../../../../test-lib/suite.js";
+import type { TestCase } from "../../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
@@ -15,11 +15,8 @@ import dedent from "dedent";
     Attribute Isolation Test Factory
 ***************************************/
 
-export function makeAttributeIsolationTest(
-  attribute: TaskAttribute,
-): NonVisionTestCase {
+export function makeAttributeIsolationTest(attribute: TaskAttribute): TestCase {
   return {
-    type: "non-vision" as const,
     description: `Test that changing a task's ${attribute.getPrettyName()} doesn't affect other tasks`,
     async run(
       agent: NonVisionTestCaseAgent,
@@ -56,7 +53,7 @@ export function makeAttributeIsolationTest(
         Mark as failing if any other task's attributes changed.`;
 
       config.logger.debugWith({ prompt }, "Attribute isolation test prompt");
-      return agent.check(prompt);
+      return await agent.check(prompt);
     },
   };
 }

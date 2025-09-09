@@ -12,16 +12,12 @@
  */
 
 import detect from "detect-port";
-import { match } from "ts-pattern";
 import { Logger } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
 import { FixtureAgent, FixturesEnv } from "./fixture.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite } from "./suite.js";
-import {
-  NonVisionTestCaseAgent,
-  VisionTestCaseAgent,
-} from "./test-case-agent.js";
+import { NonVisionTestCaseAgent } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -65,26 +61,11 @@ export class TestRunner {
     // Run tests
     const results = await Promise.all(
       suite.getTests().map(async (test) => {
-        return await match(test)
-          .with(
-            { type: "vision" },
-            async (visionTest) =>
-              await visionTest.run(
-                new VisionTestCaseAgent(this.config, this.getLogger()),
-                fixturesEnv,
-                this.config,
-              ),
-          )
-          .with(
-            { type: "non-vision" },
-            async (nonVisionTest) =>
-              await nonVisionTest.run(
-                new NonVisionTestCaseAgent(this.config, this.getLogger()),
-                fixturesEnv,
-                this.config,
-              ),
-          )
-          .exhaustive();
+        return await test.run(
+          new NonVisionTestCaseAgent(this.config, this.getLogger()),
+          fixturesEnv,
+          this.config,
+        );
       }),
     );
 

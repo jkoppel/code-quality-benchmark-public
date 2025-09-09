@@ -1,8 +1,8 @@
-import * as z from "zod";
+import type * as z from "zod";
 import type { TaskAttribute } from "../shared/task-attribute.js";
 import type { FixturesEnv } from "../../../../test-lib/fixture.js";
 import type { TestResult } from "../../../../test-lib/report.js";
-import type { NonVisionTestCase } from "../../../../test-lib/suite.js";
+import type { TestCase } from "../../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
@@ -15,11 +15,8 @@ import dedent from "dedent";
 ***********************************************************/
 
 /** Make a 'I'm feeling lucky' state synchronization test case */
-export function makeChanceyStateSynchTest(
-  attribute: TaskAttribute,
-): NonVisionTestCase {
+export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
   return {
-    type: "non-vision" as const,
     description: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
     async run(
       agent: NonVisionTestCaseAgent,
@@ -31,7 +28,7 @@ export function makeChanceyStateSynchTest(
       >;
       config.logger.debugWith(appInfo, "AppInfo fixture");
 
-      return agent.check(dedent`
+      return await agent.check(dedent`
         ${makeBackgroundPrompt(config)}
         Here is some information that someone else gathered about the views of or UI elements for the ${attribute.getPrettyName()} (and related things):
         ${attribute.getInfoForStateSynchTests(appInfo)}
