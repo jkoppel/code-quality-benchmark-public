@@ -19,9 +19,6 @@ export const UIInfo = z.discriminatedUnion("viewType", [
       .describe(
         `How to get to the UI, if it's not obvious; e.g.: "in the task row, next to the title"`,
       ),
-    pathsToCode: z
-      .array(z.string())
-      .describe("Paths to relevant parts of the codebase"),
   }),
   z.object({
     viewType: z
@@ -35,9 +32,6 @@ export const UIInfo = z.discriminatedUnion("viewType", [
         `Short description of the view or UI, e.g. "A checkbox that marks a task as done/undone."`,
       ),
     howToAccess: z.string().optional(),
-    pathsToCode: z
-      .array(z.string())
-      .describe("Paths to relevant parts of the codebase"),
   }),
 ]);
 
@@ -48,6 +42,9 @@ export const UIInfo = z.discriminatedUnion("viewType", [
 const createViewsField = (viewsDescription: string) =>
   z.object({
     views: z.array(UIInfo).describe(viewsDescription),
+    pathsToCode: z
+      .array(z.string())
+      .describe("Paths to relevant parts of the codebase"),
     notes: Notes,
   });
 
