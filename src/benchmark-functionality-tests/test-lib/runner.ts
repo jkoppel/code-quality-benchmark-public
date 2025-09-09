@@ -12,16 +12,13 @@
  */
 
 import detect from "detect-port";
-import { match } from "ts-pattern";
 import { Logger } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
-import { FixtureAgent, FixturesEnv } from "./fixture.js";
+import { DiscoveryAgent } from "./discovery-agent.js";
+import { TestContext } from "./context.js";
 import type { TestSuiteResults } from "./report.js";
-import type { Suite } from "./suite.js";
-import {
-  NonVisionTestCaseAgent,
-  VisionTestCaseAgent,
-} from "./test-case-agent.js";
+import type { Suite, SuiteGenerationStrategy } from "./suite.js";
+import { NonVisionTestCaseAgent } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -42,49 +39,35 @@ export class TestRunner {
     return this.config.logger;
   }
 
-  async runTestSuite(suite: Suite): Promise<TestSuiteResults> {
-    const startTime = Date.now();
+  async executeStrategy(
+    strategy: SuiteGenerationStrategy,
+  ): Promise<TestSuiteResults> {
     await using _server = await startDevServer(this.config, this.getLogger());
 
-    // Set up fixtures
-    const fixturesEnv = new FixturesEnv(
-      new Map(
-        await Promise.all(
-          suite.getFixtureMakers().map(async (fixtureMaker) => {
-            const fixture = await fixtureMaker.initialize(
-              // Each fixture gets its own FixtureAgent instance
-              new FixtureAgent(this.config, this.getLogger()),
-              this.config,
-            );
-            return [fixtureMaker.id, fixture] as const;
-          }),
-        ),
-      ),
+    const context = await strategy.discover(
+      this.config,
+      new DiscoveryAgent(this.config, this.getLogger()),
     );
+    const suite = await strategy.generateSuite(this.config, context);
+
+    return await this.runTestSuite_(context, suite);
+  }
+
+  /** Run a test suite without starting dev server */
+  private async runTestSuite_(
+    context: TestContext,
+    suite: Suite,
+  ): Promise<TestSuiteResults> {
+    const startTime = Date.now();
 
     // Run tests
     const results = await Promise.all(
       suite.getTests().map(async (test) => {
-        return await match(test)
-          .with(
-            { type: "vision" },
-            async (visionTest) =>
-              await visionTest.run(
-                new VisionTestCaseAgent(this.config, this.getLogger()),
-                fixturesEnv,
-                this.config,
-              ),
-          )
-          .with(
-            { type: "non-vision" },
-            async (nonVisionTest) =>
-              await nonVisionTest.run(
-                new NonVisionTestCaseAgent(this.config, this.getLogger()),
-                fixturesEnv,
-                this.config,
-              ),
-          )
-          .exhaustive();
+        return await test.run(
+          new NonVisionTestCaseAgent(this.config, this.getLogger()),
+          context,
+          this.config,
+        );
       }),
     );
 
@@ -108,6 +91,15 @@ export class TestRunner {
       },
       results,
     };
+  }
+
+  async runTestSuite(
+    context: TestContext,
+    suite: Suite,
+  ): Promise<TestSuiteResults> {
+    await using _server = await startDevServer(this.config, this.getLogger());
+
+    return await this.runTestSuite_(context, suite);
   }
 }
 

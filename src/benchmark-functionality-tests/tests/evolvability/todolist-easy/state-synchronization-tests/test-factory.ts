@@ -1,13 +1,13 @@
-import * as z from "zod";
+import type * as z from "zod";
 import type { TaskAttribute } from "../shared/task-attribute.js";
-import type { FixturesEnv } from "../../../../test-lib/fixture.js";
+import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
-import type { NonVisionTestCase } from "../../../../test-lib/suite.js";
+import type { TestCase } from "../../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
-import { appInfoFixtureId } from "../shared/scout-fixture.js";
+import { appInfoId } from "../test-strategy.js";
 import dedent from "dedent";
 
 /**********************************************************
@@ -15,29 +15,23 @@ import dedent from "dedent";
 ***********************************************************/
 
 /** Make a 'I'm feeling lucky' state synchronization test case */
-export function makeStateSynchTest(
-  attribute: TaskAttribute,
-  overallGoal: string = `Your overall goal is to test synchronization of ${attribute.getPrettyName()}, broadly construed, as well as any synchronizations of this state with other key pieces of state`,
-): NonVisionTestCase {
+export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
   return {
-    type: "non-vision" as const,
     description: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
     async run(
       agent: NonVisionTestCaseAgent,
-      fixtures: FixturesEnv,
+      context: TestContext,
       config: TestRunnerConfig,
     ): Promise<TestResult> {
-      const appInfo = fixtures.get(appInfoFixtureId) as z.infer<
-        typeof TodoListAppInfo
-      >;
+      const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
       config.logger.debugWith(appInfo, "AppInfo fixture");
 
-      return agent.check(dedent`
+      return await agent.check(dedent`
         ${makeBackgroundPrompt(config)}
         Here is some information that someone else gathered about the views of or UI elements for the ${attribute.getPrettyName()} (and related things):
         ${attribute.getInfoForStateSynchTests(appInfo)}
 
-        ${overallGoal}
+        Your overall goal is to test synchronization of ${attribute.getPrettyName()}, broadly construed, as well as any synchronizations of this state with other key pieces of state.
         In particular:
         1. Skim the relevant code for more context -- it'll help with knowing what to focus on testing.
         2. Think about the specification and what UI paths you have to explore to *thoroughly* test such synchronization before doing it.
@@ -54,3 +48,33 @@ export function makeStateSynchTest(
     },
   };
 }
+
+// /**********************************************************
+//     App Info Driven State Synchronization Test Factory
+// ***********************************************************/
+// // TODO: Not sure what a good name for this is.
+
+// export function makeAppInfoDrivenStateSynchTests(
+//   attribute: TaskAttribute,
+// ): Array<NonVisionTestCase> {
+//   return [{
+//     type: "non-vision" as const,
+//     description: `More deterministic, more app-info-dependent, test of state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
+//     async run(
+//       agent: NonVisionTestCaseAgent,
+//       fixtures: FixturesEnv,
+//       config: TestRunnerConfig,
+//     ): Promise<TestResult> {
+//       const appInfo = fixtures.get(appInfoId) as z.infer<
+//         typeof TodoListAppInfo
+//       >;
+//       const mutators = attribute
+//         .getAttributeViews(appInfo)
+//         .views.filter((view) => view.viewType === "mutator");
+
+//       return agent.check(dedent`
+//         ${makeBackgroundPrompt(config)}
+//         Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`);
+//     },
+//   }];
+// }

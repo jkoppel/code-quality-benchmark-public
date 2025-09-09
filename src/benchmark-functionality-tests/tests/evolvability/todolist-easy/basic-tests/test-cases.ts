@@ -1,28 +1,25 @@
-import * as z from "zod";
-import type { FixturesEnv } from "../../../../test-lib/fixture.js";
+import type * as z from "zod";
+import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
-import type { NonVisionTestCase } from "../../../../test-lib/suite.js";
+import type { TestCase } from "../../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
-import { TodoListAppInfo } from "../shared/app-info-schema.js";
+import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
-import { appInfoFixtureId } from "../shared/scout-fixture.js";
+import { appInfoId } from "../test-strategy.js";
 import dedent from "dedent";
 
-export const checkMoreThanDoneNotDoneStatuses: NonVisionTestCase = {
-  type: "non-vision" as const,
+export const checkMoreThanDoneNotDoneStatuses: TestCase = {
   description: "Test that the app has more than done/not-done statuses",
   async run(
     agent: NonVisionTestCaseAgent,
-    fixtures: FixturesEnv,
+    context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const appInfo = fixtures.get(appInfoFixtureId) as z.infer<
-      typeof TodoListAppInfo
-    >;
+    const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
     const availableStatuses = appInfo.taskInfo.statuses;
 
-    return agent.check(dedent`
+    return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       The app has these available statuses: ${JSON.stringify(availableStatuses)}
 

@@ -3,16 +3,18 @@ import {
   PriorityTaskAttribute,
   StatusTaskAttribute,
 } from "../shared/task-attribute.js";
-import { makeStateSynchTest } from "./test-factory.js";
+import { makeChanceyStateSynchTest } from "./test-factory.js";
 
 /**********************************************************
     'I'm feeling lucky' state synchronization test cases
 ***********************************************************/
 
-export const quickStateSynchStatus = makeStateSynchTest(StatusTaskAttribute);
+export const chanceyStateSynchStatus =
+  makeChanceyStateSynchTest(StatusTaskAttribute);
 
-export const quickStateSynchPriority = makeStateSynchTest(
+export const chanceyStateSynchPriority = makeChanceyStateSynchTest(
   PriorityTaskAttribute,
 );
 
-export const quickStateSynchDueDate = makeStateSynchTest(DueDateTaskAttribute);
+export const chanceyStateSynchDueDate =
+  makeChanceyStateSynchTest(DueDateTaskAttribute);

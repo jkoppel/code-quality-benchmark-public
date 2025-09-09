@@ -5,33 +5,12 @@ import type { SutConfig } from "./runner.js";
 // TODO: Make a separate fixture agent config?
 import { VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG } from "./test-case-agent.js";
 
-export interface FixtureMaker {
-  id: string;
-  initialize(agent: FixtureAgent, sutConfig: SutConfig): Promise<unknown>;
-}
-
-export class FixturesEnv {
-  constructor(private fixtures: Map<string, unknown>) {}
-
-  get(key: string): unknown {
-    return this.fixtures.get(key);
-  }
-
-  set(key: string, value: unknown): void {
-    this.fixtures.set(key, value);
-  }
-}
-
-/*************************************
-  Fixture Agent
-***************************************/
-
-const FIXTURE_AGENT_CONFIG = {
+const DISCOVERY_AGENT_CONFIG = {
   ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
 };
 
 // TODO: Add prompt with info about vision caps
-export class FixtureAgent {
+export class DiscoveryAgent {
   private driver: DriverAgent;
   constructor(
     private readonly sutConfig: SutConfig,
@@ -39,7 +18,7 @@ export class FixtureAgent {
   ) {
     this.driver = new DriverAgent(
       {
-        ...FIXTURE_AGENT_CONFIG,
+        ...DISCOVERY_AGENT_CONFIG,
         cwd: sutConfig.folderPath,
       },
       logger,

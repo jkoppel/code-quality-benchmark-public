@@ -4,8 +4,9 @@ import {
   TestRunner,
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
-import { loadTestSuite } from "./benchmark-functionality-tests/test-lib/test-registry.js";
+import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.js";
 import { Logger } from "./utils/logger/logger.js";
+import { Reporter } from "./benchmark-functionality-tests/test-lib/report.js";
 
 async function main() {
   const benchmarkPath = process.argv[2];
@@ -33,47 +34,19 @@ async function main() {
     };
     const testRunner = new TestRunner(config);
 
-    // Load test suite
-    logger.info(`Loading functional test suite for ${resolvedBenchmarkPath}`);
-    const suite = await loadTestSuite(resolvedBenchmarkPath);
+    // Load test suite generation strategy
+    logger.info(
+      `Loading test suite generation strategy for ${resolvedBenchmarkPath}`,
+    );
+    const strategy = await loadSuiteGenerationStrategy(resolvedBenchmarkPath);
 
-    // Run test suite
-    logger.info(`Running suite: ${suite.getName()}`);
-    const result = await testRunner.runTestSuite(suite);
+    // Execute suite generation strategy
+    logger.info(`Executing suite generation strategy`);
+    const results = await testRunner.executeStrategy(strategy);
 
     // Handle result
-    if (result.summary.failed > 0) {
-      logger.error(
-        `✗ Suite "${suite.getName()}" failed: ${result.summary.failed}/${result.summary.total} tests failed`,
-      );
-
-      // Log each failing test
-      const failedTests = result.results.filter(
-        (r) => r.outcome.status === "failed",
-      );
-      failedTests.forEach((test) => {
-        if (test.outcome.status === "failed") {
-          logger.error(`  • ${test.name}: ${test.outcome.reason}`);
-        }
-      });
-    } else if (result.summary.skipped > 0) {
-      logger.warn(`⊘ ${result.summary.skipped} test(s) were skipped`);
-      const skippedTests = result.results.filter(
-        (r) => r.outcome.status === "skipped",
-      );
-      skippedTests.forEach((test) => {
-        if (test.outcome.status === "skipped") {
-          logger.warn(`  • ${test.name}: ${test.outcome.reason}`);
-        }
-      });
-    } else {
-      logger.info(`✓ All tests in suite ${suite.getName()} passed`);
-    }
-    logger.info(JSON.stringify(result, null, 2));
-
-    logger.info(
-      `Test execution for ${suite.getName()} completed in ${(result.summary.duration / 1000).toFixed(1)}s`,
-    );
+    const reporter = new Reporter(logger);
+    reporter.report(results);
   } catch (error) {
     logger.error(`Failed to run tests: ${String(error)}`);
     process.exit(1);
