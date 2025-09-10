@@ -12,6 +12,7 @@
  */
 
 import detect from "detect-port";
+import pLimit from "p-limit";
 import type { Logger } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
 import type { TestContext } from "./context.js";
@@ -20,6 +21,8 @@ import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
 import { NonVisionTestCaseAgent } from "./test-case-agent.js"; 
 import dedent from "dedent";
+
+const DEFAULT_MAX_CONCURRENT_TESTS = 6;
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -31,6 +34,8 @@ export interface SutConfig {
 export interface TestRunnerConfig extends SutConfig {
   logger: Logger;
   // timeoutMs: number;
+  /** Maximum number of test cases to run concurrently. */
+  maxConcurrentTests?: number;
 }
 
 export class TestRunner {
@@ -80,16 +85,19 @@ export class TestRunner {
     const startTime = Date.now();
 
     // Run tests
+    const limit = pLimit(this.config.maxConcurrentTests ?? DEFAULT_MAX_CONCURRENT_TESTS);
     const results = await Promise.all(
-      suite.getTests().map(async (test) => {
-        const result = await test.run(
-          new NonVisionTestCaseAgent(this.config, this.getLogger()),
-          context,
-          this.config,
-        );
-        result.name = test.descriptiveName;
-        return result;
-      }),
+      suite.getTests().map((test) => 
+        limit(async () => {
+          const result = await test.run(
+            new NonVisionTestCaseAgent(this.config, this.getLogger()),
+            context,
+            this.config,
+          );
+          result.name = test.descriptiveName;
+          return result;
+        })
+      ),
     );
 
     const duration = Date.now() - startTime;
