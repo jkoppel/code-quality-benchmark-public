@@ -1,9 +1,9 @@
-import { makeAttributeIsolationTest } from "./test-factory.js";
 import {
-  PriorityTaskAttribute,
   DueDateTaskAttribute,
+  PriorityTaskAttribute,
   StatusTaskAttribute,
 } from "../shared/task-attribute.js";
+import { makeAttributeIsolationTest } from "./test-factory.js";
 
 export const attributeIsolationPriority = makeAttributeIsolationTest(
   PriorityTaskAttribute,

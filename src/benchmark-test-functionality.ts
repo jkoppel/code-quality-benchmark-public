@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import * as path from "node:path";
+import { Reporter } from "./benchmark-functionality-tests/test-lib/report.js";
 import {
   TestRunner,
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
 import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.js";
 import { Logger } from "./utils/logger/logger.js";
-import { Reporter } from "./benchmark-functionality-tests/test-lib/report.js";
 
 async function main() {
   const benchmarkPath = process.argv[2];

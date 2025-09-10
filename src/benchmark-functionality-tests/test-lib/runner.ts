@@ -12,10 +12,10 @@
  */
 
 import detect from "detect-port";
-import { Logger } from "../../utils/logger/logger.js";
+import type { Logger } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
+import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
-import { TestContext } from "./context.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
 import { NonVisionTestCaseAgent } from "./test-case-agent.js";
