@@ -38,8 +38,14 @@ export const strategy: SuiteGenerationStrategy = {
     // For each mutator that was identified in the previous discovery phase, we test that changing the status via that mutator updates the other views accordingly.
     // TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
     const dynamicTests = [
-      ...makePerMutatorStateSyncTestsForStatus(appInfo, "not-done", "done"),
-      ...makePerMutatorStateSyncTestsForStatus(appInfo, "done", "not-done"),
+      ...makePerMutatorStateSyncTestsForStatus(appInfo, {
+        from: "not-done",
+        to: "done",
+      }),
+      ...makePerMutatorStateSyncTestsForStatus(appInfo, {
+        from: "done",
+        to: "not-done",
+      }),
     ];
 
     const staticTests = [

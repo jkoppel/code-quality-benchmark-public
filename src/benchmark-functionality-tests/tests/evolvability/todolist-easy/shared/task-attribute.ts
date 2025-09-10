@@ -9,7 +9,7 @@ type AttributeViews = AppInfo["taskInfo"]["views"][AttributeId];
 export interface TaskAttribute {
   attributeId: AttributeId;
   getPrettyName(): string;
-  getAttributeValuesForTesting(appInfo: AppInfo): string[];
+  getAttributeValues(appInfo: AppInfo): string[];
   getAttributeViews(appInfo: AppInfo): AttributeViews;
   getInfoForStateSynchTests(appInfo: AppInfo): string;
 }
@@ -17,7 +17,7 @@ export interface TaskAttribute {
 export const PriorityTaskAttribute: TaskAttribute = {
   attributeId: "priority",
   getPrettyName: () => "priority",
-  getAttributeValuesForTesting: (app) => app.taskInfo.priorityLevels,
+  getAttributeValues: (app) => app.taskInfo.priorityLevels,
   getAttributeViews: (app) => app.taskInfo.views.priority,
   getInfoForStateSynchTests: (app) =>
     JSON.stringify(app.taskInfo.views.priority),
@@ -26,7 +26,7 @@ export const PriorityTaskAttribute: TaskAttribute = {
 export const DueDateTaskAttribute: TaskAttribute = {
   attributeId: "dueDate",
   getPrettyName: () => "due date",
-  getAttributeValuesForTesting: (app) => {
+  getAttributeValues: (app) => {
     return ["tomorrow", "next week", "yesterday (or past date)"];
   },
   getAttributeViews: (app) => app.taskInfo.views.dueDate,
@@ -37,7 +37,7 @@ export const DueDateTaskAttribute: TaskAttribute = {
 export const StatusTaskAttribute: TaskAttribute = {
   attributeId: "status",
   getPrettyName: () => "status",
-  getAttributeValuesForTesting: (app) => app.taskInfo.statuses,
+  getAttributeValues: (app) => app.taskInfo.statuses,
   getAttributeViews: (app) => app.taskInfo.views.status,
   getInfoForStateSynchTests: (app) =>
     JSON.stringify({

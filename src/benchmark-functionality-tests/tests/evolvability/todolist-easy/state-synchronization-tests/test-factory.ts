@@ -57,6 +57,11 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
 ***********************************************************/
 // TODO: Not sure what a good name for this is.
 
+export type StateTransition = {
+  from: string;
+  to: string;
+};
+
 /** Don't need to check the code for these more constrained tests */
 const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
   You can use Playwright MCP; the dev server has been started at port ${config.port}.`;
@@ -75,8 +80,7 @@ const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
  */
 export function makePerMutatorStateSyncTestsForStatus(
   appInfo: z.infer<typeof TodoListAppInfo>,
-  fromStatus: string,
-  toStatus: string,
+  stateTransition: StateTransition,
 ): Array<TestCase> {
   const attribute = StatusTaskAttribute;
   const mutators = attribute
@@ -101,13 +105,13 @@ export function makePerMutatorStateSyncTestsForStatus(
             ${makeJustPlaywrightToolsPrompt(config)}
             
             Here is some information that someone else has gathered:
-            * The available statuses are ${JSON.stringify(attribute.getAttributeValuesForTesting(appInfo))}.
+            * The available statuses are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
             * The views or UI elements are:
               ${attribute.getInfoForStateSynchTests(appInfo)}
 
             Test state synchronization by
-            1. Creating a task with the status ${fromStatus}
-            2. Then change the status to ${toStatus} by using ${mutator}
+            1. Creating a task with the status ${stateTransition.from}
+            2. Then change the status to ${stateTransition.to} by using ${mutator}
             3. Finally, check if the other views update accordingly.
             The test passes if and only if all the other views update accordingly.
           `);
