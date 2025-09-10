@@ -53,11 +53,12 @@ export const strategy: SuiteGenerationStrategy = {
       checkMoreThanDoneNotDoneStatuses,
 
       // 'I'm feeling lucky' State synchronization tests
-      // These don't seem to have as high a detection rate as the per-mutator tests,
-      // but I'm keeping them around for now because these are potentially complementary (e.g. when the discovery phase doesn't work well)
-      chanceyStateSynchStatus,
-      chanceyStateSynchPriority,
-      chanceyStateSynchDueDate,
+      // Commented these out because these don't have as a high a detection rate as the per-mutator tests;
+      // they also are not constrained enough (so there are occasional false positives).
+      // But haven't removed them totally because it's helpful in the short term to be able to cross check the per-mutator tests with these.
+      // chanceyStateSynchStatus,
+      // chanceyStateSynchPriority,
+      // chanceyStateSynchDueDate,
 
       // Attribute isolation tests
       attributeIsolationPriority,
