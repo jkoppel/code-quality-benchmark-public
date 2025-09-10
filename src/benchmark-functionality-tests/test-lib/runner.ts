@@ -18,7 +18,8 @@ import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
-import { NonVisionTestCaseAgent } from "./test-case-agent.js";
+import { NonVisionTestCaseAgent } from "./test-case-agent.js"; 
+import dedent from "dedent";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -42,15 +43,33 @@ export class TestRunner {
   async executeStrategy(
     strategy: SuiteGenerationStrategy,
   ): Promise<TestSuiteResults> {
-    await using _server = await startDevServer(this.config, this.getLogger());
+    const maxListenersExceededWarningHandler = (warning: Error) => {
+      if (warning.name === "MaxListenersExceededWarning") {
+        this.getLogger().error(
+          `MaxListenersExceededWarning detected: ${warning.message}`,
+        );
+        throw new Error(dedent`
+          Test generation/execution aborted due to MaxListenersExceededWarning.
+          Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
+          I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`,
+        );
+      }
+    };
 
-    const context = await strategy.discover(
-      this.config,
-      new DiscoveryAgent(this.config, this.getLogger()),
-    );
-    const suite = await strategy.generateSuite(this.config, context);
+    process.on("warning", maxListenersExceededWarningHandler);
 
-    return await this.runTestSuite_(context, suite);
+    try {
+      await using _server = await startDevServer(this.config, this.getLogger());
+
+      const context = await strategy.discover(
+        this.config,
+        new DiscoveryAgent(this.config, this.getLogger()),
+      );
+      const suite = await strategy.generateSuite(this.config, context);
+      return await this.runTestSuite_(context, suite);
+    } finally {
+      process.off("warning", maxListenersExceededWarningHandler);
+    }
   }
 
   /** Run a test suite without starting dev server */
