@@ -81,8 +81,14 @@ export function makePerMutatorStateSyncTestsForStatus(
     .getAttributeViews(appInfo)
     .views.filter((view) => view.viewType === "mutator");
   return mutators.map((mutator) => {
+    // TODO: Could make this more robust
+    const mutatorName = mutator.shortDescription
+      .trim()
+      .split(" ")
+      .slice(0, 2)
+      .join(" ");
     return {
-      descriptiveName: `Per-mutator state synchronization test - ${attribute.getPrettyName()}`,
+      descriptiveName: `Per-mutator state synch - ${attribute.getPrettyName()} - ${mutatorName}`,
       async run(
         agent: NonVisionTestCaseAgent,
         _context: TestContext,
