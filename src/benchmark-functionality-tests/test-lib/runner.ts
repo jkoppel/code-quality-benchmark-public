@@ -19,10 +19,8 @@ import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
-import { NonVisionTestCaseAgent } from "./test-case-agent.js"; 
+import { NonVisionTestCaseAgent } from "./test-case-agent.js";
 import dedent from "dedent";
-
-const DEFAULT_MAX_CONCURRENT_TESTS = 6;
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -35,7 +33,7 @@ export interface TestRunnerConfig extends SutConfig {
   logger: Logger;
   // timeoutMs: number;
   /** Maximum number of test cases to run concurrently. */
-  maxConcurrentTests?: number;
+  maxConcurrentTests: number;
 }
 
 export class TestRunner {
@@ -56,8 +54,7 @@ export class TestRunner {
         throw new Error(dedent`
           Test generation/execution aborted due to MaxListenersExceededWarning.
           Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
-          I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`,
-        );
+          I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
       }
     };
 
@@ -85,9 +82,9 @@ export class TestRunner {
     const startTime = Date.now();
 
     // Run tests
-    const limit = pLimit(this.config.maxConcurrentTests ?? DEFAULT_MAX_CONCURRENT_TESTS);
+    const limit = pLimit(this.config.maxConcurrentTests);
     const results = await Promise.all(
-      suite.getTests().map((test) => 
+      suite.getTests().map((test) =>
         limit(async () => {
           const result = await test.run(
             new NonVisionTestCaseAgent(this.config, this.getLogger()),
@@ -96,7 +93,7 @@ export class TestRunner {
           );
           result.name = test.descriptiveName;
           return result;
-        })
+        }),
       ),
     );
 
