@@ -62,8 +62,10 @@ const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
   You can use Playwright MCP; the dev server has been started at port ${config.port}.`;
 
 // TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
-/** Make more thorough tests for status synchronization based on the app info.
- * For each mutator, test that changing the status via that mutator
+/** Make tests for status synchronization based on the app info that
+ * (i) are more systematic and
+ * (ii) more constrained (e.g., we don't explicitly prompt the agent to check the code).
+ * In particular, for each mutator, test that changing the status via that mutator
  * updates the other views accordingly.
  *
  * The key insight, I think, is that
