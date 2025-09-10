@@ -1,0 +1,33 @@
+fail_fast: false
+
+repos:
+  # TypeScript/JavaScript - Use local Biome (format + safe fixes only)
+  # Does NOT currently prevent committing even if there are lint errors
+  - repo: local
+    hooks:
+      - id: biome-format-and-fix
+        name: Biome format and safe fixes
+        entry: bash
+        args: [-c, 'npx biome check --write --only=format,organizeImports || true']
+        language: system
+        types_or: [javascript, jsx, ts, tsx, json]
+        exclude: ^(results|dist|node_modules|.*premade-pre-refactor)/
+
+  # TypeScript type checking  
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: TypeScript type check
+        entry: npm
+        args: [run, check]
+        language: system
+        pass_filenames: false
+        require_serial: true
+
+  # Essential file validation (no formatting changes)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        exclude: ^(results|dist|node_modules|.*premade-pre-refactor)/
+      - id: check-merge-conflict
