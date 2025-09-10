@@ -8,7 +8,7 @@
       "!results",
       "results/**/*.md",
       "results/**/*.json",
-      "!**/premade-pre-refactor/**",
+      "!**/premade-pre-refactor",
       "!package-lock.json"
     ]
   },

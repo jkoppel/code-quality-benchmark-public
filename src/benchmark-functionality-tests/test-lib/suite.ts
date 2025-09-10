@@ -1,8 +1,8 @@
-import type { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestContext } from "./context.js";
+import type { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestResult } from "./report.js";
-import type { NonVisionTestCaseAgent } from "./test-case-agent.js";
 import type { TestRunnerConfig } from "./runner.js";
+import type { NonVisionTestCaseAgent } from "./test-case-agent.js";
 
 /********************************
     Suite Generation Strategy   

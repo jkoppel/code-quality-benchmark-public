@@ -1,23 +1,23 @@
+import dedent from "dedent";
 import type * as z from "zod";
+import { TestContext } from "../../../test-lib/context.js";
 import type { DiscoveryAgent } from "../../../test-lib/discovery-agent.js";
-import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import type { SutConfig, TestRunnerConfig } from "../../../test-lib/runner.js";
+import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import { Suite } from "../../../test-lib/suite.js";
-import { TodoListAppInfo } from "./shared/app-info-schema.js";
-import { checkMoreThanDoneNotDoneStatuses } from "./basic-tests/test-cases.js";
 import {
-  chanceyStateSynchStatus,
-  chanceyStateSynchPriority,
-  chanceyStateSynchDueDate,
-} from "./state-synchronization-tests/test-cases.js";
-import {
+  attributeIsolationDueDate,
   attributeIsolationPriority,
   attributeIsolationStatus,
-  attributeIsolationDueDate,
 } from "./attribute-isolation-tests/test-cases.js";
-import { TestContext } from "../../../test-lib/context.js";
+import { checkMoreThanDoneNotDoneStatuses } from "./basic-tests/test-cases.js";
+import { TodoListAppInfo } from "./shared/app-info-schema.js";
 import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
-import dedent from "dedent";
+import {
+  chanceyStateSynchDueDate,
+  chanceyStateSynchPriority,
+  chanceyStateSynchStatus,
+} from "./state-synchronization-tests/test-cases.js";
 import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
 
 export const appInfoId = "todoListAppInfo";

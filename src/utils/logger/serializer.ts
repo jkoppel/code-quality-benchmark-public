@@ -1,14 +1,14 @@
 // TODO: Improve this
 
-import { match } from "ts-pattern";
 import type {
-  SDKMessage,
+  NonNullableUsage,
   SDKAssistantMessage,
-  SDKUserMessage,
+  SDKMessage,
   SDKResultMessage,
   SDKSystemMessage,
-  NonNullableUsage,
+  SDKUserMessage,
 } from "@anthropic-ai/claude-code";
+import { match } from "ts-pattern";
 
 export interface SerializationConfig {
   maxCodingAgentMessageLength: number;

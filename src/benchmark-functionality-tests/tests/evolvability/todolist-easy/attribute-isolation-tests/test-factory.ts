@@ -1,15 +1,15 @@
+import dedent from "dedent";
 import type * as z from "zod";
-import type { TaskAttribute } from "../shared/task-attribute.js";
 import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
+import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TestCase } from "../../../../test-lib/suite.js";
 import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
-import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
-import { appInfoId } from "../test-strategy.js";
+import type { TaskAttribute } from "../shared/task-attribute.js";
 import { generateDiverseTaskConfigs } from "../shared/utils.js";
-import dedent from "dedent";
+import { appInfoId } from "../test-strategy.js";
 
 /*************************************
     Attribute Isolation Test Factory

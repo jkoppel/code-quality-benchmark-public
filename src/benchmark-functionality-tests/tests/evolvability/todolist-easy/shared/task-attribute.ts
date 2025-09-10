@@ -1,5 +1,5 @@
-import { TodoListAppInfo } from "./app-info-schema.js";
-import * as z from "zod";
+import type * as z from "zod";
+import type { TodoListAppInfo } from "./app-info-schema.js";
 
 export type AttributeId = "priority" | "dueDate" | "status";
 

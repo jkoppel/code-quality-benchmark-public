@@ -1,5 +1,5 @@
-import type { SutConfig } from "../../../../test-lib/runner.js";
 import dedent from "dedent";
+import type { SutConfig } from "../../../../test-lib/runner.js";
 
 export const makeToolsInfoPrompt = (config: SutConfig) => dedent`
   You have access to the app's code in this directory; you can also use Playwright MCP.
