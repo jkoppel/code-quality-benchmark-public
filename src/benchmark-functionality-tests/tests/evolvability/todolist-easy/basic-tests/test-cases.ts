@@ -10,7 +10,7 @@ import { appInfoId } from "../test-strategy.js";
 import dedent from "dedent";
 
 export const checkMoreThanDoneNotDoneStatuses: TestCase = {
-  description: "Test that the app has more than done/not-done statuses",
+  descriptiveName: "Test that the app has more than done/not-done statuses",
   async run(
     agent: NonVisionTestCaseAgent,
     context: TestContext,

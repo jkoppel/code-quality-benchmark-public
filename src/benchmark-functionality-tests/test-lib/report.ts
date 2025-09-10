@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Logger } from "../../utils/logger/logger.js";
-
+import { jsonStringify } from "../../utils/logger/pretty.js";
 /*********************************
     For report
 ************************************/
@@ -60,6 +60,9 @@ export class Reporter {
   constructor(private logger: Logger) {}
 
   report(results: TestSuiteResults): void {
+    this.logger.info(jsonStringify(results));
+
+    // Summary logging
     if (results.summary.failed > 0) {
       this.logger.error(
         `✗ Suite "${results.name}" failed: ${results.summary.failed}/${results.summary.total} tests failed`,
@@ -86,8 +89,6 @@ export class Reporter {
     } else {
       this.logger.info(`✓ All tests in suite ${results.name} passed`);
     }
-    this.logger.info(JSON.stringify(results, null, 2));
-
     this.logger.info(
       `Test execution for ${results.name} completed in ${(results.summary.duration / 1000).toFixed(1)}s`,
     );

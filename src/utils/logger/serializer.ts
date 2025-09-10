@@ -17,7 +17,7 @@ export interface SerializationConfig {
 
 export const defaultSerializationConfig: SerializationConfig = {
   maxCodingAgentMessageLength: 1000,
-  maxToolInputLength: 200,
+  maxToolInputLength: 250,
 };
 
 export const claudeCodeSerializer = (message: SDKMessage) => {

@@ -18,6 +18,7 @@ import {
 import { TestContext } from "../../../test-lib/context.js";
 import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
 import dedent from "dedent";
+import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
 
 export const appInfoId = "todoListAppInfo";
 
@@ -30,19 +31,34 @@ export const strategy: SuiteGenerationStrategy = {
     return await discoverTodoListAppInfo(discoveryAgent, config);
   },
 
-  async generateSuite(config: TestRunnerConfig, context: TestContext) {
+  async generateSuite(_config: TestRunnerConfig, context: TestContext) {
     const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
 
-    // TODO: Dynamically generate tests
+    // Dynamically generate tests based on the app info:
+    // For each mutator that was identified in the previous discovery phase, we test that changing the status via that mutator updates the other views accordingly.
+    // TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
+    const dynamicTests = [
+      ...makePerMutatorStateSyncTestsForStatus(appInfo, {
+        from: "not-done",
+        to: "done",
+      }),
+      ...makePerMutatorStateSyncTestsForStatus(appInfo, {
+        from: "done",
+        to: "not-done",
+      }),
+    ];
 
     const staticTests = [
       // Basic tests
       checkMoreThanDoneNotDoneStatuses,
 
       // 'I'm feeling lucky' State synchronization tests
-      chanceyStateSynchStatus,
-      chanceyStateSynchPriority,
-      chanceyStateSynchDueDate,
+      // Commented these out because these don't have as a high a detection rate as the per-mutator tests;
+      // they also are not constrained enough (so there are occasional false positives).
+      // But haven't removed them totally because it's helpful in the short term to be able to cross check the per-mutator tests with these.
+      // chanceyStateSynchStatus,
+      // chanceyStateSynchPriority,
+      // chanceyStateSynchDueDate,
 
       // Attribute isolation tests
       attributeIsolationPriority,
@@ -50,7 +66,10 @@ export const strategy: SuiteGenerationStrategy = {
       attributeIsolationDueDate,
     ];
 
-    return new Suite("Todolist Functionality Tests", staticTests);
+    return new Suite("Todolist Functionality Tests", [
+      ...staticTests,
+      ...dynamicTests,
+    ]);
   },
 };
 

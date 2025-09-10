@@ -37,15 +37,6 @@ export class Suite {
   getTests() {
     return this.tests;
   }
-
-  // withFixtures(makers: FixtureMaker[]) {
-  //   this.fixtureMakers = makers;
-  //   return this;
-  // }
-
-  // getFixtureMakers() {
-  //   return this.fixtureMakers;
-  // }
 }
 
 /**************************
@@ -67,10 +58,10 @@ export class Suite {
 // }
 
 export interface TestCase {
-  description: string;
+  descriptiveName: string;
   run(
     agent: NonVisionTestCaseAgent,
-    fixtures: TestContext,
+    context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult>;
 }
