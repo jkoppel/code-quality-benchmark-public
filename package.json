@@ -31,6 +31,7 @@
     "@anthropic-ai/claude-code": "^1.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/tmp": "^0.2.6",
+    "cmd-ts": "^0.14.1",
     "dedent": "^1.7.0",
     "detect-port": "^2.1.0",
     "execa": "^9.6.0",
