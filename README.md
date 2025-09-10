@@ -18,6 +18,16 @@ npm install
 npm run build
 ```
 
+### Pre-commit setup
+
+```bash
+# Install pre-commit if you haven't already (one-time global install)
+brew install pre-commit  # or pip install --user pre-commit
+
+# Install pre-commit hooks in this repo
+pre-commit install
+```
+
 ## Running the benchmark
 
 `npm run benchmark <folder containing initial and update prompts> <agent runner script>`
@@ -138,6 +148,26 @@ npm run check               # TypeScript type checking
 npm run lint                # ESLint code linting
 npm run check:all           # Run both type checking and linting
 npm run check:command-refs  # Check that references to npm commands in docs, error messages are up to date using a headless Claude Code instance
+```
+
+## Pre-commit hooks
+
+Pre-commit runs automatically on `git commit`. To skip: `git commit --no-verify`
+
+### If you need to run pre-commit formatting and checks manually
+
+```bash
+pre-commit run --all-files
+# Formats code and organizes imports using Biome
+```
+
+### For jj users
+
+Jujutsu doesn't support Git hooks. Run pre-commit manually before pushing:
+```bash
+pre-commit run --all-files
+# or make an alias:
+alias jjpush='pre-commit run --all-files && jj git push'
 ```
 
 ## License
