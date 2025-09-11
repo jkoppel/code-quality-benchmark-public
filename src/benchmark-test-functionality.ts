@@ -48,14 +48,14 @@ const cmd = command({
   }) => {
     const resolvedBenchmarkPath = path.resolve(benchmarkPath);
     const logger = Logger.getInstance();
+    const config: TestRunnerConfig = {
+      folderPath: path.resolve(systemUnderTest),
+      port,
+      logger,
+      maxConcurrentTests,
+    };
 
     try {
-      const config: TestRunnerConfig = {
-        folderPath: path.resolve(systemUnderTest),
-        port,
-        logger,
-        maxConcurrentTests,
-      };
       validateTestRunnerConfig(config);
       const runner = new TestRunner(config);
 
