@@ -76,7 +76,7 @@ function createPinoLogger(logLevel: LogLevel) {
       },
       {
         target: "pino/file",
-        level: "trace",
+        level: "trace", // Log everything to file
         options: {
           // TODO: Will want to make this configurable
           destination: path.join(LOG_DIR, "benchmark.log"),
