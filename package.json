@@ -29,6 +29,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
+    "@loglayer/transport-pino": "^2.2.3",
     "@types/fs-extra": "^11.0.4",
     "@types/tmp": "^0.2.6",
     "cmd-ts": "^0.14.1",
@@ -36,6 +37,7 @@
     "detect-port": "^2.1.0",
     "execa": "^9.6.0",
     "fs-extra": "^11.3.1",
+    "loglayer": "^6.7.0",
     "p-limit": "^7.1.1",
     "pino": "^9.9.0",
     "pino-pretty": "^13.1.1",

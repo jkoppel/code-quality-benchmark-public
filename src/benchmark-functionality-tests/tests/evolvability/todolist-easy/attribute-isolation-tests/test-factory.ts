@@ -50,7 +50,9 @@ export function makeAttributeIsolationTest(attribute: TaskAttribute): TestCase {
         Mark the test as passing if changing task 1's ${attribute.getPrettyName()} doesn't affect any attributes of the other tasks.
         Mark as failing if any other task's attributes changed.`;
 
-      config.logger.debugWith({ prompt }, "Attribute isolation test prompt");
+      config.logger
+        .withMetadata({ prompt })
+        .debug("Attribute isolation test prompt");
       return await agent.check(prompt);
     },
   };

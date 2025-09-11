@@ -13,7 +13,7 @@
 
 import detect from "detect-port";
 import pLimit from "p-limit";
-import type { Logger } from "../../utils/logger/logger.js";
+import type { LogLevel, Logger } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
 import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
@@ -30,6 +30,7 @@ export interface SutConfig {
 }
 
 export interface TestRunnerConfig extends SutConfig {
+  logLevel: LogLevel;
   logger: Logger;
   // timeoutMs: number;
   /** Maximum number of test cases to run concurrently. */

@@ -1,6 +1,6 @@
 import { query } from "@anthropic-ai/claude-code";
 import type { ClaudeAgentConfig, InstanceResult } from "../../types";
-import { Logger } from "../../utils/logger/logger.js";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.js";
 
 export class ClaudeAgent {
@@ -9,7 +9,7 @@ export class ClaudeAgent {
 
   constructor(
     config: ClaudeAgentConfig = {},
-    logger: Logger = Logger.getInstance(),
+    logger: Logger = getLoggerConfig().logger,
   ) {
     this.logger = logger;
     this.config = {
@@ -38,13 +38,12 @@ export class ClaudeAgent {
     let error: Error | undefined;
 
     try {
-      this.logger.infoWith(
-        {
+      this.logger
+        .withMetadata({
           folderPath,
           updatePrompt: updatePrompt.substring(0, 100),
-        },
-        `Starting Claude agent for instance ${instanceId}`,
-      );
+        })
+        .info(`Starting Claude agent for instance ${instanceId}`);
 
       const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
 
@@ -62,13 +61,12 @@ export class ClaudeAgent {
           ) {
             throw new Error(`Claude execution error: ${message.subtype}`);
           }
-          this.logger.debugWith(
-            {
+          this.logger
+            .withMetadata({
               instanceId,
               duration: message.duration_ms,
-            },
-            `Claude completed`,
-          );
+            })
+            .debug(`Claude completed`);
         } else if (message.type === "user" || message.type === "assistant") {
           let content = "Message content unavailable";
 
@@ -82,13 +80,12 @@ export class ClaudeAgent {
                 : JSON.stringify(userContent);
           }
 
-          this.logger.debugWith(
-            {
+          this.logger
+            .withMetadata({
               instanceId,
               contentLength: content.length,
-            },
-            `Message from ${message.type}`,
-          );
+            })
+            .debug(`Message from ${message.type}`);
         }
       }
 
@@ -98,12 +95,11 @@ export class ClaudeAgent {
       );
     } catch (err) {
       error = err instanceof Error ? err : new Error(String(err));
-      this.logger.errorWith(
-        {
+      this.logger
+        .withMetadata({
           error: error.message,
-        },
-        `Failed to apply update for instance ${instanceId}`,
-      );
+        })
+        .error(`Failed to apply update for instance ${instanceId}`);
     }
 
     const result: InstanceResult = {

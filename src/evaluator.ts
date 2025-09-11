@@ -13,7 +13,7 @@ import {
   type EvaluationResult,
   type InstanceResult,
 } from "./types.js";
-import { Logger } from "./utils/logger/logger.js";
+import { getLoggerConfig, type Logger } from "./utils/logger/logger.js";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.js';
 
@@ -63,15 +63,14 @@ export async function evaluateUpdates(
   config: EvaluationConfig = {},
 ): Promise<EvaluationResult> {
   const startTime = new Date();
-  const logger = Logger.getInstance(config.logLevel);
+  const { logger } = getLoggerConfig();
 
-  logger.infoWith(
-    {
+  logger
+    .withMetadata({
       originalProgramPath,
       updatePrompt: updatePrompt.substring(0, 100),
-    },
-    "Starting update evaluation",
-  );
+    })
+    .info("Starting update evaluation");
 
   try {
     const updateResults = await applyUpdatesToInstances(
@@ -108,7 +107,9 @@ export async function evaluateUpdates(
       { spaces: 2 },
     );
 
-    logger.infoWith({ path: resultsPath }, "Saved complete results to:");
+    logger
+      .withMetadata({ path: resultsPath })
+      .info("Saved complete results to:");
 
     const endTime = new Date();
     const metadata: EvaluationMetadata = {
@@ -134,15 +135,14 @@ export async function evaluateUpdates(
       stats: r.diffStats || { filesChanged: 0, insertions: 0, deletions: 0 },
     }));
 
-    logger.infoWith(
-      {
+    logger
+      .withMetadata({
         duration: metadata.totalDuration,
         successfulUpdates: updateResults.filter((r) => r.success).length,
         failedUpdates: updateResults.filter((r) => !r.success).length,
         diffStats,
-      },
-      "Evaluation completed successfully",
-    );
+      })
+      .info("Evaluation completed successfully");
 
     // Also print diff stats to console for visibility
     console.log("\n=== Git Diff Statistics & Scores ===");
@@ -162,12 +162,11 @@ export async function evaluateUpdates(
 
     return result;
   } catch (error) {
-    logger.errorWith(
-      {
+    logger
+      .withMetadata({
         error: error instanceof Error ? error.message : String(error),
-      },
-      "Evaluation failed",
-    );
+      })
+      .error("Evaluation failed");
 
     throw error instanceof EvaluationError
       ? error
@@ -183,15 +182,14 @@ export async function evaluate(
   updatePrompt: string,
   config: EvaluationConfig = {},
 ): Promise<EvaluationResult> {
-  const logger = Logger.getInstance(config.logLevel);
+  const { logger } = getLoggerConfig();
 
-  logger.infoWith(
-    {
+  logger
+    .withMetadata({
       initialPrompt: initialPrompt.substring(0, 100),
       updatePrompt: updatePrompt.substring(0, 100),
-    },
-    "Starting full evaluation",
-  );
+    })
+    .info("Starting full evaluation");
 
   let tempDir: tmp.DirResult | null = null;
 
@@ -203,7 +201,9 @@ export async function evaluate(
       keep: true,
     });
 
-    logger.debugWith({ path: tempDir.name }, "Created temporary workspace");
+    logger
+      .withMetadata({ path: tempDir.name })
+      .debug("Created temporary workspace");
 
     const originalProgramPath = await generateOriginalProgram(
       initialPrompt,
@@ -225,12 +225,11 @@ export async function evaluate(
 
     return result;
   } catch (error) {
-    logger.errorWith(
-      {
+    logger
+      .withMetadata({
         error: error instanceof Error ? error.message : String(error),
-      },
-      "Full evaluation failed",
-    );
+      })
+      .error("Full evaluation failed");
 
     throw error instanceof EvaluationError
       ? error
@@ -242,7 +241,9 @@ export async function evaluate(
   } finally {
     // Never cleanup - we want to keep the results
     if (tempDir) {
-      logger.infoWith({ path: tempDir.name }, "Benchmark results saved at:");
+      logger
+        .withMetadata({ path: tempDir.name })
+        .info("Benchmark results saved at:");
     }
   }
 }
@@ -290,13 +291,12 @@ build/
       cwd: originalFolder,
     });
 
-    logger.infoWith(
-      {
+    logger
+      .withMetadata({
         path: originalFolder,
         fileCount: files.length,
-      },
-      "Original program generated and committed to git",
-    );
+      })
+      .info("Original program generated and committed to git");
 
     return originalFolder;
   } catch (error) {
@@ -345,10 +345,9 @@ async function applyUpdatesToInstances(
       const instanceId = `${agentConfig.name}-${i}`;
       const instancePath = path.join(workspaceDir, instanceId);
       await fs.copy(originalProgramPath, instancePath);
-      logger.debugWith(
-        { path: instancePath },
-        `Created instance ${instanceId}`,
-      );
+      logger
+        .withMetadata({ path: instancePath })
+        .debug(`Created instance ${instanceId}`);
 
       allInstances.push({
         instanceId,
@@ -390,12 +389,11 @@ async function applyUpdatesToInstances(
     } catch (e) {
       success = false;
       error = e instanceof Error ? e : new Error(String(e));
-      logger.errorWith(
-        {
+      logger
+        .withMetadata({
           error: error.message,
-        },
-        `Failed to apply update for ${instance.instanceId}`,
-      );
+        })
+        .error(`Failed to apply update for ${instance.instanceId}`);
     }
 
     const executionTime = Date.now() - startTime;
@@ -453,12 +451,11 @@ async function applyUpdatesToInstances(
           logger.debug(`No changes to commit for ${result.instanceId}`);
         }
       } catch (error) {
-        logger.warnWith(
-          {
+        logger
+          .withMetadata({
             error: error instanceof Error ? error.message : String(error),
-          },
-          `Failed to get git diff for ${result.instanceId}`,
-        );
+          })
+          .warn(`Failed to get git diff for ${result.instanceId}`);
       }
     }
 
@@ -468,16 +465,15 @@ async function applyUpdatesToInstances(
       score,
     };
 
-    logger.infoWith(
-      {
+    logger
+      .withMetadata({
         success: result.success,
         executionTime: result.executionTime,
         diffStats,
         score,
         agentName: result.agentName,
-      },
-      `Instance ${result.instanceId} completed`,
-    );
+      })
+      .info(`Instance ${result.instanceId} completed`);
 
     // Print diff stats to console immediately
     if (result.success && diffStats) {
