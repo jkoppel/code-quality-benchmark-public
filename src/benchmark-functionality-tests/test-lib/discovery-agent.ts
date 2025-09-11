@@ -1,5 +1,5 @@
 import type * as z from "zod";
-import { Logger } from "../../utils/logger/logger.js";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { DriverAgent } from "./driver-agent.js";
 import type { SutConfig } from "./runner.js";
 // TODO: Make a separate fixture agent config?
@@ -14,7 +14,7 @@ export class DiscoveryAgent {
   private driver: DriverAgent;
   constructor(
     private readonly sutConfig: SutConfig,
-    private readonly logger: Logger = Logger.getInstance(),
+    private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     this.driver = new DriverAgent(
       {

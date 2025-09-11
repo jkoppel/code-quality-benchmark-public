@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { Logger } from "../utils/logger/logger.js";
+import { getLoggerConfig } from "../utils/logger/logger.js";
 
 /**
  * Creates a CodingAgent that executes a shell script with the prompt and folder path as arguments
@@ -11,7 +11,7 @@ export function createShellAgent(
   scriptPath: string,
   timeout: number = 300000,
 ): (prompt: string, folderPath: string, port?: number) => Promise<void> {
-  const logger = Logger.getInstance();
+  const logger = getLoggerConfig().logger;
 
   return async (
     prompt: string,
@@ -19,14 +19,13 @@ export function createShellAgent(
     port: number = 30000,
   ): Promise<void> => {
     return new Promise((resolve, reject) => {
-      logger.infoWith(
-        {
+      logger
+        .withMetadata({
           script: scriptPath,
           folder: folderPath,
           promptLength: prompt.length,
-        },
-        "Executing shell script agent",
-      );
+        })
+        .info("Executing shell script agent");
 
       // Spawn the shell script with prompt and folder path as arguments
       const child = spawn("bash", [scriptPath, prompt], {
@@ -62,13 +61,12 @@ export function createShellAgent(
       });
 
       child.on("error", (error) => {
-        logger.errorWith(
-          {
+        logger
+          .withMetadata({
             script: scriptPath,
             error: error.message,
-          },
-          "Failed to execute shell script",
-        );
+          })
+          .error("Failed to execute shell script");
         reject(new Error(`Failed to execute shell script: ${error.message}`));
       });
 
@@ -87,27 +85,25 @@ export function createShellAgent(
         }
 
         if (success) {
-          logger.infoWith(
-            {
+          logger
+            .withMetadata({
               script: scriptPath,
               folder: folderPath,
-            },
-            "Shell script executed successfully",
-          );
+            })
+            .info("Shell script executed successfully");
           resolve();
         } else {
           const errorMsg =
             code !== null
               ? `Shell script exited with code ${code}.`
               : `Shell script was terminated by signal ${signal}.`;
-          logger.errorWith(
-            {
+          logger
+            .withMetadata({
               script: scriptPath,
               code,
               signal,
-            },
-            "Shell script failed",
-          );
+            })
+            .error("Shell script failed");
           reject(new Error(errorMsg));
         }
       });

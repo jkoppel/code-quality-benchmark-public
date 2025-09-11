@@ -7,7 +7,7 @@ import {
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
 import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.js";
-import { Logger } from "./utils/logger/logger.js";
+import { getLogLevel, getLoggerConfig } from "./utils/logger/logger.js";
 
 const cmd = command({
   name: "benchmark-test-functionality",
@@ -47,10 +47,11 @@ const cmd = command({
     maxConcurrentTests,
   }) => {
     const resolvedBenchmarkPath = path.resolve(benchmarkPath);
-    const logger = Logger.getInstance();
+    const { logger, logLevel } = getLoggerConfig();
     const config: TestRunnerConfig = {
       folderPath: path.resolve(systemUnderTest),
       port,
+      logLevel,
       logger,
       maxConcurrentTests,
     };

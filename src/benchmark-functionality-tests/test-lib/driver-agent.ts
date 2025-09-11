@@ -3,7 +3,7 @@ import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
 import { match } from "ts-pattern";
 import * as z from "zod";
-import { Logger } from "../../utils/logger/logger.js";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { jsonStringify } from "../../utils/logger/pretty.js";
 
 // Specializing the following to Claude Code for now
@@ -78,7 +78,7 @@ export class DriverAgent {
 
   constructor(
     private readonly config: DriverAgentConfig,
-    private readonly logger: Logger = Logger.getInstance(),
+    private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     logger.debug(
       `DriverAgent (for testing functionality) initialized with ${jsonStringify(config)}`,
@@ -116,7 +116,7 @@ export class DriverAgent {
     });
 
     for await (const message of response) {
-      this.logger.debug({ claudeCode: message }, "Response");
+      this.logger.withMetadata({ claudeCode: message }).debug("Response");
 
       if (!this.getSessionId()) {
         this.setSessionId(message.session_id);

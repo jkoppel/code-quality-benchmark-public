@@ -96,7 +96,7 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
       config: TestRunnerConfig,
     ): Promise<TestResult> {
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-      config.logger.debugWith(appInfo, "AppInfo fixture");
+      config.logger.withMetadata(appInfo).debug("AppInfo fixture");
 
       return await agent.check(dedent`
         ${makeBackgroundPrompt(config)}

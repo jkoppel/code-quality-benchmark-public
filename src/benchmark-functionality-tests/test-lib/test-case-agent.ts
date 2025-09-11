@@ -1,6 +1,6 @@
 import type { PermissionMode } from "@anthropic-ai/claude-code";
 import type * as z from "zod";
-import { Logger } from "../../utils/logger/logger.js";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { jsonStringify } from "../../utils/logger/pretty.js";
 import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
 import type { TestResult } from "./report.js";
@@ -31,7 +31,7 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
     private readonly sutConfig: SutConfig,
-    private readonly logger: Logger = Logger.getInstance(),
+    private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     this.driver = new DriverAgent(
       {
@@ -75,7 +75,7 @@ export class VisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
     private readonly sutConfig: SutConfig,
-    private readonly logger: Logger = Logger.getInstance(),
+    private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     this.driver = new DriverAgent(
       {
