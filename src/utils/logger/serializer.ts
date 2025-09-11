@@ -1,194 +1,94 @@
-// TODO: Improve this
-
 import type {
   NonNullableUsage,
   SDKAssistantMessage,
   SDKMessage,
-  SDKResultMessage,
   SDKSystemMessage,
   SDKUserMessage,
 } from "@anthropic-ai/claude-code";
+import type {
+  Usage,
+  ContentBlockParam,
+} from "@anthropic-ai/sdk/resources/messages";
 import { match } from "ts-pattern";
 
 export interface SerializationConfig {
   maxCodingAgentMessageLength: number;
-  maxToolInputLength: number;
+  maxToolContentLength: number;
 }
 
 export const defaultSerializationConfig: SerializationConfig = {
   maxCodingAgentMessageLength: 1000,
-  maxToolInputLength: 250,
+  maxToolContentLength: 500,
 };
 
-export const claudeCodeSerializer = (message: SDKMessage) => {
-  if (!message || typeof message !== "object") {
-    return message;
-  }
+const TRUNCATION_INDICATOR = "[...]";
 
+export const claudeCodeSerializer = (message: SDKMessage) => {
   return match(message)
     .with({ type: "assistant" }, (msg: SDKAssistantMessage) => {
       const content = msg.message?.content || [];
-      const serialized: any = {
+      const toolUses = Array.isArray(content) ? content.filter((c: any) => c.type === "tool_use") : [];
+
+      const sanitizedContent = typeof content !== "string" && content.length > 0 ? content.map(sanitizeContentBlock) : undefined;
+      const serializedTools = toolUses.map((tool: any) => ({
+        name: tool.name,
+        input: tool.input ? serializeToolInput(tool.input, defaultSerializationConfig) : undefined,
+      }));
+
+      return {
         type: "assistant",
         model: msg.message?.model,
         session_id: msg.session_id,
+        text: processTextContent(content, defaultSerializationConfig),
+        content: sanitizedContent,
+        tools: serializedTools,
+        usage: msg.message?.usage && extractUsageMetrics(msg.message.usage)
       };
-
-      // Extract text content
-      const textContent = content
-        .filter((c: any) => c.type === "text")
-        .map((c: any) => c.text)
-        .join(" ");
-      if (textContent) {
-        serialized.text = textContent.substring(
-          0,
-          defaultSerializationConfig.maxCodingAgentMessageLength,
-        );
-      }
-
-      // Extract tool usage
-      const toolUses = content.filter((c: any) => c.type === "tool_use");
-      if (toolUses.length > 0) {
-        serialized.tools = toolUses.map((tool: any) => {
-          const toolInfo: any = { name: tool.name };
-          if (tool.input) {
-            // Show actual input values, truncated if too long
-            toolInfo.input = Object.fromEntries(
-              Object.entries(tool.input).map(([key, value]) => [
-                key,
-                typeof value === "string" &&
-                  value.substring(
-                    0,
-                    defaultSerializationConfig.maxToolInputLength,
-                  ),
-              ]),
-            );
-          }
-          return toolInfo;
-        });
-      }
-
-      // Extract usage metrics
-      const usage = msg.message?.usage;
-      if (usage) {
-        serialized.usage = {
-          input_tokens: usage.input_tokens,
-          output_tokens: usage.output_tokens,
-          cache_creation_input_tokens: usage.cache_creation_input_tokens,
-          cache_read_input_tokens: usage.cache_read_input_tokens,
-        };
-
-        if (usage.cache_creation) {
-          serialized.usage.cache_creation = {
-            ephemeral_5m_input_tokens:
-              usage.cache_creation.ephemeral_5m_input_tokens,
-            ephemeral_1h_input_tokens:
-              usage.cache_creation.ephemeral_1h_input_tokens,
-          };
-        }
-      }
-
-      return serialized;
     })
     .with({ type: "user" }, (msg: SDKUserMessage) => {
       const content = msg.message?.content || [];
-      const serialized: any = {
+      const toolResults = Array.isArray(content) ? content.filter((c: any) => c.type === "tool_result") : [];
+      const sanitizedContent = typeof content !== "string" && content.length > 0 ? content.map(sanitizeContentBlock) : undefined;
+      const serializedToolResults = toolResults.map((result: any) => {
+        const resultTextContent = Array.isArray(result.content) ? extractTextContent(result.content) : "";
+        
+        return {
+          toolName: result.tool_name,
+          toolId: result.tool_use_id,
+          isError: result.is_error || false,
+          contentTypes: Array.isArray(result.content) ? result.content.map((c: any) => c.type) : ["unknown"],
+          preview: truncateString(resultTextContent, defaultSerializationConfig.maxToolContentLength),
+        };
+      });
+
+      return {
         type: "user",
-        session_id: msg.session_id,
+        text: processTextContent(content, defaultSerializationConfig),
+        content: sanitizedContent,
+        toolResults: serializedToolResults,
       };
-
-      // Extract text content
-      const textContent = content
-        .filter((c: any) => c.type === "text")
-        .map((c: any) => c.text)
-        .join(" ");
-      if (textContent) {
-        serialized.text =
-          textContent.length >
-          defaultSerializationConfig.maxCodingAgentMessageLength
-            ? textContent.substring(
-                0,
-                defaultSerializationConfig.maxCodingAgentMessageLength,
-              ) + "..."
-            : textContent;
-      }
-
-      // Extract tool results
-      const toolResults = content.filter((c: any) => c.type === "tool_result");
-      if (toolResults.length > 0) {
-        serialized.toolResults = toolResults.map((result: any) => {
-          const resultInfo: any = {
-            toolName: result.tool_name,
-            toolId: result.tool_use_id,
-            isError: result.is_error || false,
-            contentTypes: Array.isArray(result.content)
-              ? result.content.map((c: any) => c.type)
-              : ["unknown"],
-          };
-
-          // Add preview of result content
-          if (Array.isArray(result.content)) {
-            const textContent = result.content
-              .filter((c: any) => c.type === "text")
-              .map((c: any) => c.text)
-              .join(" ");
-            if (textContent) {
-              resultInfo.preview = textContent.substring(
-                0,
-                defaultSerializationConfig.maxToolInputLength,
-              );
-            }
-          }
-
-          return resultInfo;
-        });
-      }
-
-      return serialized;
     })
-    .with({ type: "result" }, (msg: SDKResultMessage) => {
-      const serialized: any = {
+    .with({ type: "result", subtype: "success" }, (msg) => {
+      return {
         type: "result",
         subtype: msg.subtype,
-        duration_ms: msg.duration_ms,
-        total_cost_usd: msg.total_cost_usd,
-        session_id: msg.session_id,
+        result: msg.result,
+        usage: extractUsageMetrics(msg.usage),
       };
-
-      if ("result" in msg && typeof msg.result === "string") {
-        serialized.resultLength = msg.result.length;
-        serialized.resultPreview =
-          msg.result.length > 100
-            ? msg.result.substring(0, 100) + "..."
-            : msg.result;
-      }
-
-      // Add error details for error subtypes
-      if (msg.subtype?.startsWith("error") && "error" in msg) {
-        serialized.error = (msg as any).error;
-      }
-
-      // Extract usage metrics
-      const usage = msg.usage;
-      if (usage) {
-        serialized.usage = {
-          input_tokens: usage.input_tokens,
-          output_tokens: usage.output_tokens,
-          cache_creation_input_tokens: usage.cache_creation_input_tokens,
-          cache_read_input_tokens: usage.cache_read_input_tokens,
-        };
-
-        if (usage.cache_creation) {
-          serialized.usage.cache_creation = {
-            ephemeral_5m_input_tokens:
-              usage.cache_creation.ephemeral_5m_input_tokens,
-            ephemeral_1h_input_tokens:
-              usage.cache_creation.ephemeral_1h_input_tokens,
-          };
-        }
-      }
-
-      return serialized;
+    })
+    .with({ type: "result", subtype: "error_max_turns" }, (msg) => {
+      return {
+        type: "result",
+        subtype: msg.subtype,
+        usage: extractUsageMetrics(msg.usage),
+      };
+    })
+    .with({ type: "result", subtype: "error_during_execution" }, (msg) => {
+      return {
+        type: "result",
+        subtype: msg.subtype,
+        usage: extractUsageMetrics(msg.usage),
+      };
     })
     .with({ type: "system" }, (msg: SDKSystemMessage) => ({
       type: "system",
@@ -199,3 +99,103 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
     }))
     .otherwise(() => message);
 };
+
+/****************************
+      Helper functions
+*****************************/
+
+function truncateString(str: string, maxLength: number): string {
+  if (str.length <= maxLength) {
+    return str;
+  }
+  return str.substring(0, maxLength) + TRUNCATION_INDICATOR;
+}
+
+function extractTextContent(content: string | ContentBlockParam[]): string {
+  if (typeof content === "string") {
+    return content;
+  }
+  
+  return content
+    .filter((c: any) => c.type === "text")
+    .map((c: any) => c.text)
+    .join(" ");
+}
+
+function processTextContent(content: string | ContentBlockParam[], config: SerializationConfig): string {
+  return truncateString(extractTextContent(content), config.maxCodingAgentMessageLength);
+}
+
+function sanitizeMediaSource(source: any) {
+  const result: any = {
+    type: source?.type,
+    media_type: source?.media_type,
+  };
+  
+  if (source?.type === "url") {
+    result.url = source.url;
+  } else if (source?.type === "base64") {
+    result.data_size = source?.data?.length || 0;
+  }
+  
+  return result;
+}
+
+function sanitizeContentBlock(block: any): any {
+  if (block.type === "image") {
+    return {
+      type: "image",
+      source: sanitizeMediaSource(block.source),
+    };
+  }
+  
+  if (block.type === "document") {
+    return {
+      type: "document",
+      source: sanitizeMediaSource(block.source),
+      title: block.title,
+    };
+  }
+  
+  if (block.type === "tool_result") {
+    return {
+      ...block,
+      content: typeof block.content === "string" 
+        ? truncateString(block.content, defaultSerializationConfig.maxToolContentLength)
+        : block.content,
+    };
+  }
+  
+  return block;
+}
+
+function extractUsageMetrics(usage: Usage | NonNullableUsage) {
+  // TODO: Not sure we need all of these
+  return {
+    input_tokens: usage.input_tokens,
+    output_tokens: usage.output_tokens,
+    cache_creation_input_tokens: usage.cache_creation_input_tokens,
+    cache_read_input_tokens: usage.cache_read_input_tokens,
+    ...(usage.cache_creation && {
+      cache_creation: {
+        ephemeral_5m_input_tokens: usage.cache_creation.ephemeral_5m_input_tokens,
+        ephemeral_1h_input_tokens: usage.cache_creation.ephemeral_1h_input_tokens,
+      },
+    }),
+  };
+}
+
+function serializeToolInput(input: unknown, config: SerializationConfig): unknown {
+  if (!input || typeof input !== "object") {
+    return input;
+  }
+
+  return Object.fromEntries(
+    Object.entries(input).map(([key, value]) => [
+      key,
+      typeof value === "string"
+        ? truncateString(value, config.maxToolContentLength)
+        : value,
+    ])
+  );
+}
