@@ -7,10 +7,10 @@ import type { ILogLayer } from "loglayer";
 import { claudeCodeSerializer } from "./serializer.js";
 
 const DEFAULT_LOG_LEVEL = "info";
+const LOG_DIR = "./logs"; // TODO: make this configurable
 
-const logs = "./logs";
-if (!fs.existsSync(logs)) {
-  fs.mkdirSync(logs);
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR);
 }
 
 /*************************************************
@@ -44,17 +44,17 @@ and because there are various complications involved in wrapping a pino logger p
 */
 
 export function getLogLevel(): LogLevel {
-  return validateLogLevel(process.env.LOG_LEVEL ?? DEFAULT_LOG_LEVEL);
-}
-
-function validateLogLevel(level: string): LogLevel {
-  const validLevels: LogLevel[] = ["debug", "info", "warn", "error"];
-  if (validLevels.includes(level as LogLevel)) {
-    return level as LogLevel;
+  function validateLogLevel(level: string): LogLevel {
+    const validLevels: LogLevel[] = ["debug", "info", "warn", "error"];
+    if (validLevels.includes(level as LogLevel)) {
+      return level as LogLevel;
+    }
+    throw new Error(
+      `Invalid LOG_LEVEL: ${level}. Valid values are: ${validLevels.join(", ")}`,
+    );
   }
-  throw new Error(
-    `Invalid LOG_LEVEL: ${level}. Valid values are: ${validLevels.join(", ")}`,
-  );
+
+  return validateLogLevel(process.env.LOG_LEVEL ?? DEFAULT_LOG_LEVEL);
 }
 
 /**************************************
@@ -79,13 +79,13 @@ function createPinoLogger(logLevel: LogLevel) {
         level: "trace",
         options: {
           // TODO: Will want to make this configurable
-          destination: path.join(logs, "benchmark.log"),
+          destination: path.join(LOG_DIR, "benchmark.log"),
         },
       },
     ],
   });
 
-  const pinoLogger = pino(
+  return pino(
     {
       serializers: {
         claudeCode: claudeCodeSerializer,
@@ -103,6 +103,4 @@ function createPinoLogger(logLevel: LogLevel) {
     },
     transport,
   );
-
-  return pinoLogger;
 }
