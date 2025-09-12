@@ -13,7 +13,7 @@ const DISCOVERY_AGENT_CONFIG = {
 export class DiscoveryAgent {
   private driver: DriverAgent;
   constructor(
-    private readonly sutConfig: SutConfig,
+    readonly sutConfig: SutConfig,
     private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     this.driver = new DriverAgent(

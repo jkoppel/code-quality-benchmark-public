@@ -195,6 +195,7 @@ async function startDevServer(
     stdio: "pipe",
     tempDirectories: [],
     cwd: sutConfig.folderPath,
+    // biome-ignore lint/suspicious/useAwait: Returns Promise from new Promise constructor
     attemptToGracefullyClose: async () => {
       // Send SIGTERM to process group (-pid) to kill npm + webpack + all child processes
       if (process.platform === "win32") {

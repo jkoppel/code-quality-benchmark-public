@@ -13,11 +13,6 @@ import {
 import { checkMoreThanDoneNotDoneStatuses } from "./basic-tests/test-cases.js";
 import { TodoListAppInfo } from "./shared/app-info-schema.js";
 import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
-import {
-  chanceyStateSynchDueDate,
-  chanceyStateSynchPriority,
-  chanceyStateSynchStatus,
-} from "./state-synchronization-tests/test-cases.js";
 import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
 
 export const appInfoId = "todoListAppInfo";
@@ -31,6 +26,7 @@ export const strategy: SuiteGenerationStrategy = {
     return await discoverTodoListAppInfo(discoveryAgent, config);
   },
 
+  // biome-ignore lint/suspicious/useAwait: This generateSuite doesn't need to be async, but there could be SuiteGenerationStrategies with generateSuites that do need to be async
   async generateSuite(_config: TestRunnerConfig, context: TestContext) {
     const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
 

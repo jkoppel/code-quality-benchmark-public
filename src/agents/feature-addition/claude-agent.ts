@@ -1,5 +1,9 @@
 import { query } from "@anthropic-ai/claude-code";
 import type { ClaudeAgentConfig, InstanceResult } from "../../types";
+import {
+  isAssistantMessage,
+  isUserMessage,
+} from "../../utils/claude-code-sdk/types.js";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.js";
 
@@ -70,10 +74,14 @@ export class ClaudeAgent {
         } else if (message.type === "user" || message.type === "assistant") {
           let content = "Message content unavailable";
 
-          if (message.type === "assistant" && "text" in message) {
-            content = (message as any).text;
-          } else if (message.type === "user" && "content" in message) {
-            const userContent = (message as any).content;
+          if (isAssistantMessage(message)) {
+            const messageContent = message.message?.content || [];
+            content =
+              typeof messageContent === "string"
+                ? messageContent
+                : JSON.stringify(messageContent);
+          } else if (isUserMessage(message)) {
+            const userContent = message.message?.content || [];
             content =
               typeof userContent === "string"
                 ? userContent
