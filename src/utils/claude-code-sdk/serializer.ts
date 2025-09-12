@@ -25,8 +25,6 @@ export const defaultSerializationConfig: SerializationConfig = {
   maxToolContentLength: 500,
 };
 
-const TRUNCATION_INDICATOR = "[...]";
-
 export const claudeCodeSerializer = (message: SDKMessage) => {
   return match(message)
     .with({ type: "assistant" }, (msg: SDKAssistantMessage) => {
@@ -72,8 +70,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
             : "";
 
           return {
-            toolName: result.tool_use_id,
-            toolId: result.tool_use_id,
+            toolUseId: result.tool_use_id,
             isError: result.is_error || false,
             contentTypes: Array.isArray(result.content)
               ? result.content.map((c: ContentBlockParam) => c.type)
@@ -130,10 +127,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
 *****************************/
 
 function truncate(str: string, maxLength: number): string {
-  if (str.length <= maxLength) {
-    return str;
-  }
-  return str.substring(0, maxLength) + TRUNCATION_INDICATOR;
+  return str.substring(0, maxLength);
 }
 
 function extractTextContent(content: string | ContentBlockParam[]): string {
