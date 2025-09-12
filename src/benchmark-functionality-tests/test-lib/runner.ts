@@ -20,7 +20,10 @@ import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
-import { NonVisionTestCaseAgent } from "./test-case-agent.js";
+import {
+  makeTestCaseAgent,
+  type TestCaseAgentOptions,
+} from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -87,11 +90,9 @@ export class TestRunner {
     const results = await Promise.all(
       suite.getTests().map((test) =>
         limit(async () => {
-          const result = await test.run(
-            new NonVisionTestCaseAgent(this.config, this.getLogger()),
-            context,
-            this.config,
-          );
+          const makeAgent = (options: TestCaseAgentOptions) =>
+            makeTestCaseAgent(options, this.config, this.getLogger());
+          const result = await test.run(makeAgent, context, this.config);
           result.name = test.descriptiveName;
           return result;
         }),

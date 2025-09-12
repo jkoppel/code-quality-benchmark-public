@@ -1,4 +1,6 @@
 import type { PermissionMode } from "@anthropic-ai/claude-code";
+import dedent from "dedent";
+import { match } from "ts-pattern";
 import type * as z from "zod";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { jsonStringify } from "../../utils/logger/pretty.js";
@@ -8,11 +10,30 @@ import { TestResultSchema } from "./report.js";
 import type { SutConfig } from "./runner.js";
 
 /*************************************
+  Test Case Agent Options
+***************************************/
+
+// Looks like only two eral differences between vision and non-vision: the driver agent config and the prompt
+// Could maybe reify that into a TestCaseAgentConfig?
+
+export type OptionalTestCaseAgentCapability = "vision";
+
+export interface TestCaseAgentOptions {
+  additionalCapabilities: OptionalTestCaseAgentCapability[];
+}
+
+/*************************************
   Test Case Agent
 ***************************************/
 
+interface TestCaseAgentInternalConfig {
+  driverConfig: DriverAgentConfig;
+  checkPromptPrefix: string;
+}
+
+// TODO: Maybe just remove this now that we only have one test case agent class
 /** Each test case gets a new instance of the TestCaseAgent */
-export interface TestCaseAgent {
+export interface ITestCaseAgent {
   check(instructions: string): Promise<TestResult>;
   query<T extends z.ZodType>(
     prompt: string,
@@ -20,83 +41,70 @@ export interface TestCaseAgent {
   ): Promise<z.infer<T>>;
 }
 
-// TODO: Either have different query methods for whether to use vision-enabled Playwright, or have different TestCaseAgents
-
-// TODO: Check if need to use sutConfig in some way here -- or maybe limit it to runner...
-
-const makeCoreCheckPrompt = (instructions: string): string =>
-  `Check the following: ${instructions}`;
-
-export class NonVisionTestCaseAgent implements TestCaseAgent {
-  private driver: DriverAgent;
-  constructor(
-    readonly sutConfig: SutConfig,
-    private readonly logger: Logger = getLoggerConfig().logger,
-  ) {
-    this.driver = new DriverAgent(
-      {
-        ...NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
-        cwd: sutConfig.folderPath,
-      },
-      logger,
-    );
+// TODO: try to streamline this; feels too complicated
+export function makeTestCaseAgent(
+  options: TestCaseAgentOptions,
+  sutConfig: SutConfig,
+  logger?: Logger,
+): TestCaseAgent {
+  function makeVisionTestCaseAgentInternalConfig(
+    sutConfig: SutConfig,
+  ): TestCaseAgentInternalConfig {
+    const driverConfig = {
+      ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
+      cwd: sutConfig.folderPath,
+    };
+    return {
+      driverConfig,
+      checkPromptPrefix: dedent`
+        Available tools include the standard Playwright MCP capabilities as well as the vision capabilities (which enable, e.g., coordinate-based clicking).
+        If you have a choice between using vision capabilities like coordinate-based clicking and using the evaluate JS tool, use the vision capabilities (so, e.g., use those to click, instead of evaluating JS).
+        Using these tools, check the following: `,
+    };
   }
 
-  async check(instructions: string): Promise<TestResult> {
-    this.logger.debug(`NonVisionTestCaseAgent.check: ${instructions}`);
-
-    const result = await this.driver.query(
-      makeCoreCheckPrompt(instructions),
-      TestResultSchema,
-    );
-    this.logger.debug(
-      `NonVisionTestCaseAgent.check result: ${jsonStringify(result)}`,
-    );
-
-    // Immediately log failed tests so user can abort without going through the rest of the suite
-    if (result.outcome.status === "failed") {
-      this.logger.error(
-        `🔴 TEST FAILED: ${result.name} - ${result.outcome.reason}`,
-      );
-    }
-
-    return result;
+  function makeNonVisionTestCaseAgentConfig(
+    sutConfig: SutConfig,
+  ): TestCaseAgentInternalConfig {
+    const driverConfig = {
+      ...NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
+      cwd: sutConfig.folderPath,
+    };
+    return {
+      driverConfig,
+      checkPromptPrefix: dedent`Check the following: `,
+    };
   }
 
-  async query<T extends z.ZodType>(
-    prompt: string,
-    outputSchema: T,
-  ): Promise<z.infer<T>> {
-    return await this.driver.query(prompt, outputSchema);
-  }
+  const config = match(options.additionalCapabilities)
+    .when(
+      (caps) => caps.includes("vision"),
+      () => makeVisionTestCaseAgentInternalConfig(sutConfig),
+    )
+    .otherwise(() => makeNonVisionTestCaseAgentConfig(sutConfig));
+
+  return new TestCaseAgent(sutConfig, config, logger);
 }
 
-export class VisionTestCaseAgent implements TestCaseAgent {
+export class TestCaseAgent implements ITestCaseAgent {
   private driver: DriverAgent;
+  private config: TestCaseAgentInternalConfig;
+
   constructor(
     readonly sutConfig: SutConfig,
+    config: TestCaseAgentInternalConfig,
     private readonly logger: Logger = getLoggerConfig().logger,
   ) {
-    this.driver = new DriverAgent(
-      {
-        ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
-        cwd: sutConfig.folderPath,
-      },
-      logger,
-    );
+    this.config = config;
+    this.driver = new DriverAgent(config.driverConfig, logger);
   }
 
   async check(instructions: string): Promise<TestResult> {
-    this.logger.debug(`VisionTestCaseAgent.check: ${instructions}`);
-
-    // TODO: Add stuff about vision caps?
     const result = await this.driver.query(
-      makeCoreCheckPrompt(instructions),
+      `${this.config.checkPromptPrefix}${instructions}`,
       TestResultSchema,
     );
-    this.logger.debug(
-      `VisionTestCaseAgent.check result: ${jsonStringify(result)}`,
-    );
+    this.logger.debug(`TestCaseAgent.check result: ${jsonStringify(result)}`);
 
     // Immediately log failed tests so user can abort without going through the rest of the suite
     if (result.outcome.status === "failed") {
