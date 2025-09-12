@@ -5,15 +5,15 @@ repos:
   # Does NOT currently prevent committing even if there are lint errors
   - repo: local
     hooks:
-      - id: biome-format-and-fix
-        name: Biome format and safe fixes
-        entry: bash
-        args: [-c, 'npx biome check --write --only=format,organizeImports || true']
+      - id: format
+        name: Format
+        entry: npm
+        args: [run, format]
         language: system
-        types_or: [javascript, jsx, ts, tsx, json]
-        exclude: ^(results|dist|node_modules|.*premade-pre-refactor)/
+        pass_filenames: false
+        require_serial: true
 
-  # TypeScript type checking  
+  # TypeScript type checking -- but no linting 
   - repo: local
     hooks:
       - id: typescript-check
