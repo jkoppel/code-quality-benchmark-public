@@ -144,9 +144,11 @@ npm run dev                 # Watch mode for development
 npm run build               # Build the project
 npm run clean               # Clean build artifacts
 
+npm run format
 npm run check               # TypeScript type checking
-npm run lint                # ESLint code linting
+npm run lint                # Biome
 npm run check:all           # Run both type checking and linting
+npm run fix:all             # Format code and fix linting issues
 npm run check:command-refs  # Check that references to npm commands in docs, error messages are up to date using a headless Claude Code instance
 ```
 
