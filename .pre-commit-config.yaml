@@ -2,18 +2,17 @@ fail_fast: false
 
 repos:
   # TypeScript/JavaScript - Use local Biome (format + safe fixes only)
-  # Does NOT currently prevent committing even if there are lint errors
   - repo: local
     hooks:
-      - id: format
-        name: Format
+      - id: fix-staged
+        name: Runs formatter, linter and import sorting on staged files; applies safe fixes
         entry: npm
-        args: [run, format]
+        args: [run, "fix:staged"]
         language: system
         pass_filenames: false
         require_serial: true
 
-  # TypeScript type checking -- but no linting 
+  # TypeScript type checking
   - repo: local
     hooks:
       - id: typescript-check
