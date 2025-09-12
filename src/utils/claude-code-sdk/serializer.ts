@@ -6,8 +6,12 @@ import type {
   SDKUserMessage,
 } from "@anthropic-ai/claude-code";
 import type {
-  Usage,
+  ContentBlock,
   ContentBlockParam,
+  TextBlockParam,
+  ToolResultBlockParam,
+  ToolUseBlock,
+  Usage,
 } from "@anthropic-ai/sdk/resources/messages";
 import { match } from "ts-pattern";
 
@@ -28,14 +32,14 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
     .with({ type: "assistant" }, (msg: SDKAssistantMessage) => {
       const content = msg.message?.content || [];
       const toolUses = Array.isArray(content)
-        ? content.filter((c: any) => c.type === "tool_use")
+        ? content.filter((c: ContentBlock) => c.type === "tool_use")
         : [];
 
       const sanitizedContent =
         typeof content !== "string" && content.length > 0
           ? content.map(sanitizeContentBlock)
           : undefined;
-      const serializedTools = toolUses.map((tool: any) => ({
+      const serializedTools = toolUses.map((tool: ToolUseBlock) => ({
         name: tool.name,
         input: tool.input
           ? serializeToolInput(tool.input, defaultSerializationConfig)
@@ -54,34 +58,33 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
     })
     .with({ type: "user" }, (msg: SDKUserMessage) => {
       const content = msg.message?.content || [];
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic SDK content types
       const toolResults = Array.isArray(content)
-        ? content.filter((c: any) => c.type === "tool_result")
+        ? content.filter((c: ContentBlockParam) => c.type === "tool_result")
         : [];
       const sanitizedContent =
         typeof content !== "string" && content.length > 0
           ? content.map(sanitizeContentBlock)
           : undefined;
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic tool result structure
-      const serializedToolResults = toolResults.map((result: any) => {
-        const resultTextContent = Array.isArray(result.content)
-          ? extractTextContent(result.content)
-          : "";
+      const serializedToolResults = toolResults.map(
+        (result: ToolResultBlockParam) => {
+          const resultTextContent = Array.isArray(result.content)
+            ? extractTextContent(result.content)
+            : "";
 
-        return {
-          toolName: result.tool_name,
-          toolId: result.tool_use_id,
-          isError: result.is_error || false,
-          // biome-ignore lint/suspicious/noExplicitAny: Dynamic content block types
-          contentTypes: Array.isArray(result.content)
-            ? result.content.map((c: any) => c.type)
-            : ["unknown"],
-          preview: truncate(
-            resultTextContent,
-            defaultSerializationConfig.maxToolContentLength,
-          ),
-        };
-      });
+          return {
+            toolName: result.tool_use_id,
+            toolId: result.tool_use_id,
+            isError: result.is_error || false,
+            contentTypes: Array.isArray(result.content)
+              ? result.content.map((c: ContentBlockParam) => c.type)
+              : ["unknown"],
+            preview: truncate(
+              resultTextContent,
+              defaultSerializationConfig.maxToolContentLength,
+            ),
+          };
+        },
+      );
 
       return {
         type: "user",
@@ -138,14 +141,10 @@ function extractTextContent(content: string | ContentBlockParam[]): string {
     return content;
   }
 
-  return (
-    content
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic content block filtering
-      .filter((c: any) => c.type === "text")
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic content block mapping
-      .map((c: any) => c.text)
-      .join(" ")
-  );
+  return content
+    .filter((c: ContentBlockParam): c is TextBlockParam => c.type === "text")
+    .map((c: TextBlockParam) => c.text)
+    .join(" ");
 }
 
 function processTextContent(
