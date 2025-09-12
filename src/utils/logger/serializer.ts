@@ -27,12 +27,19 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
   return match(message)
     .with({ type: "assistant" }, (msg: SDKAssistantMessage) => {
       const content = msg.message?.content || [];
-      const toolUses = Array.isArray(content) ? content.filter((c: any) => c.type === "tool_use") : [];
+      const toolUses = Array.isArray(content)
+        ? content.filter((c: any) => c.type === "tool_use")
+        : [];
 
-      const sanitizedContent = typeof content !== "string" && content.length > 0 ? content.map(sanitizeContentBlock) : undefined;
+      const sanitizedContent =
+        typeof content !== "string" && content.length > 0
+          ? content.map(sanitizeContentBlock)
+          : undefined;
       const serializedTools = toolUses.map((tool: any) => ({
         name: tool.name,
-        input: tool.input ? serializeToolInput(tool.input, defaultSerializationConfig) : undefined,
+        input: tool.input
+          ? serializeToolInput(tool.input, defaultSerializationConfig)
+          : undefined,
       }));
 
       return {
@@ -42,22 +49,37 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
         text: processTextContent(content, defaultSerializationConfig),
         content: sanitizedContent,
         tools: serializedTools,
-        usage: msg.message?.usage && extractUsageMetrics(msg.message.usage)
+        usage: msg.message?.usage && extractUsageMetrics(msg.message.usage),
       };
     })
     .with({ type: "user" }, (msg: SDKUserMessage) => {
       const content = msg.message?.content || [];
-      const toolResults = Array.isArray(content) ? content.filter((c: any) => c.type === "tool_result") : [];
-      const sanitizedContent = typeof content !== "string" && content.length > 0 ? content.map(sanitizeContentBlock) : undefined;
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic SDK content types
+      const toolResults = Array.isArray(content)
+        ? content.filter((c: any) => c.type === "tool_result")
+        : [];
+      const sanitizedContent =
+        typeof content !== "string" && content.length > 0
+          ? content.map(sanitizeContentBlock)
+          : undefined;
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic tool result structure
       const serializedToolResults = toolResults.map((result: any) => {
-        const resultTextContent = Array.isArray(result.content) ? extractTextContent(result.content) : "";
-        
+        const resultTextContent = Array.isArray(result.content)
+          ? extractTextContent(result.content)
+          : "";
+
         return {
           toolName: result.tool_name,
           toolId: result.tool_use_id,
           isError: result.is_error || false,
-          contentTypes: Array.isArray(result.content) ? result.content.map((c: any) => c.type) : ["unknown"],
-          preview: truncateString(resultTextContent, defaultSerializationConfig.maxToolContentLength),
+          // biome-ignore lint/suspicious/noExplicitAny: Dynamic content block types
+          contentTypes: Array.isArray(result.content)
+            ? result.content.map((c: any) => c.type)
+            : ["unknown"],
+          preview: truncate(
+            resultTextContent,
+            defaultSerializationConfig.maxToolContentLength,
+          ),
         };
       });
 
@@ -104,7 +126,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
       Helper functions
 *****************************/
 
-function truncateString(str: string, maxLength: number): string {
+function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) {
     return str;
   }
@@ -115,32 +137,45 @@ function extractTextContent(content: string | ContentBlockParam[]): string {
   if (typeof content === "string") {
     return content;
   }
-  
-  return content
-    .filter((c: any) => c.type === "text")
-    .map((c: any) => c.text)
-    .join(" ");
+
+  return (
+    content
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic content block filtering
+      .filter((c: any) => c.type === "text")
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic content block mapping
+      .map((c: any) => c.text)
+      .join(" ")
+  );
 }
 
-function processTextContent(content: string | ContentBlockParam[], config: SerializationConfig): string {
-  return truncateString(extractTextContent(content), config.maxCodingAgentMessageLength);
+function processTextContent(
+  content: string | ContentBlockParam[],
+  config: SerializationConfig,
+): string {
+  return truncate(
+    extractTextContent(content),
+    config.maxCodingAgentMessageLength,
+  );
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic media source structure
 function sanitizeMediaSource(source: any) {
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic result object
   const result: any = {
     type: source?.type,
     media_type: source?.media_type,
   };
-  
+
   if (source?.type === "url") {
     result.url = source.url;
   } else if (source?.type === "base64") {
     result.data_size = source?.data?.length || 0;
   }
-  
+
   return result;
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic content block types
 function sanitizeContentBlock(block: any): any {
   if (block.type === "image") {
     return {
@@ -148,7 +183,7 @@ function sanitizeContentBlock(block: any): any {
       source: sanitizeMediaSource(block.source),
     };
   }
-  
+
   if (block.type === "document") {
     return {
       type: "document",
@@ -156,16 +191,20 @@ function sanitizeContentBlock(block: any): any {
       title: block.title,
     };
   }
-  
+
   if (block.type === "tool_result") {
     return {
       ...block,
-      content: typeof block.content === "string" 
-        ? truncateString(block.content, defaultSerializationConfig.maxToolContentLength)
-        : block.content,
+      content:
+        typeof block.content === "string"
+          ? truncate(
+              block.content,
+              defaultSerializationConfig.maxToolContentLength,
+            )
+          : block.content,
     };
   }
-  
+
   return block;
 }
 
@@ -178,14 +217,19 @@ function extractUsageMetrics(usage: Usage | NonNullableUsage) {
     cache_read_input_tokens: usage.cache_read_input_tokens,
     ...(usage.cache_creation && {
       cache_creation: {
-        ephemeral_5m_input_tokens: usage.cache_creation.ephemeral_5m_input_tokens,
-        ephemeral_1h_input_tokens: usage.cache_creation.ephemeral_1h_input_tokens,
+        ephemeral_5m_input_tokens:
+          usage.cache_creation.ephemeral_5m_input_tokens,
+        ephemeral_1h_input_tokens:
+          usage.cache_creation.ephemeral_1h_input_tokens,
       },
     }),
   };
 }
 
-function serializeToolInput(input: unknown, config: SerializationConfig): unknown {
+function serializeToolInput(
+  input: unknown,
+  config: SerializationConfig,
+): unknown {
   if (!input || typeof input !== "object") {
     return input;
   }
@@ -194,8 +238,8 @@ function serializeToolInput(input: unknown, config: SerializationConfig): unknow
     Object.entries(input).map(([key, value]) => [
       key,
       typeof value === "string"
-        ? truncateString(value, config.maxToolContentLength)
+        ? truncate(value, config.maxToolContentLength)
         : value,
-    ])
+    ]),
   );
 }

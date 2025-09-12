@@ -26,7 +26,7 @@ export const PriorityTaskAttribute: TaskAttribute = {
 export const DueDateTaskAttribute: TaskAttribute = {
   attributeId: "dueDate",
   getPrettyName: () => "due date",
-  getAttributeValues: (app) => {
+  getAttributeValues: () => {
     return ["tomorrow", "next week", "yesterday (or past date)"];
   },
   getAttributeViews: (app) => app.taskInfo.views.dueDate,
