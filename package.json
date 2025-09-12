@@ -8,9 +8,9 @@
   "scripts": {
     "build": "tsc",
     "check": "tsc --noEmit --pretty",
-    "check:all": "npm run check && biome check .",
-    "fix:all": "npm run format && biome check --write .",
-    "lint": "biome lint src/",
+    "check:all": "npm run check && biome ci .",
+    "fix:all": "biome check --write .",
+    "lint": "biome lint .",
     "format": "biome format --write .",
     "dev": "tsc --watch",
     "benchmark": "npm run build && node dist/benchmark-runner.js",
