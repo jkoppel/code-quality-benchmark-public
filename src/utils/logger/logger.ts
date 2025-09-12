@@ -1,10 +1,10 @@
-import fs from "fs";
-import path from "path";
-import pino from "pino";
-import { LogLayer } from "loglayer";
+import fs from "node:fs";
+import path from "node:path";
 import { PinoTransport } from "@loglayer/transport-pino";
 import type { ILogLayer } from "loglayer";
-import { claudeCodeSerializer } from "./serializer.js";
+import { LogLayer } from "loglayer";
+import pino from "pino";
+import { claudeCodeSerializer } from "../claude-code-sdk/serializer.js";
 
 const DEFAULT_LOG_LEVEL = "info";
 const LOG_DIR = "./logs"; // TODO: make this configurable

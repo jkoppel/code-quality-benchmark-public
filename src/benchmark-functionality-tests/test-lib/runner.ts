@@ -11,16 +11,16 @@
  * Source: https://github.com/microsoft/playwright
  */
 
+import dedent from "dedent";
 import detect from "detect-port";
 import pLimit from "p-limit";
-import type { LogLevel, Logger } from "../../utils/logger/logger.js";
+import type { Logger, LogLevel } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
 import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
 import { NonVisionTestCaseAgent } from "./test-case-agent.js";
-import dedent from "dedent";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -195,6 +195,7 @@ async function startDevServer(
     stdio: "pipe",
     tempDirectories: [],
     cwd: sutConfig.folderPath,
+    // biome-ignore lint/suspicious/useAwait: Returns Promise from new Promise constructor
     attemptToGracefullyClose: async () => {
       // Send SIGTERM to process group (-pid) to kill npm + webpack + all child processes
       if (process.platform === "win32") {
@@ -274,7 +275,7 @@ async function waitForServerReady(
 
       // Fallback to /index.html for SPAs (common pattern)
       if (response.status === 404 && new URL(url).pathname === "/") {
-        response = await fetch(url + "index.html");
+        response = await fetch(`${url}index.html`);
         if (response.ok) return;
       }
     } catch {

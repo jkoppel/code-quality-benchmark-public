@@ -1,6 +1,6 @@
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
+import * as path from "node:path";
 import fs from "fs-extra";
-import * as path from "path";
 import * as tmp from "tmp";
 import { ClaudeAgent } from "./agents/feature-addition/claude-agent.js";
 import { codexAgent } from "./agents/feature-addition/codex-agent.js";
@@ -99,7 +99,7 @@ export async function evaluateUpdates(
         metadata: {
           startTime,
           endTime: new Date(),
-          totalDuration: new Date().getTime() - startTime.getTime(),
+          totalDuration: Date.now() - startTime.getTime(),
           agentsUsed: ["claude-code", "codex"],
           config,
         },
@@ -446,7 +446,7 @@ async function applyUpdatesToInstances(
             `git commit -m "Update: Applied modifications by ${result.agentName}"`,
             { cwd: instancePath },
           );
-        } catch (commitError) {
+        } catch (_commitError) {
           // If commit fails (e.g., nothing to commit), that's okay
           logger.debug(`No changes to commit for ${result.instanceId}`);
         }

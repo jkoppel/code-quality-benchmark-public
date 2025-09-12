@@ -1,6 +1,6 @@
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
+import * as path from "node:path";
 import fs from "fs-extra";
-import * as path from "path";
 import * as tmp from "tmp";
 import {
   type CodingAgent,
@@ -141,7 +141,7 @@ export async function runBenchmarkWithExistingCode(
   // Verify existing code has git repo
   try {
     execSync("git status", { cwd: existingCodePath, stdio: "ignore" });
-  } catch (error) {
+  } catch (_error) {
     throw new Error(
       `Existing code at ${existingCodePath} is not a git repository`,
     );
@@ -163,7 +163,7 @@ export async function runBenchmarkWithExistingCode(
   // Check if the destination directory is already a git repository
   try {
     execSync("git status", { cwd: originalProgramPath, stdio: "ignore" });
-  } catch (error) {
+  } catch (_error) {
     // Not a git repository, initialize it
     execSync("git init", { cwd: originalProgramPath });
     execSync("git add -A", { cwd: originalProgramPath });

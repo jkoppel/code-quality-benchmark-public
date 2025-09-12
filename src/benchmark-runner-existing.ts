@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import * as path from "path";
+import * as path from "node:path";
 import { runBenchmarkWithExistingCode } from "./benchmark-lib.js";
 
 // CLI interface

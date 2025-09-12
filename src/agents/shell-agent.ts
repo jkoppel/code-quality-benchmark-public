@@ -13,6 +13,7 @@ export function createShellAgent(
 ): (prompt: string, folderPath: string, port?: number) => Promise<void> {
   const logger = getLoggerConfig().logger;
 
+  // biome-ignore lint/suspicious/useAwait: Returns Promise from constructor
   return async (
     prompt: string,
     folderPath: string,

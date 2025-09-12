@@ -9,6 +9,7 @@
     "build": "tsc",
     "check": "tsc --noEmit --pretty",
     "check:all": "npm run check && biome check .",
+    "fix:all": "npm run format && biome check --write .",
     "lint": "biome lint src/",
     "format": "biome format --write .",
     "dev": "tsc --watch",

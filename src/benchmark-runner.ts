@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import * as path from "path";
+import * as path from "node:path";
 import { runBenchmarkWithNewCode } from "./benchmark-lib.js";
 import { createShellAgent } from "./index.js";
 

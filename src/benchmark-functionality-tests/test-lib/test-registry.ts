@@ -35,7 +35,7 @@ export function parseBenchmarkPath(benchmarkPath: string): {
   const parts = benchmarkPath.split("/");
 
   // Find the "benchmarks" segment
-  const benchmarksIndex = parts.findIndex((part) => part === "benchmarks");
+  const benchmarksIndex = parts.indexOf("benchmarks");
 
   if (benchmarksIndex === -1 || benchmarksIndex + 2 >= parts.length) {
     throw new Error(

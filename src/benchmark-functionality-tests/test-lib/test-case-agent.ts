@@ -30,7 +30,7 @@ const makeCoreCheckPrompt = (instructions: string): string =>
 export class NonVisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
-    private readonly sutConfig: SutConfig,
+    readonly sutConfig: SutConfig,
     private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     this.driver = new DriverAgent(
@@ -74,7 +74,7 @@ export class NonVisionTestCaseAgent implements TestCaseAgent {
 export class VisionTestCaseAgent implements TestCaseAgent {
   private driver: DriverAgent;
   constructor(
-    private readonly sutConfig: SutConfig,
+    readonly sutConfig: SutConfig,
     private readonly logger: Logger = getLoggerConfig().logger,
   ) {
     this.driver = new DriverAgent(
