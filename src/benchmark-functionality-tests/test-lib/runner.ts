@@ -22,10 +22,7 @@ import type { TestContext } from "./context.js";
 import { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
-import {
-  makeTestCaseAgent,
-  type TestCaseAgentOptions,
-} from "./test-case-agent.js";
+import { TestCaseAgent, type TestCaseAgentOptions } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -93,7 +90,7 @@ export class TestRunner {
       suite.getTests().map((test) =>
         limit(async () => {
           const makeAgent = (options: TestCaseAgentOptions) =>
-            makeTestCaseAgent(options, this.config, this.getLogger());
+            TestCaseAgent.make(options, this.config, this.getLogger());
           const result = await test.run(makeAgent, context, this.config);
           result.name = test.descriptiveName;
           return result;

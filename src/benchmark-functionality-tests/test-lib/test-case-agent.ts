@@ -13,9 +13,6 @@ import type { SutConfig } from "./runner.js";
   Test Case Agent Options
 ***************************************/
 
-// Looks like only two eral differences between vision and non-vision: the driver agent config and the prompt
-// Could maybe reify that into a TestCaseAgentConfig?
-
 export type OptionalTestCaseAgentCapability = "vision";
 
 export interface TestCaseAgentOptions {
@@ -26,82 +23,48 @@ export interface TestCaseAgentOptions {
   Test Case Agent
 ***************************************/
 
-interface TestCaseAgentInternalConfig {
-  driverConfig: DriverAgentConfig;
-  checkPromptPrefix: string;
-}
-
-// TODO: Maybe just remove this now that we only have one test case agent class
-/** Each test case gets a new instance of the TestCaseAgent */
-export interface ITestCaseAgent {
-  check(instructions: string): Promise<TestResult>;
-  query<T extends z.ZodType>(
-    prompt: string,
-    outputSchema: T,
-  ): Promise<z.infer<T>>;
-}
-
-// TODO: try to streamline this; feels too complicated
-export function makeTestCaseAgent(
-  options: TestCaseAgentOptions,
-  sutConfig: SutConfig,
-  logger?: Logger,
-): TestCaseAgent {
-  function makeVisionTestCaseAgentInternalConfig(
-    sutConfig: SutConfig,
-  ): TestCaseAgentInternalConfig {
-    const driverConfig = {
-      ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
-      cwd: sutConfig.folderPath,
-    };
-    return {
-      driverConfig,
-      checkPromptPrefix: dedent`
-        Available tools include the standard Playwright MCP capabilities as well as the vision capabilities (which enable, e.g., coordinate-based clicking).
-        If you have a choice between using vision capabilities like coordinate-based clicking and using the evaluate JS tool, use the vision capabilities (so, e.g., use those to click, instead of evaluating JS).
-        Using these tools, check the following: `,
-    };
-  }
-
-  function makeNonVisionTestCaseAgentConfig(
-    sutConfig: SutConfig,
-  ): TestCaseAgentInternalConfig {
-    const driverConfig = {
-      ...NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
-      cwd: sutConfig.folderPath,
-    };
-    return {
-      driverConfig,
-      checkPromptPrefix: dedent`Check the following: `,
-    };
-  }
-
-  const config = match(options.additionalCapabilities)
-    .when(
-      (caps) => caps.includes("vision"),
-      () => makeVisionTestCaseAgentInternalConfig(sutConfig),
-    )
-    .otherwise(() => makeNonVisionTestCaseAgentConfig(sutConfig));
-
-  return new TestCaseAgent(sutConfig, config, logger);
-}
-
-export class TestCaseAgent implements ITestCaseAgent {
+export class TestCaseAgent {
   private driver: DriverAgent;
-  private config: TestCaseAgentInternalConfig;
+
+  static make(
+    options: TestCaseAgentOptions,
+    sutConfig: SutConfig,
+    logger?: Logger,
+  ): TestCaseAgent {
+    const hasVision = options.additionalCapabilities.includes("vision");
+
+    const driverConfig = {
+      ...(hasVision ? VISION_CONFIG : STANDARD_CONFIG),
+      cwd: sutConfig.folderPath,
+    };
+    const checkPromptPrefix = hasVision
+      ? dedent`
+          Available tools include the standard Playwright MCP capabilities as well as vision capabilities (e.g., coordinate-based clicking and dragging).
+          For instance, if you need to click or drag, use the vision capabilities (browser_mouse_click_xy, browser_mouse_drag_xy, etc) or keyboard navigation (but be efficient about it).
+          Do not use mcp__playwright__browser_evaluate -- it's not reliable!
+          Make sure to take screenshots and corroborate your conclusions against them -- it's not enough to rely on the DOM snapshots.`
+      : "Check the following: ";
+
+    return new TestCaseAgent(driverConfig, checkPromptPrefix, logger);
+  }
 
   constructor(
-    readonly sutConfig: SutConfig,
-    config: TestCaseAgentInternalConfig,
+    driverConfig: DriverAgentConfig,
+    private readonly checkPromptPrefix: string,
     private readonly logger: Logger = getLoggerConfig().logger,
   ) {
-    this.config = config;
-    this.driver = new DriverAgent(config.driverConfig, logger);
+    this.driver = new DriverAgent(driverConfig, logger);
+  }
+
+  private getCheckPromptPrefix() {
+    return this.checkPromptPrefix;
   }
 
   async check(instructions: string): Promise<TestResult> {
     const result = await this.driver.query(
-      `${this.config.checkPromptPrefix}${instructions}`,
+      dedent`
+      ${this.getCheckPromptPrefix()}
+      ${instructions}`,
       TestResultSchema,
     );
     this.logger.debug(`TestCaseAgent.check result: ${jsonStringify(result)}`);
@@ -148,7 +111,7 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
 }
 
 // TODO: add a prompt explaining that this is a test case agent that will be used to ...
-const CORE_TEST_CASE_AGENT_CONFIG = {
+const BASE_CONFIG = {
   permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
   maxTurns: 180, // TODO: Tune this
   executable: "node" as const,
@@ -156,17 +119,15 @@ const CORE_TEST_CASE_AGENT_CONFIG = {
   disallowedTools: ["mcp__playwright__browser_evaluate"],
 };
 
-export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig =
-  {
-    ...CORE_TEST_CASE_AGENT_CONFIG,
-    mcpServers: {
-      ...makePlaywrightMCPConfig(["verify"]),
-    },
-  };
+export const STANDARD_CONFIG: DriverAgentConfig = {
+  ...BASE_CONFIG,
+  mcpServers: {
+    ...makePlaywrightMCPConfig(["verify"]),
+  },
+};
 
-// TODO: Prob want to add a system prompt offering guidance for when to use Playwright vision caps, and to do that instead of e.g. eval js where possible
-export const VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig = {
-  ...CORE_TEST_CASE_AGENT_CONFIG,
+export const VISION_CONFIG: DriverAgentConfig = {
+  ...BASE_CONFIG,
   mcpServers: {
     ...makePlaywrightMCPConfig(["verify", "vision"]),
   },
