@@ -48,7 +48,7 @@ export const basicRgbColorSelection: TestCase = {
 };
 
 export const colorSharingMultiPane: TestCase = {
-  descriptiveName: "Test CS004: Color Sharing in Multi-Pane Setup",
+  descriptiveName: "Color Sharing with Multiple Panes",
   async run(
     makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     _context: TestContext,
@@ -60,9 +60,7 @@ export const colorSharingMultiPane: TestCase = {
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
 
-      Test CS004: Color Sharing in Multi-Pane Setup
-
-      Objective: Verify that color selection applies globally across all editing panes
+      Objective: Verify that color selection applies globally across all panes
 
       Steps:
       1. Create two editing panes
@@ -87,8 +85,9 @@ export const colorSharingMultiPane: TestCase = {
   },
 };
 
+// TODO: check/read more carefully
 export const colorPickerStatePersistence: TestCase = {
-  descriptiveName: "Test CS008: Color Picker State Persistence",
+  descriptiveName: "Color Picker State Persistence",
   async run(
     makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     _context: TestContext,
@@ -100,13 +99,11 @@ export const colorPickerStatePersistence: TestCase = {
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       
-      Test CS008: Color Picker State Persistence
-      
       Objective: Verify color selection survives pane creation/deletion operations  
       
       Steps:
       1. Launch application with single pane
-      2. Select distinctive color (e.g., R=220, G=180, B=60)
+      2. Select a distinctive color.
       3. Create new pane
       4. Verify selected color is still active in color picker
       5. Close one pane (not the last one)
@@ -120,8 +117,9 @@ export const colorPickerStatePersistence: TestCase = {
   },
 };
 
+// TODO: check/read more carefully
 export const independentDrawingAreas: TestCase = {
-  descriptiveName: "Test DP007: Independent Drawing Areas",
+  descriptiveName: "Independent Drawing Areas",
   async run(
     makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     _context: TestContext,
@@ -133,14 +131,12 @@ export const independentDrawingAreas: TestCase = {
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       
-      Test DP007: Independent Drawing Areas
-      
       Objective: Verify drawing in one pane doesn't affect other panes
       Pre-condition: Application with at least 2 panes open
       
       Steps:
-      1. Select this color: R=220, G=180, B=60
-      2. Draw several pixels in first pane creating recognizable pattern
+      1. Select a distinctive color
+      2. Draw several pixels in first pane creating a recognizable pattern
       3. Observe second pane remains unchanged
       4. Draw different pattern in second pane with a different color
       5. Verify first pane's pattern is unaffected
@@ -151,6 +147,6 @@ export const independentDrawingAreas: TestCase = {
       - Each pane maintains its own independent drawing state
       
       Mark the test as passing if drawing in one pane doesn't affect other panes.
-      Mark as failing if drawing operations affect multiple panes or there's cross-contamination.`);
+      Mark as failing if drawing operations affect multiple panes.`);
   },
 };
