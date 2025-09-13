@@ -4,10 +4,15 @@ import type { TestResult } from "../../../test-lib/report.js";
 import type { TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { TestCase } from "../../../test-lib/suite.js";
 import type {
+  OptionalTestCaseAgentCapability,
   TestCaseAgent,
   TestCaseAgentOptions,
 } from "../../../test-lib/test-case-agent.js";
 import { makeBackgroundPrompt } from "./common-prompts.js";
+
+const capabilitiesForPixelArtTests: OptionalTestCaseAgentCapability[] = [
+  "vision",
+];
 
 export const basicRgbColorSelection: TestCase = {
   descriptiveName: "Test CS001: RGB Color Selection Basic Functionality",
@@ -16,7 +21,9 @@ export const basicRgbColorSelection: TestCase = {
     _context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const agent = makeAgent({ additionalCapabilities: [] });
+    const agent = makeAgent({
+      additionalCapabilities: capabilitiesForPixelArtTests,
+    });
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       
@@ -47,30 +54,36 @@ export const colorSharingMultiPane: TestCase = {
     _context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const agent = makeAgent({ additionalCapabilities: [] });
+    const agent = makeAgent({
+      additionalCapabilities: capabilitiesForPixelArtTests,
+    });
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
-      
+
       Test CS004: Color Sharing in Multi-Pane Setup
-      
+
       Objective: Verify that color selection applies globally across all editing panes
-      Pre-condition: Application running with multiple panes open
-      
+
       Steps:
-      1. Create at least 2 editing panes
-      2. Select specific color (e.g., R=200, G=100, B=50) in color picker
+      1. Create two editing panes
+      2. Set color to red by clicking at the right end of red slider and left end of green/blue sliders (no need to be super precise)
       3. Click in first pane's drawing area to paint a pixel
-      4. Click in second pane's drawing area to paint a pixel  
-      5. Change color picker to different color (e.g., R=50, G=200, B=100)
-      6. Paint pixels in both panes again
-      
-      Expected Result: 
-      - First painting operation uses first color in both panes
-      - Second painting operation uses second color in both panes
+      4. Click in second pane's drawing area to paint a pixel
+      5. Take screenshot(s)
+      6. Set color to green by clicking at the left end of red slider, right end of green slider, and left end of blue slider
+      7. Paint pixels in both panes again
+      8. Take screenshot(s)
+
+      Expected Result:
+      - First painting operation uses red color in both panes
+      - Second painting operation uses green color in both panes
       - Color changes affect all panes simultaneously
-      
+
       Mark the test as passing if color selection is shared across all panes.
-      Mark as failing if different panes use different colors or color changes don't affect all panes.`);
+      Mark as failing if different panes use different colors or color changes don't affect all panes.
+
+      Make sure to take screenshots and corroborate your conclusions against them -- it's not enough to rely on the DOM snapshots.
+      `);
   },
 };
 
@@ -81,7 +94,9 @@ export const colorPickerStatePersistence: TestCase = {
     _context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const agent = makeAgent({ additionalCapabilities: [] });
+    const agent = makeAgent({
+      additionalCapabilities: capabilitiesForPixelArtTests,
+    });
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       
@@ -112,7 +127,9 @@ export const independentDrawingAreas: TestCase = {
     _context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const agent = makeAgent({ additionalCapabilities: [] });
+    const agent = makeAgent({
+      additionalCapabilities: capabilitiesForPixelArtTests,
+    });
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       
