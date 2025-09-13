@@ -194,7 +194,9 @@ function sanitizeContentBlock(block: any): any {
               block.content,
               defaultSerializationConfig.maxToolContentLength,
             )
-          : block.content,
+          : Array.isArray(block.content)
+            ? block.content.map(sanitizeContentBlock)
+            : block.content,
     };
   }
 
