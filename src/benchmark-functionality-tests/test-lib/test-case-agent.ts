@@ -150,9 +150,11 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
 // TODO: add a prompt explaining that this is a test case agent that will be used to ...
 const CORE_TEST_CASE_AGENT_CONFIG = {
   permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
-  maxTurns: 45, // TODO: Tune this
-  executable: "node",
-} as const;
+  maxTurns: 180, // TODO: Tune this
+  executable: "node" as const,
+  // Prohibiting js eval cos it does not reliably trigger state updates in the apps under test
+  disallowedTools: ["mcp__playwright__browser_evaluate"],
+};
 
 export const NON_VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG: DriverAgentConfig =
   {
