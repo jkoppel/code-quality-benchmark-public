@@ -11,8 +11,10 @@
  * Source: https://github.com/microsoft/playwright
  */
 
+import path from "node:path";
 import dedent from "dedent";
 import detect from "detect-port";
+import fs from "fs-extra";
 import pLimit from "p-limit";
 import type { Logger, LogLevel } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
@@ -166,6 +168,24 @@ async function startDevServer(
   );
 
   const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
+
+  // Check for package.json before attempting to run npm
+  const packageJsonPath = path.join(sutConfig.folderPath, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(dedent`
+      Cannot start dev server in directory "${sutConfig.folderPath}": package.json not found.
+      Make sure you're in a Node.js project directory or that the project has been properly initialized.
+    `);
+  }
+
+  // Check for node_modules to ensure dependencies are installed
+  const nodeModulesPath = path.join(sutConfig.folderPath, "node_modules");
+  if (!fs.existsSync(nodeModulesPath)) {
+    throw new Error(dedent`
+      Cannot start dev server in directory "${sutConfig.folderPath}": node_modules not found.
+      Please install project dependencies by running 'npm install' in this directory.
+    `);
+  }
 
   // Using process launcher adapted from Playwright,
   // because a naive, vibe-coded approach had issues with stopping the dev server
