@@ -103,6 +103,8 @@ function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
         "-y",
         PLAYWRIGHT_MCP,
         "--isolated",
+        "--save-trace",
+        "--save-session",
         "--headless",
         capabilities.length > 0 ? `--caps=${capabilities.join(",")}` : "",
       ],
