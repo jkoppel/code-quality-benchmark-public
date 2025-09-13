@@ -4,7 +4,10 @@ import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TestCase } from "../../../../test-lib/suite.js";
-import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
+import type {
+  TestCaseAgent,
+  TestCaseAgentOptions,
+} from "../../../../test-lib/test-case-agent.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
 import { appInfoId } from "../test-strategy.js";
@@ -12,10 +15,11 @@ import { appInfoId } from "../test-strategy.js";
 export const checkMoreThanDoneNotDoneStatuses: TestCase = {
   descriptiveName: "Test that the app has more than done/not-done statuses",
   async run(
-    agent: NonVisionTestCaseAgent,
+    makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
+    const agent = makeAgent({ additionalCapabilities: [] });
     const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
     const availableStatuses = appInfo.taskInfo.statuses;
 

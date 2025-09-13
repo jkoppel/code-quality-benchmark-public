@@ -4,7 +4,10 @@ import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TestCase } from "../../../../test-lib/suite.js";
-import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
+import type {
+  TestCaseAgent,
+  TestCaseAgentOptions,
+} from "../../../../test-lib/test-case-agent.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
 import type { TaskAttribute } from "../shared/task-attribute.js";
@@ -19,10 +22,11 @@ export function makeAttributeIsolationTest(attribute: TaskAttribute): TestCase {
   return {
     descriptiveName: `Test that changing a task's ${attribute.getPrettyName()} doesn't affect other tasks`,
     async run(
-      agent: NonVisionTestCaseAgent,
+      makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
     ): Promise<TestResult> {
+      const agent = makeAgent({ additionalCapabilities: [] });
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
       const availableStatuses = appInfo.taskInfo.statuses;
       const availablePriorities = appInfo.taskInfo.priorityLevels;

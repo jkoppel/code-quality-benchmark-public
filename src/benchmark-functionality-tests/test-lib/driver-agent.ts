@@ -14,7 +14,13 @@ import { jsonStringify } from "../../utils/logger/pretty.js";
 
 export type DriverAgentConfig = Pick<
   Options,
-  "permissionMode" | "executable" | "maxTurns" | "cwd" | "mcpServers" | "resume"
+  | "permissionMode"
+  | "executable"
+  | "maxTurns"
+  | "cwd"
+  | "mcpServers"
+  | "resume"
+  | "disallowedTools"
 >;
 
 /*************************************

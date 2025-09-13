@@ -1,13 +1,13 @@
 fail_fast: false
 
 repos:
-  # TypeScript/JavaScript - Use local Biome (format + safe fixes only)
+  # TypeScript/JavaScript - Use local Biome (format)
   - repo: local
     hooks:
-      - id: fix-staged
-        name: Runs formatter, linter and import sorting on staged files; applies safe fixes
+      - id: format
+        name: Format staged files
         entry: npm
-        args: [run, "fix:staged"]
+        args: [run, "format:staged"]
         language: system
         pass_filenames: false
         require_serial: true

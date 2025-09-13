@@ -13,6 +13,7 @@
     "fix:all": "biome check --write .",
     "lint": "biome lint .",
     "format": "biome format --write .",
+    "format:staged": "biome format --write --staged --verbose --files-ignore-unknown=true --no-errors-on-unmatched",
     "dev": "tsc --watch",
     "benchmark": "npm run build && node dist/benchmark-runner.js",
     "benchmark:existing": "npm run build && node dist/benchmark-runner-existing.js",

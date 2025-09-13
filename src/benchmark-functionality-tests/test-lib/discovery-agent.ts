@@ -3,10 +3,10 @@ import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
 import { DriverAgent } from "./driver-agent.js";
 import type { SutConfig } from "./runner.js";
 // TODO: Make a separate fixture agent config?
-import { VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG } from "./test-case-agent.js";
+import { VISION_CONFIG } from "./test-case-agent.js";
 
 const DISCOVERY_AGENT_CONFIG = {
-  ...VISION_PLAYWRIGHT_MCP_TEST_CASE_AGENT_CONFIG,
+  ...VISION_CONFIG,
 };
 
 // TODO: Add prompt with info about vision caps
