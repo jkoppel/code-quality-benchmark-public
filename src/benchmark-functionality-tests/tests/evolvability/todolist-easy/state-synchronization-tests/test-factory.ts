@@ -4,6 +4,7 @@ import type {
   TestCaseAgent,
   TestCaseAgentOptions,
 } from "../../../../test-lib/agents/test-case-agent.js";
+import { makeBaseToolsPrompt } from "../../../../test-lib/common-prompts.js";
 import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
@@ -25,10 +26,6 @@ export type StateTransition = {
   from: string;
   to: string;
 };
-
-/** Don't need to check the code for these more constrained tests */
-const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
-  You can use Playwright MCP; the dev server has been started at port ${config.port}.`;
 
 // TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
 /** Make tests for status synchronization based on the app info that
@@ -67,7 +64,7 @@ export function makePerMutatorStateSyncTestsForStatus(
         const agent = makeAgent({ additionalCapabilities: [] });
         return await agent.check(dedent`
             You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
-            ${makeJustPlaywrightToolsPrompt(config)}
+            ${makeBaseToolsPrompt(config)}
             
             Here is some information that someone else has gathered:
             * The available statuses are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
