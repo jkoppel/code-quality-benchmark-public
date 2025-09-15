@@ -4,6 +4,7 @@ import type {
   TestCaseAgent,
   TestCaseAgentOptions,
 } from "../../../../test-lib/agents/test-case-agent.js";
+import { makeBaseToolsPrompt } from "../../../../test-lib/common-prompts.js";
 import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
@@ -25,10 +26,6 @@ export type StateTransition = {
   from: string;
   to: string;
 };
-
-/** Don't need to check the code for these more constrained tests */
-const makeJustPlaywrightToolsPrompt = (config: TestRunnerConfig) => dedent`
-  You can use Playwright MCP; the dev server has been started at port ${config.port}.`;
 
 // TODO: Starting with just status to demonstrate the approach; can generalize to priority levels and due dates in the future
 /** Make tests for status synchronization based on the app info that
@@ -58,27 +55,31 @@ export function makePerMutatorStateSyncTestsForStatus(
       .slice(0, 2)
       .join(" ");
     return {
-      descriptiveName: `Per-mutator state synch - ${attribute.getPrettyName()} - ${mutatorName}`,
+      descriptiveName: `Per-mutator state synch: ${attribute.getPrettyName()}/${mutatorName}/${stateTransition.from}->${stateTransition.to}`,
       async run(
         makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
         _context: TestContext,
         config: TestRunnerConfig,
       ): Promise<TestResult> {
         const agent = makeAgent({ additionalCapabilities: [] });
+        // TODO: Consider putting info on the views for ALL attributes -- test case agent sometimes gets confused about what some bit of ui represents
         return await agent.check(dedent`
             You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
-            ${makeJustPlaywrightToolsPrompt(config)}
+            ${makeBaseToolsPrompt(config)}
             
             Here is some information that someone else has gathered:
-            * The available statuses are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
+            * The available values for ${attribute.getPrettyName()} are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
             * The views or UI elements are:
               ${attribute.getInfoForStateSynchTests(appInfo)}
+            (Trust but verify: explore the app to understand the UI better yourself, if necessary.)
 
             Test state synchronization by
             1. Creating a task with the status ${stateTransition.from}
-            2. Then change the status to ${stateTransition.to} by using ${mutator}
+            2. Then change the status to ${stateTransition.to} by using ${JSON.stringify(mutator)}
             3. Finally, check if the other views update accordingly.
             The test passes if and only if all the other views update accordingly.
+
+            Before concluding that a test fails, make sure to check if what you think are views for ${attribute.getPrettyName()} really are views for it.
           `);
       },
     };

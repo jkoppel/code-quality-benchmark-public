@@ -1,0 +1,4 @@
+import type { SutConfig } from "./runner.js";
+
+export const makeBaseToolsPrompt = (config: SutConfig) =>
+  `You can use Playwright MCP; the dev server has been started at port ${config.port}.`;

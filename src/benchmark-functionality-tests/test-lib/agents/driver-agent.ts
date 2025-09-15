@@ -120,7 +120,7 @@ export class DriverAgent {
       ...additionalConfig,
       resume: this.getSessionId(), // session id managed by and only by DriverAgent
     };
-    this.logger.debug(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
+    this.logger.info(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
     const response = query({
       prompt,
       options,

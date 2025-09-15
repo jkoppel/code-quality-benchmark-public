@@ -17,6 +17,7 @@ import detect from "detect-port";
 import fs from "fs-extra";
 import pLimit from "p-limit";
 import type { Logger, LogLevel } from "../../utils/logger/logger.js";
+import { jsonStringify } from "../../utils/logger/pretty.js";
 import { launchProcess } from "../../utils/process-launcher.js";
 import { DiscoveryAgent } from "./agents/discovery-agent.js";
 import {
@@ -40,6 +41,16 @@ export interface TestRunnerConfig extends SutConfig {
   // timeoutMs: number;
   /** Maximum number of test cases to run concurrently. */
   maxConcurrentTests: number;
+}
+
+export function printTestRunnerConfig(config: TestRunnerConfig) {
+  const simplifiedConfig = {
+    folderPath: config.folderPath,
+    port: config.port,
+    logLevel: config.logLevel,
+    maxConcurrentTests: config.maxConcurrentTests,
+  };
+  return jsonStringify(simplifiedConfig);
 }
 
 export class TestRunner {
@@ -162,7 +173,6 @@ async function startDevServer(
     );
   }
 
-  logger.info(`Port ${sutConfig.port.toString()} is available`);
   logger.info(
     `Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`,
   );

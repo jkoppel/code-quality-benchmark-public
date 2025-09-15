@@ -1,8 +1,10 @@
 import dedent from "dedent";
 import type * as z from "zod";
+import { jsonStringify } from "../../../../utils/logger/pretty.js";
 import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
+import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
 import { TestContext } from "../../../test-lib/context.js";
-import type { SutConfig, TestRunnerConfig } from "../../../test-lib/runner.js";
+import type { TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import { Suite } from "../../../test-lib/suite.js";
 import {
@@ -10,9 +12,11 @@ import {
   attributeIsolationPriority,
   attributeIsolationStatus,
 } from "./attribute-isolation-tests/test-cases.js";
-import { checkMoreThanDoneNotDoneStatuses } from "./basic-tests/test-cases.js";
+import {
+  moreThanDoneNotDoneStatuses,
+  tasksHavePriorities,
+} from "./basic-tests/test-cases.js";
 import { TodoListAppInfo } from "./shared/app-info-schema.js";
-import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
 import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
 
 export const appInfoId = "todoListAppInfo";
@@ -46,7 +50,8 @@ export const strategy: SuiteGenerationStrategy = {
 
     const staticTests = [
       // Basic tests
-      checkMoreThanDoneNotDoneStatuses,
+      moreThanDoneNotDoneStatuses,
+      tasksHavePriorities,
 
       // 'I'm feeling lucky' State synchronization tests
       // Commented these out because these don't have as a high a detection rate as the per-mutator tests;
@@ -77,7 +82,7 @@ export default strategy;
 
 export async function discoverTodoListAppInfo(
   discoveryAgent: DiscoveryAgent,
-  config: SutConfig,
+  config: TestRunnerConfig,
 ): Promise<TestContext> {
   const appInfo = await discoveryAgent.query(
     dedent`
@@ -100,7 +105,7 @@ export async function discoverTodoListAppInfo(
       (see the following schema for exactly what info to collect).
 
       More concretely, here's what you should do.
-      ${makeToolsInfoPrompt(config)}
+      ${makeBaseToolsPrompt(config)}
       0. Read the schema to understand exactly what information you need to collect.
       1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to collect the requested information; in particular, what you need to do to uncover key decision decisions regarding state, how it's exposed, and potential functional bugs.
       2. Collect and return that information.
@@ -109,5 +114,6 @@ export async function discoverTodoListAppInfo(
       That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
     TodoListAppInfo,
   );
+  config.logger.info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
   return new TestContext(new Map([[appInfoId, appInfo]]));
 }

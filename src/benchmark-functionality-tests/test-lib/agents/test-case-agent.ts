@@ -94,7 +94,7 @@ export class TestCaseAgent {
       ${instructions}`,
       TestResultSchema,
     );
-    this.logger.debug(`TestCaseAgent.check result: ${jsonStringify(result)}`);
+    this.logger.info(`TestCaseAgent.check result:\n${jsonStringify(result)}\n`);
 
     // Immediately log failed tests so user can abort without going through the rest of the suite
     if (result.outcome.status === "failed") {

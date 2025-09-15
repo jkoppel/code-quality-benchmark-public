@@ -1,7 +1,11 @@
 import dedent from "dedent";
-import type { TestRunnerConfig } from "../../../test-lib/runner.js";
+import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
+import type { SutConfig } from "../../../test-lib/runner.js";
 
-export const makeBackgroundPrompt = (config: TestRunnerConfig) => dedent`
+/***************************************
+      makeBackgroundPrompt helper
+****************************************/
+
+export const makeBackgroundPrompt = (config: SutConfig) => dedent`
   You're testing a pixel art editor.
-  You can also use Playwright MCP;
-  the dev server has been started at port ${config.port}.`;
+  ${makeBaseToolsPrompt(config)}`;

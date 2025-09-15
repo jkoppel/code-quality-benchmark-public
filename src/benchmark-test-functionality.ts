@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { command, number, option, positional, run, string } from "cmd-ts";
 import { Reporter } from "./benchmark-functionality-tests/test-lib/report.js";
 import {
+  printTestRunnerConfig,
   TestRunner,
   type TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.js";
@@ -59,6 +60,9 @@ const cmd = command({
     try {
       validateTestRunnerConfig(config);
       const runner = new TestRunner(config);
+      logger.info(
+        `Started test runner with config\n${printTestRunnerConfig(config)}\n`,
+      );
 
       // Load test suite generation strategy
       logger.info(
