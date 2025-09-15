@@ -55,7 +55,7 @@ export function makePerMutatorStateSyncTestsForStatus(
       .slice(0, 2)
       .join(" ");
     return {
-      descriptiveName: `Per-mutator state synch - ${attribute.getPrettyName()} - ${mutatorName}`,
+      descriptiveName: `Per-mutator state synch: ${attribute.getPrettyName()}/${mutatorName}/${stateTransition.from}->${stateTransition.to}`,
       async run(
         makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
         _context: TestContext,
