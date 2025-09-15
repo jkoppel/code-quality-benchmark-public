@@ -4,7 +4,7 @@ import { PinoTransport } from "@loglayer/transport-pino";
 import type { ILogLayer } from "loglayer";
 import { LogLayer } from "loglayer";
 import pino from "pino";
-import { claudeCodeSerializer } from "../claude-code-sdk/serializer.js";
+import { claudeCodeSerializer } from "../claude-code-sdk/serializer.ts";
 
 const DEFAULT_LOG_LEVEL = "info";
 const LOG_DIR = "./logs"; // TODO: make this configurable

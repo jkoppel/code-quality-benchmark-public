@@ -2,8 +2,8 @@ import {
   DueDateTaskAttribute,
   PriorityTaskAttribute,
   StatusTaskAttribute,
-} from "../shared/task-attribute.js";
-import { makeChanceyStateSynchTest } from "./test-factory.js";
+} from "../shared/task-attribute.ts";
+import { makeChanceyStateSynchTest } from "./test-factory.ts";
 
 /**********************************************************
     'I'm feeling lucky' state synchronization test cases

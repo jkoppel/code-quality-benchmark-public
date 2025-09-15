@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as path from "node:path";
-import { runBenchmarkWithExistingCode } from "./benchmark-lib.js";
+import { runBenchmarkWithExistingCode } from "./benchmark-lib.ts";
 
 // CLI interface
 const benchmarkPath = process.argv[2];

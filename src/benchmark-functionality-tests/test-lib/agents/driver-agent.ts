@@ -3,9 +3,9 @@ import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
 import { match } from "ts-pattern";
 import * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.js";
-import { jsonStringify } from "../../../utils/logger/pretty.js";
-import type { SutConfig } from "../runner.js";
+import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
+import { jsonStringify } from "../../../utils/logger/pretty.ts";
+import type { SutConfig } from "../runner.ts";
 
 // Specializing the following to Claude Code for now
 

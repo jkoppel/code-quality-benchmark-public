@@ -1,14 +1,14 @@
 import dedent from "dedent";
 import type * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.js";
-import { jsonStringify } from "../../../utils/logger/pretty.js";
-import type { TestResult } from "../report.js";
-import { TestResultSchema } from "../report.js";
-import type { SutConfig } from "../runner.js";
-import { BASE_CONFIG } from "./config/base-driver-agent-config.js";
-import type { PlaywrightMCPCapability } from "./config/playwright-mcp-config.js";
-import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.js";
-import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.js";
+import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
+import { jsonStringify } from "../../../utils/logger/pretty.ts";
+import type { TestResult } from "../report.ts";
+import { TestResultSchema } from "../report.ts";
+import type { SutConfig } from "../runner.ts";
+import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
+import type { PlaywrightMCPCapability } from "./config/playwright-mcp-config.ts";
+import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
+import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.ts";
 
 /*************************************
   Test Case Agent Options

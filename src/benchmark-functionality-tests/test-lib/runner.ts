@@ -16,17 +16,17 @@ import dedent from "dedent";
 import detect from "detect-port";
 import fs from "fs-extra";
 import pLimit from "p-limit";
-import type { Logger, LogLevel } from "../../utils/logger/logger.js";
-import { jsonStringify } from "../../utils/logger/pretty.js";
-import { launchProcess } from "../../utils/process-launcher.js";
-import { DiscoveryAgent } from "./agents/discovery-agent.js";
+import type { Logger, LogLevel } from "../../utils/logger/logger.ts";
+import { jsonStringify } from "../../utils/logger/pretty.ts";
+import { launchProcess } from "../../utils/process-launcher.ts";
+import { DiscoveryAgent } from "./agents/discovery-agent.ts";
 import {
   TestCaseAgent,
   type TestCaseAgentOptions,
-} from "./agents/test-case-agent.js";
-import type { TestContext } from "./context.js";
-import type { TestSuiteResults } from "./report.js";
-import type { Suite, SuiteGenerationStrategy } from "./suite.js";
+} from "./agents/test-case-agent.ts";
+import type { TestContext } from "./context.ts";
+import type { TestSuiteResults } from "./report.ts";
+import type { Suite, SuiteGenerationStrategy } from "./suite.ts";
 
 /** Config for the system under test */
 export interface SutConfig {
