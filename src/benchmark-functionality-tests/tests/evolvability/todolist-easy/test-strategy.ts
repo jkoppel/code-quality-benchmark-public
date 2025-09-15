@@ -10,7 +10,10 @@ import {
   attributeIsolationPriority,
   attributeIsolationStatus,
 } from "./attribute-isolation-tests/test-cases.js";
-import { checkMoreThanDoneNotDoneStatuses } from "./basic-tests/test-cases.js";
+import {
+  moreThanDoneNotDoneStatuses,
+  tasksHavePriorities,
+} from "./basic-tests/test-cases.js";
 import { TodoListAppInfo } from "./shared/app-info-schema.js";
 import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
 import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
@@ -46,7 +49,8 @@ export const strategy: SuiteGenerationStrategy = {
 
     const staticTests = [
       // Basic tests
-      checkMoreThanDoneNotDoneStatuses,
+      moreThanDoneNotDoneStatuses,
+      tasksHavePriorities,
 
       // 'I'm feeling lucky' State synchronization tests
       // Commented these out because these don't have as a high a detection rate as the per-mutator tests;
