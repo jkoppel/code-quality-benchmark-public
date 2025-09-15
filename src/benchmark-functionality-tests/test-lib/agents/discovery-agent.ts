@@ -1,9 +1,9 @@
 import type * as z from "zod";
 import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.js";
 import type { SutConfig } from "../runner.js";
-import { BASE_CONFIG } from "./base-driver-agent-config.js";
+import { BASE_CONFIG } from "./config/base-driver-agent-config.js";
+import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.js";
 import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.js";
-import { makePlaywrightMCPConfig } from "./playwright-mcp-config.js";
 
 export class DiscoveryAgent {
   static make(sutConfig: SutConfig, logger?: Logger): DiscoveryAgent {

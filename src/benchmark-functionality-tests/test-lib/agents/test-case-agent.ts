@@ -5,10 +5,10 @@ import { jsonStringify } from "../../../utils/logger/pretty.js";
 import type { TestResult } from "../report.js";
 import { TestResultSchema } from "../report.js";
 import type { SutConfig } from "../runner.js";
-import { BASE_CONFIG } from "./base-driver-agent-config.js";
+import { BASE_CONFIG } from "./config/base-driver-agent-config.js";
+import type { PlaywrightMCPCapability } from "./config/playwright-mcp-config.js";
+import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.js";
 import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.js";
-import type { PlaywrightMCPCapability } from "./playwright-mcp-config.js";
-import { makePlaywrightMCPConfig } from "./playwright-mcp-config.js";
 
 /*************************************
   Test Case Agent Options
