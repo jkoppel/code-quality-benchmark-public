@@ -5,6 +5,11 @@
   "description": "A TypeScript library for evaluating AI coding agents on code quality",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "cqb": "./dist/benchmark-runner.js",
+    "cqb-existing": "./dist/benchmark-runner-existing.js",
+    "cqb-test": "./dist/benchmark-test-functionality.js"
+  },
   "scripts": {
     "build": "tsdown",
     "check": "tsc --noEmit --pretty",
