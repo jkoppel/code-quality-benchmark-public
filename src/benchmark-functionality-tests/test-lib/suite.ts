@@ -1,11 +1,14 @@
+import type { DiscoveryAgent } from "./agents/discovery-agent.js";
+import type {
+  TestCaseAgent,
+  TestCaseAgentOptions,
+} from "./agents/test-case-agent.js";
 import type { TestContext } from "./context.js";
-import type { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestResult } from "./report.js";
 import type { TestRunnerConfig } from "./runner.js";
-import type { NonVisionTestCaseAgent } from "./test-case-agent.js";
 
 /********************************
-    Suite Generation Strategy   
+    Suite Generation Strategy
 *********************************/
 
 export interface SuiteGenerationStrategy {
@@ -60,7 +63,7 @@ export class Suite {
 export interface TestCase {
   descriptiveName: string;
   run(
-    agent: NonVisionTestCaseAgent,
+    makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     context: TestContext,
     config: TestRunnerConfig,
   ): Promise<TestResult>;

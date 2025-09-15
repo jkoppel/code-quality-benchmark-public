@@ -96,6 +96,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
         subtype: msg.subtype,
         result: msg.result,
         usage: extractUsageMetrics(msg.usage),
+        num_turns: msg.num_turns,
       };
     })
     .with({ type: "result", subtype: "error_max_turns" }, (msg) => {
@@ -103,6 +104,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
         type: "result",
         subtype: msg.subtype,
         usage: extractUsageMetrics(msg.usage),
+        num_turns: msg.num_turns,
       };
     })
     .with({ type: "result", subtype: "error_during_execution" }, (msg) => {
@@ -110,6 +112,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
         type: "result",
         subtype: msg.subtype,
         usage: extractUsageMetrics(msg.usage),
+        num_turns: msg.num_turns,
       };
     })
     .with({ type: "system" }, (msg: SDKSystemMessage) => ({
@@ -155,14 +158,11 @@ function processTextContent(
 function sanitizeMediaSource(source: any) {
   // biome-ignore lint/suspicious/noExplicitAny: Dynamic result object
   const result: any = {
-    type: source?.type,
     media_type: source?.media_type,
   };
 
   if (source?.type === "url") {
     result.url = source.url;
-  } else if (source?.type === "base64") {
-    result.data_size = source?.data?.length || 0;
   }
 
   return result;
@@ -194,7 +194,9 @@ function sanitizeContentBlock(block: any): any {
               block.content,
               defaultSerializationConfig.maxToolContentLength,
             )
-          : block.content,
+          : Array.isArray(block.content)
+            ? block.content.map(sanitizeContentBlock)
+            : block.content,
     };
   }
 

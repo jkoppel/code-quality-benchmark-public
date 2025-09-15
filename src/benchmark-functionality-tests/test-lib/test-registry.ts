@@ -52,6 +52,7 @@ export function parseBenchmarkPath(benchmarkPath: string): {
 const TEST_STRATEGY_REGISTRY = {
   "evolvability/todolist-easy":
     "../tests/evolvability/todolist-easy/test-strategy.js",
+  "evolvability/pixel-art": "../tests/evolvability/pixel-art/test-strategy.js",
   // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/test-strategy.js',
 } as const;
 

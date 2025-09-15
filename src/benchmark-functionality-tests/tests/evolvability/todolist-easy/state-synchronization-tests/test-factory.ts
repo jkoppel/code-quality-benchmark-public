@@ -1,10 +1,13 @@
 import dedent from "dedent";
 import type * as z from "zod";
+import type {
+  TestCaseAgent,
+  TestCaseAgentOptions,
+} from "../../../../test-lib/agents/test-case-agent.js";
 import type { TestContext } from "../../../../test-lib/context.js";
 import type { TestResult } from "../../../../test-lib/report.js";
 import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
 import type { TestCase } from "../../../../test-lib/suite.js";
-import type { NonVisionTestCaseAgent } from "../../../../test-lib/test-case-agent.js";
 import type { TodoListAppInfo } from "../shared/app-info-schema.js";
 import { makeBackgroundPrompt } from "../shared/common-prompts.js";
 import {
@@ -57,10 +60,11 @@ export function makePerMutatorStateSyncTestsForStatus(
     return {
       descriptiveName: `Per-mutator state synch - ${attribute.getPrettyName()} - ${mutatorName}`,
       async run(
-        agent: NonVisionTestCaseAgent,
+        makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
         _context: TestContext,
         config: TestRunnerConfig,
       ): Promise<TestResult> {
+        const agent = makeAgent({ additionalCapabilities: [] });
         return await agent.check(dedent`
             You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
             ${makeJustPlaywrightToolsPrompt(config)}
@@ -91,10 +95,11 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
   return {
     descriptiveName: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
     async run(
-      agent: NonVisionTestCaseAgent,
+      makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
     ): Promise<TestResult> {
+      const agent = makeAgent({ additionalCapabilities: [] });
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
       config.logger.withMetadata(appInfo).debug("AppInfo fixture");
 
