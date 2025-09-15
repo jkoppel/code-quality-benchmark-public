@@ -1,9 +1,10 @@
 import dedent from "dedent";
 import type * as z from "zod";
+import { jsonStringify } from "../../../../utils/logger/pretty.js";
 import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
 import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
 import { TestContext } from "../../../test-lib/context.js";
-import type { SutConfig, TestRunnerConfig } from "../../../test-lib/runner.js";
+import type { TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import { Suite } from "../../../test-lib/suite.js";
 import {
@@ -81,7 +82,7 @@ export default strategy;
 
 export async function discoverTodoListAppInfo(
   discoveryAgent: DiscoveryAgent,
-  config: SutConfig,
+  config: TestRunnerConfig,
 ): Promise<TestContext> {
   const appInfo = await discoveryAgent.query(
     dedent`
@@ -113,5 +114,6 @@ export async function discoverTodoListAppInfo(
       That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
     TodoListAppInfo,
   );
+  config.logger.info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
   return new TestContext(new Map([[appInfoId, appInfo]]));
 }
