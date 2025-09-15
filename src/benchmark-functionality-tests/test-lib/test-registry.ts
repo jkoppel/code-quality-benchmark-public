@@ -10,7 +10,7 @@
  * and `task` is the specific challenge within that set, e.g. 'todolist-easy'.
  */
 
-import type { SuiteGenerationStrategy } from "./suite.js";
+import type { SuiteGenerationStrategy } from "./suite.ts";
 
 export async function loadSuiteGenerationStrategy(
   benchmarkPath: string,
@@ -49,10 +49,11 @@ export function parseBenchmarkPath(benchmarkPath: string): {
   };
 }
 
-const TEST_STRATEGY_REGISTRY = {
+export const TEST_STRATEGY_REGISTRY = {
   "evolvability/todolist-easy":
-    "../tests/evolvability/todolist-easy/test-strategy.js",
-  "evolvability/pixel-art": "../tests/evolvability/pixel-art/test-strategy.js",
+    "./benchmark-functionality-tests/tests/evolvability/todolist-easy/test-strategy.js",
+  "evolvability/pixel-art":
+    "./benchmark-functionality-tests/tests/evolvability/pixel-art/test-strategy.js",
   // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/test-strategy.js',
 } as const;
 
@@ -73,7 +74,7 @@ export async function getSuiteGenerationStrategy(
   const strategyPath =
     TEST_STRATEGY_REGISTRY[key as keyof typeof TEST_STRATEGY_REGISTRY];
 
-  // Using dynamic import to avoid circular dependencies since test files import the Suite type from ./suite.js
+  // Using dynamic import to avoid circular dependencies since test files import the Suite type from ./suite.ts
   // TODO: add tests / checks of the registry, and perhaps run these checks on npm run check
   return (
     (await import(strategyPath)) as {
