@@ -76,7 +76,7 @@ export function makePerMutatorStateSyncTestsForStatus(
 
             Test state synchronization by
             1. Creating a task with the status ${stateTransition.from}
-            2. Then change the status to ${stateTransition.to} by using ${mutator}
+            2. Then change the status to ${stateTransition.to} by using ${JSON.stringify(mutator)}
             3. Finally, check if the other views update accordingly.
             The test passes if and only if all the other views update accordingly.
           `);
