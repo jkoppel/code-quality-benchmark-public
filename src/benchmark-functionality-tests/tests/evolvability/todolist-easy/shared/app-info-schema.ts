@@ -29,7 +29,7 @@ export const UIInfo = z.discriminatedUnion("viewType", [
     shortDescription: z
       .string()
       .describe(
-        `Short description of the view or UI, e.g. "A checkbox that marks a task as done/undone."`,
+        `Short description of the view or UI, e.g. "A checkbox that marks a task as done/undone. Make sure to add enough detail that it's unambiguous, if it could potentially be confused with views for other pieces of state."`,
       ),
     howToAccess: z.string().optional(),
   }),

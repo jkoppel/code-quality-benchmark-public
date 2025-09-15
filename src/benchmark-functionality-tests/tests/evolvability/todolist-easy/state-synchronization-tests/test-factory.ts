@@ -67,15 +67,18 @@ export function makePerMutatorStateSyncTestsForStatus(
             ${makeBaseToolsPrompt(config)}
             
             Here is some information that someone else has gathered:
-            * The available statuses are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
+            * The available values for ${attribute.getPrettyName()} are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
             * The views or UI elements are:
               ${attribute.getInfoForStateSynchTests(appInfo)}
+            (Trust but verify: explore the app to understand the UI better yourself, if necessary.)
 
             Test state synchronization by
             1. Creating a task with the status ${stateTransition.from}
             2. Then change the status to ${stateTransition.to} by using ${JSON.stringify(mutator)}
             3. Finally, check if the other views update accordingly.
             The test passes if and only if all the other views update accordingly.
+
+            Before concluding that a test fails, make sure to check if what you think are views for ${attribute.getPrettyName()} really are views for it.
           `);
       },
     };
