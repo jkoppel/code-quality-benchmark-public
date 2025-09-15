@@ -1,6 +1,4 @@
-import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
 import { TestContext } from "../../../test-lib/context.js";
-import type { TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import { Suite } from "../../../test-lib/suite.js";
 import {
@@ -12,13 +10,13 @@ import {
 
 export const strategy: SuiteGenerationStrategy = {
   // biome-ignore lint/suspicious/useAwait: this is a no-op
-  async discover(_config: TestRunnerConfig, _discoveryAgent: DiscoveryAgent) {
+  async discover() {
     // No discovery needed for these static tests
     return new TestContext(new Map());
   },
 
   // biome-ignore lint/suspicious/useAwait: This generateSuite doesn't need to be async, but there could be SuiteGenerationStrategies with generateSuites that do need to be async
-  async generateSuite(_config: TestRunnerConfig, _context: TestContext) {
+  async generateSuite() {
     const staticTests = [
       basicRgbColorSelection,
       colorSharingMultiPane,
