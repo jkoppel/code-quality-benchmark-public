@@ -86,6 +86,7 @@ export class TestCaseAgent {
     return this.options;
   }
 
+  // TODO: Could improve the order of instructions in the prompt -- doesn't always make sense to have what im currently calling the check prompt prefix come first
   async check(instructions: string): Promise<TestResult> {
     const result = await this.driver.query(
       dedent`
