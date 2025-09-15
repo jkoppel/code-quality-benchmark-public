@@ -3,8 +3,9 @@ import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
 import { match } from "ts-pattern";
 import * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
-import { jsonStringify } from "../../utils/logger/pretty.js";
+import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.js";
+import { jsonStringify } from "../../../utils/logger/pretty.js";
+import type { SutConfig } from "../runner.js";
 
 // Specializing the following to Claude Code for now
 
@@ -22,6 +23,18 @@ export type DriverAgentConfig = Pick<
   | "resume"
   | "disallowedTools"
 >;
+
+export function makeDriverAgentConfig(
+  baseConfig: Partial<Options>,
+  mcpServers: Options["mcpServers"],
+  sutConfig: SutConfig,
+): DriverAgentConfig {
+  return {
+    ...baseConfig,
+    mcpServers,
+    cwd: sutConfig.folderPath,
+  };
+}
 
 /*************************************
     Custom DriverAgentErrors
@@ -97,22 +110,14 @@ export class DriverAgent {
 
   // TODO: Use abort controller option to implement timeout
 
-  // private buildQueryOptions(additional?: Partial<DriverAgentConfig>) {
-  //   return {
-  //     ...this.getConfig(),
-  //     ...additional,
-  //     resume: this.getSessionId(), // session id managed by and only by DriverAgent
-  //   };
-  // }
-
   async ask(
     prompt: string,
     /** Additional config / options */
-    config?: Partial<DriverAgentConfig>,
+    additionalConfig?: Partial<DriverAgentConfig>,
   ): Promise<string> {
     const options = {
       ...this.getConfig(),
-      ...config,
+      ...additionalConfig,
       resume: this.getSessionId(), // session id managed by and only by DriverAgent
     };
     this.logger.debug(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
@@ -148,7 +153,7 @@ export class DriverAgent {
     prompt: string,
     outputSchema: T,
     /** Additional config / options */
-    config?: Partial<DriverAgentConfig>,
+    additionalConfig?: Partial<DriverAgentConfig>,
   ): Promise<z.infer<T>> {
     const fullPrompt = dedent`
       ${prompt}
@@ -158,7 +163,7 @@ export class DriverAgent {
 
       The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema))}`;
 
-    const result = await this.ask(fullPrompt, config);
+    const result = await this.ask(fullPrompt, additionalConfig);
 
     try {
       const raw = this.extractJsonFromResponse(result);

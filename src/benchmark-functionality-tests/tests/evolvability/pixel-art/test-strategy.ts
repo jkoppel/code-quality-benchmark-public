@@ -1,5 +1,5 @@
+import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
 import { TestContext } from "../../../test-lib/context.js";
-import type { DiscoveryAgent } from "../../../test-lib/discovery-agent.js";
 import type { TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import { Suite } from "../../../test-lib/suite.js";

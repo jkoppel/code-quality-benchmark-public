@@ -1,63 +1,89 @@
-import type { PermissionMode } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
-import { match } from "ts-pattern";
 import type * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
-import { jsonStringify } from "../../utils/logger/pretty.js";
-import { DriverAgent, type DriverAgentConfig } from "./driver-agent.js";
-import type { TestResult } from "./report.js";
-import { TestResultSchema } from "./report.js";
-import type { SutConfig } from "./runner.js";
+import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.js";
+import { jsonStringify } from "../../../utils/logger/pretty.js";
+import type { TestResult } from "../report.js";
+import { TestResultSchema } from "../report.js";
+import type { SutConfig } from "../runner.js";
+import { BASE_CONFIG } from "./base-driver-agent-config.js";
+import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.js";
+import type { PlaywrightMCPCapability } from "./playwright-mcp-config.js";
+import { makePlaywrightMCPConfig } from "./playwright-mcp-config.js";
 
 /*************************************
   Test Case Agent Options
 ***************************************/
 
-export type OptionalTestCaseAgentCapability = "vision";
+export type OptionalTestCaseAgentCapability = Extract<
+  PlaywrightMCPCapability,
+  "vision"
+>;
 
 export interface TestCaseAgentOptions {
   additionalCapabilities: OptionalTestCaseAgentCapability[];
+}
+
+function testCaseAgentCapabilitiesToPlaywrightCapabilities(
+  capabilities: OptionalTestCaseAgentCapability[],
+): PlaywrightMCPCapability[] {
+  return capabilities;
 }
 
 /*************************************
   Test Case Agent
 ***************************************/
 
-export class TestCaseAgent {
-  private driver: DriverAgent;
+/** Base of the Claude-Code-specialized driver agent config for TestCaseAgent */
+const baseForTestCaseAgent = {
+  ...BASE_CONFIG,
+  disallowedTools: ["mcp__playwright__browser_evaluate"],
+};
 
+export class TestCaseAgent {
   static make(
     options: TestCaseAgentOptions,
     sutConfig: SutConfig,
     logger?: Logger,
   ): TestCaseAgent {
-    const hasVision = options.additionalCapabilities.includes("vision");
-
-    const driverConfig = {
-      ...(hasVision ? VISION_CONFIG : STANDARD_CONFIG),
-      cwd: sutConfig.folderPath,
-    };
-    const checkPromptPrefix = hasVision
+    const driverConfig = makeDriverAgentConfig(
+      baseForTestCaseAgent,
+      makePlaywrightMCPConfig([
+        "verify",
+        ...testCaseAgentCapabilitiesToPlaywrightCapabilities(
+          options.additionalCapabilities,
+        ),
+      ]),
+      sutConfig,
+    );
+    const checkPromptPrefix = options.additionalCapabilities.includes("vision")
       ? dedent`
           Available tools include the standard Playwright MCP capabilities as well as vision capabilities (e.g., coordinate-based clicking and dragging).
           For instance, if you need to click or drag, use the vision capabilities (browser_mouse_click_xy, browser_mouse_drag_xy, etc) or keyboard navigation (but be efficient about it).
           Do not use mcp__playwright__browser_evaluate -- it's not reliable!
           Make sure to take screenshots and corroborate your conclusions against them -- it's not enough to rely on the DOM snapshots.`
-      : "Check the following: ";
+      : "";
 
-    return new TestCaseAgent(driverConfig, checkPromptPrefix, logger);
+    return new TestCaseAgent(
+      options,
+      new DriverAgent(driverConfig, logger),
+      checkPromptPrefix,
+      logger,
+    );
   }
 
   constructor(
-    driverConfig: DriverAgentConfig,
+    private readonly options: TestCaseAgentOptions,
+    private readonly driver: DriverAgent,
     private readonly checkPromptPrefix: string,
     private readonly logger: Logger = getLoggerConfig().logger,
-  ) {
-    this.driver = new DriverAgent(driverConfig, logger);
-  }
+  ) {}
 
   private getCheckPromptPrefix() {
     return this.checkPromptPrefix;
+  }
+
+  getOptions() {
+    return this.options;
   }
 
   async check(instructions: string): Promise<TestResult> {
@@ -86,54 +112,6 @@ export class TestCaseAgent {
     return await this.driver.query(prompt, outputSchema);
   }
 }
-
-/***************************************************
-  Claude Code config / options for Test Case Agent
-****************************************************/
-
-type PlaywrightMCPCapability = "verify" | "vision";
-
-function makePlaywrightMCPConfig(capabilities: PlaywrightMCPCapability[]) {
-  const PLAYWRIGHT_MCP = "@playwright/mcp@0.0.36";
-  return {
-    playwright: {
-      type: "stdio" as const,
-      command: "npx",
-      args: [
-        "-y",
-        PLAYWRIGHT_MCP,
-        "--isolated",
-        "--save-trace",
-        "--save-session",
-        "--headless",
-        capabilities.length > 0 ? `--caps=${capabilities.join(",")}` : "",
-      ],
-    },
-  };
-}
-
-// TODO: add a prompt explaining that this is a test case agent that will be used to ...
-const BASE_CONFIG = {
-  permissionMode: "bypassPermissions" as const satisfies PermissionMode, // NOTE THIS
-  maxTurns: 180, // TODO: Tune this
-  executable: "node" as const,
-  // Prohibiting js eval cos it does not reliably trigger state updates in the apps under test
-  disallowedTools: ["mcp__playwright__browser_evaluate"],
-};
-
-export const STANDARD_CONFIG: DriverAgentConfig = {
-  ...BASE_CONFIG,
-  mcpServers: {
-    ...makePlaywrightMCPConfig(["verify"]),
-  },
-};
-
-export const VISION_CONFIG: DriverAgentConfig = {
-  ...BASE_CONFIG,
-  mcpServers: {
-    ...makePlaywrightMCPConfig(["verify", "vision"]),
-  },
-};
 
 /*
 FUTURE WORK: Tool-based validation approach

@@ -18,11 +18,14 @@ import fs from "fs-extra";
 import pLimit from "p-limit";
 import type { Logger, LogLevel } from "../../utils/logger/logger.js";
 import { launchProcess } from "../../utils/process-launcher.js";
+import { DiscoveryAgent } from "./agents/discovery-agent.js";
+import {
+  TestCaseAgent,
+  type TestCaseAgentOptions,
+} from "./agents/test-case-agent.js";
 import type { TestContext } from "./context.js";
-import { DiscoveryAgent } from "./discovery-agent.js";
 import type { TestSuiteResults } from "./report.js";
 import type { Suite, SuiteGenerationStrategy } from "./suite.js";
-import { TestCaseAgent, type TestCaseAgentOptions } from "./test-case-agent.js";
 
 /** Config for the system under test */
 export interface SutConfig {
@@ -68,7 +71,7 @@ export class TestRunner {
 
       const context = await strategy.discover(
         this.config,
-        new DiscoveryAgent(this.config, this.getLogger()),
+        DiscoveryAgent.make(this.config, this.getLogger()),
       );
       const suite = await strategy.generateSuite(this.config, context);
       return await this.runTestSuite_(context, suite);

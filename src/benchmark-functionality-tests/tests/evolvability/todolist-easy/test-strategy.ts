@@ -1,7 +1,7 @@
 import dedent from "dedent";
 import type * as z from "zod";
+import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
 import { TestContext } from "../../../test-lib/context.js";
-import type { DiscoveryAgent } from "../../../test-lib/discovery-agent.js";
 import type { SutConfig, TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
 import { Suite } from "../../../test-lib/suite.js";

@@ -1,13 +1,13 @@
 import dedent from "dedent";
-import type { TestContext } from "../../../test-lib/context.js";
-import type { TestResult } from "../../../test-lib/report.js";
-import type { TestRunnerConfig } from "../../../test-lib/runner.js";
-import type { TestCase } from "../../../test-lib/suite.js";
 import type {
   OptionalTestCaseAgentCapability,
   TestCaseAgent,
   TestCaseAgentOptions,
-} from "../../../test-lib/test-case-agent.js";
+} from "../../../test-lib/agents/test-case-agent.js";
+import type { TestContext } from "../../../test-lib/context.js";
+import type { TestResult } from "../../../test-lib/report.js";
+import type { TestRunnerConfig } from "../../../test-lib/runner.js";
+import type { TestCase } from "../../../test-lib/suite.js";
 import { makeBackgroundPrompt } from "./common-prompts.js";
 
 const capabilitiesForPixelArtTests: OptionalTestCaseAgentCapability[] = [
