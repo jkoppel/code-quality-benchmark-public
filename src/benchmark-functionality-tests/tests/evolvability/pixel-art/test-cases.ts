@@ -4,11 +4,11 @@ import type {
   TestCaseAgent,
   TestCaseAgentOptions,
 } from "../../../test-lib/agents/test-case-agent.js";
-import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
 import type { TestContext } from "../../../test-lib/context.js";
 import type { TestResult } from "../../../test-lib/report.js";
-import type { SutConfig, TestRunnerConfig } from "../../../test-lib/runner.js";
+import type { TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { TestCase } from "../../../test-lib/suite.js";
+import { makeBackgroundPrompt } from "./common-prompts.js";
 
 /***************************************
          Test Cases
@@ -115,14 +115,6 @@ export const independentDrawingAreas = makeTest({
 });
 
 // TODO: Check also that laoding / saving bitmap in one pane doesn't affect what bitmap is active in the other pane
-
-/***************************************
-      makeBackgroundPrompt helper
-****************************************/
-
-const makeBackgroundPrompt = (config: SutConfig) => dedent`
-  You're testing a pixel art editor.
-  ${makeBaseToolsPrompt(config)}`;
 
 /***************************************
          makeTest helper

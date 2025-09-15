@@ -1,6 +1,7 @@
 import dedent from "dedent";
 import type * as z from "zod";
 import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
+import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
 import { TestContext } from "../../../test-lib/context.js";
 import type { SutConfig, TestRunnerConfig } from "../../../test-lib/runner.js";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
@@ -15,7 +16,6 @@ import {
   tasksHavePriorities,
 } from "./basic-tests/test-cases.js";
 import { TodoListAppInfo } from "./shared/app-info-schema.js";
-import { makeToolsInfoPrompt } from "./shared/common-prompts.js";
 import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
 
 export const appInfoId = "todoListAppInfo";
@@ -104,7 +104,7 @@ export async function discoverTodoListAppInfo(
       (see the following schema for exactly what info to collect).
 
       More concretely, here's what you should do.
-      ${makeToolsInfoPrompt(config)}
+      ${makeBaseToolsPrompt(config)}
       0. Read the schema to understand exactly what information you need to collect.
       1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to collect the requested information; in particular, what you need to do to uncover key decision decisions regarding state, how it's exposed, and potential functional bugs.
       2. Collect and return that information.
