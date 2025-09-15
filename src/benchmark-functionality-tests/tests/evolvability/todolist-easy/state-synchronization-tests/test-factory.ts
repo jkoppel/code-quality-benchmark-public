@@ -62,6 +62,7 @@ export function makePerMutatorStateSyncTestsForStatus(
         config: TestRunnerConfig,
       ): Promise<TestResult> {
         const agent = makeAgent({ additionalCapabilities: [] });
+        // TODO: Consider putting info on the views for ALL attributes -- test case agent sometimes gets confused about what some bit of ui represents
         return await agent.check(dedent`
             You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
             ${makeBaseToolsPrompt(config)}
