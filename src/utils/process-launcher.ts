@@ -20,7 +20,7 @@ import * as childProcess from "child_process";
 import fs from "fs-extra";
 import * as readline from "readline";
 
-import { removeFolders } from "./file-utils.js";
+import { removeFolders } from "./file-utils.ts";
 
 export type Env = { [key: string]: string | number | boolean | undefined };
 

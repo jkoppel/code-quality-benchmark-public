@@ -3,9 +3,9 @@ import type { ClaudeAgentConfig, InstanceResult } from "../../types";
 import {
   isAssistantMessage,
   isUserMessage,
-} from "../../utils/claude-code-sdk/types.js";
-import { getLoggerConfig, type Logger } from "../../utils/logger/logger.js";
-import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.js";
+} from "../../utils/claude-code-sdk/types.ts";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
+import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
 export class ClaudeAgent {
   private readonly logger: Logger;

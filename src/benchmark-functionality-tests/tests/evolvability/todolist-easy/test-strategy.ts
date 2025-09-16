@@ -1,23 +1,23 @@
 import dedent from "dedent";
 import type * as z from "zod";
-import { jsonStringify } from "../../../../utils/logger/pretty.js";
-import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.js";
-import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
-import { TestContext } from "../../../test-lib/context.js";
-import type { TestRunnerConfig } from "../../../test-lib/runner.js";
-import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
-import { Suite } from "../../../test-lib/suite.js";
+import { jsonStringify } from "../../../../utils/logger/pretty.ts";
+import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.ts";
+import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.ts";
+import { TestContext } from "../../../test-lib/context.ts";
+import type { TestRunnerConfig } from "../../../test-lib/runner.ts";
+import type { SuiteGenerationStrategy } from "../../../test-lib/suite.ts";
+import { Suite } from "../../../test-lib/suite.ts";
 import {
   attributeIsolationDueDate,
   attributeIsolationPriority,
   attributeIsolationStatus,
-} from "./attribute-isolation-tests/test-cases.js";
+} from "./attribute-isolation-tests/test-cases.ts";
 import {
   moreThanDoneNotDoneStatuses,
   tasksHavePriorities,
-} from "./basic-tests/test-cases.js";
-import { TodoListAppInfo } from "./shared/app-info-schema.js";
-import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.js";
+} from "./basic-tests/test-cases.ts";
+import { TodoListAppInfo } from "./shared/app-info-schema.ts";
+import { makePerMutatorStateSyncTestsForStatus } from "./state-synchronization-tests/test-factory.ts";
 
 export const appInfoId = "todoListAppInfo";
 

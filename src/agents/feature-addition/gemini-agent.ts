@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createShellAgent } from "../shell-agent.js";
-import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.js";
+import { createShellAgent } from "../shell-agent.ts";
+import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

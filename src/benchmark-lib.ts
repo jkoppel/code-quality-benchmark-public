@@ -6,7 +6,7 @@ import {
   type CodingAgent,
   eval as evaluate,
   evaluateUpdates,
-} from "./index.js";
+} from "./index.ts";
 
 /**
  * Common benchmark output logic

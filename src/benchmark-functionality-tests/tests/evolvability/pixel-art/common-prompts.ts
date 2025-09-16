@@ -1,6 +1,6 @@
 import dedent from "dedent";
-import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.js";
-import type { SutConfig } from "../../../test-lib/runner.js";
+import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.ts";
+import type { SutConfig } from "../../../test-lib/runner.ts";
 
 /***************************************
       makeBackgroundPrompt helper

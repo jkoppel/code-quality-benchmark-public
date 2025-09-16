@@ -1,11 +1,11 @@
-import type { DiscoveryAgent } from "./agents/discovery-agent.js";
+import type { DiscoveryAgent } from "./agents/discovery-agent.ts";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
-} from "./agents/test-case-agent.js";
-import type { TestContext } from "./context.js";
-import type { TestResult } from "./report.js";
-import type { TestRunnerConfig } from "./runner.js";
+} from "./agents/test-case-agent.ts";
+import type { TestContext } from "./context.ts";
+import type { TestResult } from "./report.ts";
+import type { TestRunnerConfig } from "./runner.ts";
 
 /********************************
     Suite Generation Strategy

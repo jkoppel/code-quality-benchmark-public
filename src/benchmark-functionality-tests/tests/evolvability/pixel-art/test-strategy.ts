@@ -1,12 +1,12 @@
-import { TestContext } from "../../../test-lib/context.js";
-import type { SuiteGenerationStrategy } from "../../../test-lib/suite.js";
-import { Suite } from "../../../test-lib/suite.js";
+import { TestContext } from "../../../test-lib/context.ts";
+import type { SuiteGenerationStrategy } from "../../../test-lib/suite.ts";
+import { Suite } from "../../../test-lib/suite.ts";
 import {
   basicRgbColorSelection,
   colorPickerStatePersistence,
   colorSharingMultiPane,
   independentDrawingAreas,
-} from "./test-cases.js";
+} from "./test-cases.ts";
 
 export const strategy: SuiteGenerationStrategy = {
   // biome-ignore lint/suspicious/useAwait: this is a no-op

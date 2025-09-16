@@ -3,19 +3,19 @@ import type * as z from "zod";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
-} from "../../../../test-lib/agents/test-case-agent.js";
-import { makeBaseToolsPrompt } from "../../../../test-lib/common-prompts.js";
-import type { TestContext } from "../../../../test-lib/context.js";
-import type { TestResult } from "../../../../test-lib/report.js";
-import type { TestRunnerConfig } from "../../../../test-lib/runner.js";
-import type { TestCase } from "../../../../test-lib/suite.js";
-import type { TodoListAppInfo } from "../shared/app-info-schema.js";
-import { makeBackgroundPrompt } from "../shared/common-prompts.js";
+} from "../../../../test-lib/agents/test-case-agent.ts";
+import { makeBaseToolsPrompt } from "../../../../test-lib/common-prompts.ts";
+import type { TestContext } from "../../../../test-lib/context.ts";
+import type { TestResult } from "../../../../test-lib/report.ts";
+import type { TestRunnerConfig } from "../../../../test-lib/runner.ts";
+import type { TestCase } from "../../../../test-lib/suite.ts";
+import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
+import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import {
   StatusTaskAttribute,
   type TaskAttribute,
-} from "../shared/task-attribute.js";
-import { appInfoId } from "../test-strategy.js";
+} from "../shared/task-attribute.ts";
+import { appInfoId } from "../test-strategy.ts";
 
 /**********************************************************
       Per Mutator State Synchronization Test Factory

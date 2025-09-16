@@ -3,12 +3,12 @@ import type {
   OptionalTestCaseAgentCapability,
   TestCaseAgent,
   TestCaseAgentOptions,
-} from "../../../test-lib/agents/test-case-agent.js";
-import type { TestContext } from "../../../test-lib/context.js";
-import type { TestResult } from "../../../test-lib/report.js";
-import type { TestRunnerConfig } from "../../../test-lib/runner.js";
-import type { TestCase } from "../../../test-lib/suite.js";
-import { makeBackgroundPrompt } from "./common-prompts.js";
+} from "../../../test-lib/agents/test-case-agent.ts";
+import type { TestContext } from "../../../test-lib/context.ts";
+import type { TestResult } from "../../../test-lib/report.ts";
+import type { TestRunnerConfig } from "../../../test-lib/runner.ts";
+import type { TestCase } from "../../../test-lib/suite.ts";
+import { makeBackgroundPrompt } from "./common-prompts.ts";
 
 /***************************************
          Test Cases

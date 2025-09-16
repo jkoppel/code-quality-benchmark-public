@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 import * as path from "node:path";
 import { command, number, option, positional, run, string } from "cmd-ts";
-import { Reporter } from "./benchmark-functionality-tests/test-lib/report.js";
+import { Reporter } from "./benchmark-functionality-tests/test-lib/report.ts";
 import {
   printTestRunnerConfig,
   TestRunner,
   type TestRunnerConfig,
-} from "./benchmark-functionality-tests/test-lib/runner.js";
-import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.js";
-import { getLoggerConfig } from "./utils/logger/logger.js";
+} from "./benchmark-functionality-tests/test-lib/runner.ts";
+import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.ts";
+import { getLoggerConfig } from "./utils/logger/logger.ts";
 
 const cmd = command({
   name: "benchmark-test-functionality",

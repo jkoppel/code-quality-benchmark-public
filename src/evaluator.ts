@@ -2,8 +2,8 @@ import { execSync } from "node:child_process";
 import * as path from "node:path";
 import fs from "fs-extra";
 import * as tmp from "tmp";
-import { ClaudeAgent } from "./agents/feature-addition/claude-agent.js";
-import { codexAgent } from "./agents/feature-addition/codex-agent.js";
+import { ClaudeAgent } from "./agents/feature-addition/claude-agent.ts";
+import { codexAgent } from "./agents/feature-addition/codex-agent.ts";
 import {
   type CodingAgent,
   type DiffStats,
@@ -12,10 +12,10 @@ import {
   type EvaluationMetadata,
   type EvaluationResult,
   type InstanceResult,
-} from "./types.js";
-import { getLoggerConfig, type Logger } from "./utils/logger/logger.js";
+} from "./types.ts";
+import { getLoggerConfig, type Logger } from "./utils/logger/logger.ts";
 
-// import { geminiAgent } from './agents/feature-addition/gemini-agent.js';
+// import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
 
 // Don't automatically cleanup - we want to keep benchmark results
 // tmp.setGracefulCleanup();
@@ -488,4 +488,8 @@ async function applyUpdatesToInstances(
   return resultsWithDiffs;
 }
 
-export { CodingAgent, EvaluationConfig, EvaluationResult } from "./types.js";
+export type {
+  CodingAgent,
+  EvaluationConfig,
+  EvaluationResult,
+} from "./types.ts";
