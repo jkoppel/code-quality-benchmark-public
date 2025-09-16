@@ -7,23 +7,26 @@ import {
   eval as evaluate,
   evaluateUpdates,
 } from "./index.ts";
+import type { EvaluationResult, InstanceResult } from "./types.ts";
 
 /**
  * Common benchmark output logic
  */
 export function outputBenchmarkResults(
   benchmarkName: string,
-  result: any,
+  result: EvaluationResult,
 ): void {
   // Output benchmark results as JSON
-  const successCount = result.updates.filter((u: any) => u.success).length;
+  const successCount = result.updates.filter(
+    (u: InstanceResult) => u.success,
+  ).length;
   const totalUpdates = result.updates.length;
 
   // Calculate per-agent success rates
   const agentStats: {
     [key: string]: { successful: number; total: number; totalScore: number };
   } = {};
-  result.updates.forEach((u: any) => {
+  result.updates.forEach((u: InstanceResult) => {
     if (!agentStats[u.agentName]) {
       agentStats[u.agentName] = { successful: 0, total: 0, totalScore: 0 };
     }
@@ -34,7 +37,7 @@ export function outputBenchmarkResults(
     }
   });
 
-  const updates = result.updates.map((u: any) => ({
+  const updates = result.updates.map((u: InstanceResult) => ({
     instance: u.instanceId,
     agent: u.agentName,
     success: u.success,
