@@ -12,16 +12,13 @@ import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
 import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import { appInfoId } from "../test-strategy.ts";
 
-export const moreThanDoneNotDoneStatuses: TestCase = {
-  descriptiveName: "Test that the app has more than done/not-done statuses",
+export const moreThanDoneNotDoneStatuses = makeTest({
+  name: "Test that the app has more than done/not-done statuses",
   async run(
-    makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
-    context: TestContext,
+    agent: TestCaseAgent,
+    appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const agent = makeAgent({ additionalCapabilities: [] });
-    const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       Here's some info that someone has collected about the app:
@@ -31,18 +28,15 @@ export const moreThanDoneNotDoneStatuses: TestCase = {
       Mark the test as passing if there are more statuses than done/not-done.
       Mark as failing if there's only done/not-done (or worse).`);
   },
-};
+});
 
-export const tasksHavePriorities: TestCase = {
-  descriptiveName: "Test that the app has implemented priorities for tasks",
+export const tasksHavePriorities = makeTest({
+  name: "Test that the app has implemented priorities for tasks",
   async run(
-    makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
-    context: TestContext,
+    agent: TestCaseAgent,
+    appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
   ): Promise<TestResult> {
-    const agent = makeAgent({ additionalCapabilities: [] });
-    const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-
     return await agent.check(dedent`
       ${makeBackgroundPrompt(config)}
       Here's some info that someone has collected about the app:
@@ -51,4 +45,32 @@ export const tasksHavePriorities: TestCase = {
       Check if the app supports assigning priorities to todo items.
       Mark the test as passing if it does, and as failing if it doesn't.`);
   },
-};
+});
+
+/***************************************
+         makeTest helper
+****************************************/
+
+interface TodoListTestOptions {
+  name: string;
+  run(
+    agent: TestCaseAgent,
+    appInfo: z.infer<typeof TodoListAppInfo>,
+    config: TestRunnerConfig,
+  ): Promise<TestResult>;
+}
+
+function makeTest({ name, run }: TodoListTestOptions): TestCase {
+  return {
+    descriptiveName: name,
+    async run(
+      makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
+      context: TestContext,
+      config: TestRunnerConfig,
+    ): Promise<TestResult> {
+      const agent = makeAgent({ additionalCapabilities: [] });
+      const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
+      return await run(agent, appInfo, config);
+    },
+  };
+}
