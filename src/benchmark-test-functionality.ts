@@ -36,7 +36,7 @@ const cmd = command({
     maxConcurrentTests: option({
       type: number,
       long: "max-concurrent-tests",
-      short: "c",
+      short: "t",
       description: "Max number of test cases to run concurrently",
       defaultValue: () => 4,
     }),

@@ -39,14 +39,18 @@ pre-commit install
 
 To test the functionality of an attempt at a benchmark task:
 
-`npm run benchmark:test-functionality <benchmark-path> <program-path>`
+`npm run benchmark:test-functionality <benchmark-path> <program-path> [options]`
+
+Options:
+- `-p, --port <number>`: Port to use for the dev server (default: 3000)
+- `-t, --max-concurrent-tests <number>`: Max number of test cases to run concurrently (default: 4)
 
 Example:
 ```bash
 LOG_LEVEL=debug npm run benchmark:test-functionality benchmarks/evolvability/todolist-easy /path/to/generated/program
 ```
 
-This uses Claude Code agents with Playwright MCP to check that generated programs against a pre-defined test suite.
+This uses Claude Code agents with Playwright MCP to check generated programs against a pre-defined test suite.
 The test suite is formulated at a higher level, and partially in natural language, because we intentionally don't impose a lot of constraints on the data representation in the benchmark specs.
 
 ## Core API
