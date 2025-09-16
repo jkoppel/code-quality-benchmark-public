@@ -2,10 +2,13 @@ import { TestContext } from "../../../test-lib/context.ts";
 import type { SuiteGenerationStrategy } from "../../../test-lib/suite.ts";
 import { Suite } from "../../../test-lib/suite.ts";
 import {
-  basicRgbColorSelection,
-  colorPickerStatePersistence,
-  colorSharingMultiPane,
-  independentDrawingAreas,
+  basicColorPickerRgbSelection,
+  basicMultiPaneCreation,
+  bitmapLoadingIsolation,
+  bitmapSaveLoad,
+  colorSelectionSharedAcrossPanes,
+  colorSelectionSurvivesPaneOps,
+  drawingAreaIndependence,
 } from "./test-cases.ts";
 
 export const strategy: SuiteGenerationStrategy = {
@@ -18,10 +21,20 @@ export const strategy: SuiteGenerationStrategy = {
   // biome-ignore lint/suspicious/useAwait: This generateSuite doesn't need to be async, but there could be SuiteGenerationStrategies with generateSuites that do need to be async
   async generateSuite() {
     const staticTests = [
-      basicRgbColorSelection,
-      colorSharingMultiPane,
-      colorPickerStatePersistence,
-      independentDrawingAreas,
+      // Multiple Panes
+      basicMultiPaneCreation,
+
+      // Color Picker Tests
+      basicColorPickerRgbSelection,
+      colorSelectionSharedAcrossPanes,
+      colorSelectionSurvivesPaneOps,
+
+      // Drawing Area Tests
+      drawingAreaIndependence,
+
+      // Bitmap Loading/Saving Tests
+      bitmapSaveLoad,
+      bitmapLoadingIsolation,
     ];
 
     return new Suite("Pixel Art Functionality Tests", staticTests);
