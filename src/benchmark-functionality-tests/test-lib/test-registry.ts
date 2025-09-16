@@ -49,12 +49,13 @@ export function parseBenchmarkPath(benchmarkPath: string): {
   };
 }
 
+// Module paths without extensions --- '.js' is appended during dynamic import (dynamic imports use the compiled js)
 export const TEST_STRATEGY_REGISTRY = {
   "evolvability/todolist-easy":
-    "./benchmark-functionality-tests/tests/evolvability/todolist-easy/test-strategy.js",
+    "./benchmark-functionality-tests/tests/evolvability/todolist-easy/test-strategy",
   "evolvability/pixel-art":
-    "./benchmark-functionality-tests/tests/evolvability/pixel-art/test-strategy.js",
-  // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/test-strategy.js',
+    "./benchmark-functionality-tests/tests/evolvability/pixel-art/test-strategy",
+  // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/test-strategy',
 } as const;
 
 /** Dynamically import the test suite generation strategy for the benchmark set */
@@ -65,9 +66,8 @@ export async function getSuiteGenerationStrategy(
   const key = `${benchmarkSet}/${task}`;
 
   if (!(key in TEST_STRATEGY_REGISTRY)) {
-    const availableKeys = Object.keys(TEST_STRATEGY_REGISTRY).join(", ");
     throw new Error(
-      `No test suite generation strategy found for ${key}. Available: ${availableKeys}`,
+      `No test suite generation strategy found for ${key}. Available: ${Object.keys(TEST_STRATEGY_REGISTRY).join(", ")}`,
     );
   }
 
@@ -77,8 +77,11 @@ export async function getSuiteGenerationStrategy(
   // Using dynamic import to avoid circular dependencies since test files import the Suite type from ./suite.ts
   // TODO: add tests / checks of the registry, and perhaps run these checks on npm run check
   return (
-    (await import(strategyPath)) as {
-      default: SuiteGenerationStrategy;
-    }
-  ).default;
+    // Dynamic imports use the compiled js
+    (
+      (await import(`${strategyPath}.js`)) as {
+        default: SuiteGenerationStrategy;
+      }
+    ).default
+  );
 }
