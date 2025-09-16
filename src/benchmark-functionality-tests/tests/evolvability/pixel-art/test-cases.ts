@@ -114,7 +114,51 @@ export const independentDrawingAreas = makeTest({
   },
 });
 
-// TODO: Check also that laoding / saving bitmap in one pane doesn't affect what bitmap is active in the other pane
+/***************************************
+         Bitmap Operation Tests
+****************************************/
+
+export const bitmapSaveLoad = makeTest({
+  name: "Bitmap Save and Load",
+  async run(
+    agent: TestCaseAgent,
+    config: TestRunnerConfig,
+  ): Promise<TestResult> {
+    return await agent.check(dedent`
+      ${makeBackgroundPrompt(config)}
+      
+      Objective: Check basic bitmap saving and loading functionality
+      
+      Steps:
+      1. Make two panes.
+      (It may help to tweak the browser viewport to make it easy to see both panes at once.)
+      2. Make a distinctive pattern in the first pane.
+      3. Save the bitmap in the first pane (if there is no bitmap saving functionality, fail the test)
+      4. Load the bitmap in the second pane (if there is no bitmap loading functionality, fail the test)
+      5. Take a screenshot and check that the loaded bitmap in the second pane looks like the one in the first pane; fail the test if not.`);
+  },
+});
+
+export const bitmapLoadingIsolation = makeTest({
+  name: "Bitmap Loading Isolation",
+  async run(
+    agent: TestCaseAgent,
+    config: TestRunnerConfig,
+  ): Promise<TestResult> {
+    return await agent.check(dedent`
+      ${makeBackgroundPrompt(config)}
+      
+      Objective: Verify loading bitmap in one pane doesn't affect what happens in another pane
+      
+      Steps:
+      1. Create three panes. 
+      (It may also help to tweak the browser viewport to make it easy to see all the panes at once.)
+      2. Make a distinctive pattern in the first pane.
+      3. Save the bitmap in the first pane (if there is no bitmap saving functionality, fail the test)
+      4. Load the bitmap in the second pane (if there is no bitmap loading functionality, fail the test)
+      5. Take a screenshot and check that the third pane hasn't changed because a bitmap was loaded into the second pane; fail the test loading a bitmap in one pane affects another pane.`);
+  },
+});
 
 /***************************************
          makeTest helper
