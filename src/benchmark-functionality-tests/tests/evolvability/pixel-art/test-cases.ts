@@ -11,11 +11,11 @@ import type { TestCase } from "../../../test-lib/suite.ts";
 import { makeBackgroundPrompt } from "./common-prompts.ts";
 
 /***************************************
-         Test Cases
+         Color Selection Tests
 ****************************************/
 
-export const basicRgbColorSelection = makeTest({
-  name: "Basic Functionality: RGB Color Selection",
+export const basicColorPickerRgbSelection = makeTest({
+  name: "Basic Color Picker functionality",
   async run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
@@ -38,8 +38,8 @@ export const basicRgbColorSelection = makeTest({
   },
 });
 
-export const colorSharingMultiPane = makeTest({
-  name: "Color Sharing with Multiple Panes",
+export const colorSelectionSharedAcrossPanes = makeTest({
+  name: "Color selection is shared across multiple panes",
   async run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
@@ -51,6 +51,7 @@ export const colorSharingMultiPane = makeTest({
 
       Steps:
       1. Create two editing panes
+      (It may help to tweak the browser viewport to make it easy to see both panes at once.)
       2. Pick some shade of red (no need to be super precise)
       3. Click in first pane's drawing area to paint a pixel
       4. Click in second pane's drawing area to paint a pixel
@@ -65,8 +66,8 @@ export const colorSharingMultiPane = makeTest({
 });
 
 // TODO: check/read more carefully
-export const colorPickerStatePersistence = makeTest({
-  name: "Color Picker State Persistence",
+export const colorSelectionSurvivesPaneOps = makeTest({
+  name: "Color selection survives pane creation/deletion operations",
   async run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
@@ -80,6 +81,7 @@ export const colorPickerStatePersistence = makeTest({
       1. Make sure there's one pane to begin with (if not, create one).
       2. Select a distinctive color, call it $COLOR. This will be fixed for the rest of the test.
       3. Create a second pane.
+      (It may help to tweak the browser viewport to make it easy to see both panes at once.)
       4. Verify that $COLOR is still active in the color picker -- fail the test if not.
       5. Close the first pane.
       6. Paint a pixel in the remaining pane to confirm that the color picker is still on $COLOR (i.e., the color of the painted pixel should still be $COLOR) -- fail the test if not.
@@ -89,9 +91,13 @@ export const colorPickerStatePersistence = makeTest({
   },
 });
 
+/***************************************
+         Drawing Area Tests
+****************************************/
+
 // TODO: check/read more carefully
-export const independentDrawingAreas = makeTest({
-  name: "Independent Drawing Areas",
+export const drawingAreaIndependence = makeTest({
+  name: "Drawing Area Independence",
   async run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
@@ -104,6 +110,7 @@ export const independentDrawingAreas = makeTest({
       Steps:
       1. Select a distinctive color
       2. Make exactly two panes.
+      (It may help to tweak the browser viewport to make it easy to see both panes at once.)
       3. Draw several pixels in first pane creating a recognizable pattern
       4. Check that the second pane remains unchanged -- fail the test if not.
       5. Draw a different pattern in the second pane with a different color
@@ -156,7 +163,7 @@ export const bitmapLoadingIsolation = makeTest({
       2. Make a distinctive pattern in the first pane.
       3. Save the bitmap in the first pane (if there is no bitmap saving functionality, fail the test)
       4. Load the bitmap in the second pane (if there is no bitmap loading functionality, fail the test)
-      5. Take a screenshot and check that the third pane hasn't changed because a bitmap was loaded into the second pane; fail the test loading a bitmap in one pane affects another pane.`);
+      5. Take a screenshot and check that the third pane hasn't changed because a bitmap was loaded into the second pane; fail the test if loading a bitmap in one pane affects another pane.`);
   },
 });
 
