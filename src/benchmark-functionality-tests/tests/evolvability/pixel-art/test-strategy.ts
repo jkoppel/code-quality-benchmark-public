@@ -3,6 +3,7 @@ import type { SuiteGenerationStrategy } from "../../../test-lib/suite.ts";
 import { Suite } from "../../../test-lib/suite.ts";
 import {
   basicColorPickerRgbSelection,
+  basicMultiPaneCreation,
   bitmapLoadingIsolation,
   bitmapSaveLoad,
   colorSelectionSharedAcrossPanes,
@@ -20,6 +21,9 @@ export const strategy: SuiteGenerationStrategy = {
   // biome-ignore lint/suspicious/useAwait: This generateSuite doesn't need to be async, but there could be SuiteGenerationStrategies with generateSuites that do need to be async
   async generateSuite() {
     const staticTests = [
+      // Multiple Panes
+      basicMultiPaneCreation,
+
       // Color Picker Tests
       basicColorPickerRgbSelection,
       colorSelectionSharedAcrossPanes,

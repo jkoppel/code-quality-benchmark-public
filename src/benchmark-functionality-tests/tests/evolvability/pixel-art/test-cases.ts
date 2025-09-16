@@ -92,6 +92,30 @@ export const colorSelectionSurvivesPaneOps = makeTest({
 });
 
 /***************************************
+         Multiple Panes
+****************************************/
+
+export const basicMultiPaneCreation = makeTest({
+  name: "Basic Multi-Pane Creation",
+  async run(
+    agent: TestCaseAgent,
+    config: TestRunnerConfig,
+  ): Promise<TestResult> {
+    return await agent.check(dedent`
+      ${makeBackgroundPrompt(config)}
+
+      Objective: Check that it's possible to create more than one pane
+
+      Steps:
+      1. If there isn't already one pane, create one. Fail the test if it's not possible to have any panes at all.
+      2. Create a second pane.
+      (It may help to tweak the browser viewport to make it easy to see both panes at once.)
+
+      Mark the test as passing if it's possible to have two panes, and failing if not.`);
+  },
+});
+
+/***************************************
          Drawing Area Tests
 ****************************************/
 
