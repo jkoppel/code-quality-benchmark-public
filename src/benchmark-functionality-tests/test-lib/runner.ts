@@ -36,10 +36,34 @@ export interface SutConfig {
 }
 
 export class TestRunnerConfig {
-  constructor(
+  static make(
+    sutConfig: SutConfig,
+    loggerConfig: { logger: Logger; logLevel: LogLevel },
+    maxConcurrentTests: number,
+    browserIsHeaded: boolean,
+    // timeoutMs: number;
+  ) {
+    // Need to error in order for the benchmark args parser to error if the config options not valid
+    if (!(sutConfig.port >= 1 && sutConfig.port <= 65535))
+      throw new Error(`Invalid port: ${sutConfig.port}`);
+
+    if (maxConcurrentTests < 1)
+      throw new Error(`max-concurrent-tests must be >= 1`);
+
+    return new TestRunnerConfig(
+      sutConfig,
+      loggerConfig,
+      maxConcurrentTests,
+      browserIsHeaded,
+    );
+  }
+
+  private constructor(
     private readonly sutConfig: SutConfig,
     private readonly loggerConfig: { logger: Logger; logLevel: LogLevel },
     private readonly maxConcurrentTests: number,
+    /** Have playwright run browser in headed (show browser window) vs. headless mode */
+    private readonly browserIsHeaded: boolean,
     // timeoutMs: number;
   ) {}
 
@@ -48,20 +72,22 @@ export class TestRunnerConfig {
   }
 
   getSutConfig(): SutConfig {
-    return {
-      folderPath: this.sutConfig.folderPath,
-      port: this.sutConfig.port,
-    };
+    return this.sutConfig;
   }
 
   getLogger(): Logger {
     return this.loggerConfig.logger;
   }
 
+  getPlaywrightBrowserModeFlag(): string {
+    return this.browserIsHeaded ? "--headed" : "--headless";
+  }
+
   toPretty(): string {
     const simplifiedConfig = {
       folderPath: this.getSutConfig().folderPath,
       port: this.getSutConfig().port,
+      browserIsHeaded: this.browserIsHeaded,
       logLevel: this.loggerConfig.logLevel,
       maxConcurrentTests: this.maxConcurrentTests,
     };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as path from "node:path";
-import { command, number, option, positional, run, string } from "cmd-ts";
+import { command, flag, number, option, positional, run, string } from "cmd-ts";
 import { Reporter } from "./benchmark-functionality-tests/test-lib/report.ts";
 import {
   TestRunner,
@@ -39,26 +39,33 @@ const cmd = command({
       description: "Max number of test cases to run concurrently",
       defaultValue: () => 4,
     }),
+    headed: flag({
+      long: "headed",
+      description: "Run browser in headed mode (show browser window)",
+      defaultValue: () => false,
+    }),
   },
   handler: async ({
     benchmarkPath,
     systemUnderTest,
     port,
     maxConcurrentTests,
+    headed,
   }) => {
     const resolvedBenchmarkPath = path.resolve(benchmarkPath);
     const { logger, logLevel } = getLoggerConfig();
-    const config = new TestRunnerConfig(
-      {
-        folderPath: path.resolve(systemUnderTest),
-        port,
-      },
-      { logger, logLevel },
-      maxConcurrentTests,
-    );
 
     try {
-      validateTestRunnerConfig(config);
+      // This errors if config values not valid
+      const config = TestRunnerConfig.make(
+        {
+          folderPath: path.resolve(systemUnderTest),
+          port,
+        },
+        { logger, logLevel },
+        maxConcurrentTests,
+        headed,
+      );
       const runner = new TestRunner(config);
       logger.info(`Started test runner with config\n${config.toPretty()}\n`);
 
@@ -87,11 +94,3 @@ const cmd = command({
 run(cmd, process.argv.slice(2)).catch(() => {
   process.exit(1);
 });
-
-function validateTestRunnerConfig(config: TestRunnerConfig) {
-  const sutConfig = config.getSutConfig();
-  if (!(sutConfig.port >= 1 && sutConfig.port <= 65535))
-    throw new Error(`Invalid port: ${sutConfig.port}`);
-  if (!(config.getMaxConcurrentTests() >= 1))
-    throw new Error(`max-concurrent-tests must be >= 1`);
-}
