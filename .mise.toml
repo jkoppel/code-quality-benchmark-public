@@ -1,0 +1,4 @@
+[tools]
+node = "22.13.1"
+
+# No need to add GIT_DIR env var since the jj repo is backed by the existing git repo
