@@ -20,7 +20,7 @@ export const moreThanDoneNotDoneStatuses = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
       Here's some info that someone has collected about the app:
       ${JSON.stringify(appInfo)}
 
@@ -38,7 +38,7 @@ export const tasksHavePriorities = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
       Here's some info that someone has collected about the app:
       ${JSON.stringify(appInfo)}
 

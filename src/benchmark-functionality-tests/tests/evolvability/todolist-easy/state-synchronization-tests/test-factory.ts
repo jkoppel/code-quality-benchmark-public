@@ -65,7 +65,7 @@ export function makePerMutatorStateSyncTestsForStatus(
         // TODO: Consider putting info on the views for ALL attributes -- test case agent sometimes gets confused about what some bit of ui represents
         return await agent.check(dedent`
             You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
-            ${makeBaseToolsPrompt(config)}
+            ${makeBaseToolsPrompt(config.getSutConfig())}
             
             Here is some information that someone else has gathered:
             * The available values for ${attribute.getPrettyName()} are ${JSON.stringify(attribute.getAttributeValues(appInfo))}.
@@ -102,10 +102,10 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
     ): Promise<TestResult> {
       const agent = makeAgent({ additionalCapabilities: [] });
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-      config.logger.withMetadata(appInfo).debug("AppInfo fixture");
+      config.getLogger().withMetadata(appInfo).debug("AppInfo fixture");
 
       return await agent.check(dedent`
-        ${makeBackgroundPrompt(config)}
+        ${makeBackgroundPrompt(config.getSutConfig())}
         Here is some information that someone else gathered about the views of or UI elements for the ${attribute.getPrettyName()} (and related things):
         ${attribute.getInfoForStateSynchTests(appInfo)}
 

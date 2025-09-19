@@ -3,9 +3,8 @@ import * as path from "node:path";
 import { command, number, option, positional, run, string } from "cmd-ts";
 import { Reporter } from "./benchmark-functionality-tests/test-lib/report.ts";
 import {
-  printTestRunnerConfig,
   TestRunner,
-  type TestRunnerConfig,
+  TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.ts";
 import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.ts";
 import { getLoggerConfig } from "./utils/logger/logger.ts";
@@ -49,20 +48,19 @@ const cmd = command({
   }) => {
     const resolvedBenchmarkPath = path.resolve(benchmarkPath);
     const { logger, logLevel } = getLoggerConfig();
-    const config: TestRunnerConfig = {
-      folderPath: path.resolve(systemUnderTest),
-      port,
-      logLevel,
-      logger,
+    const config = new TestRunnerConfig(
+      {
+        folderPath: path.resolve(systemUnderTest),
+        port,
+      },
+      { logger, logLevel },
       maxConcurrentTests,
-    };
+    );
 
     try {
       validateTestRunnerConfig(config);
       const runner = new TestRunner(config);
-      logger.info(
-        `Started test runner with config\n${printTestRunnerConfig(config)}\n`,
-      );
+      logger.info(`Started test runner with config\n${config.toPretty()}\n`);
 
       // Load test suite generation strategy
       logger.info(
@@ -91,8 +89,9 @@ run(cmd, process.argv.slice(2)).catch(() => {
 });
 
 function validateTestRunnerConfig(config: TestRunnerConfig) {
-  if (!(config.port >= 1 && config.port <= 65535))
-    throw new Error(`Invalid port: ${config.port}`);
-  if (!(config.maxConcurrentTests >= 1))
+  const sutConfig = config.getSutConfig();
+  if (!(sutConfig.port >= 1 && sutConfig.port <= 65535))
+    throw new Error(`Invalid port: ${sutConfig.port}`);
+  if (!(config.getMaxConcurrentTests() >= 1))
     throw new Error(`max-concurrent-tests must be >= 1`);
 }

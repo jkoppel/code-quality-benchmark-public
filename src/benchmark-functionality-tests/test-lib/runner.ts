@@ -35,29 +35,49 @@ export interface SutConfig {
   port: number;
 }
 
-export interface TestRunnerConfig extends SutConfig {
-  logLevel: LogLevel;
-  logger: Logger;
-  // timeoutMs: number;
-  /** Maximum number of test cases to run concurrently. */
-  maxConcurrentTests: number;
-}
+export class TestRunnerConfig {
+  constructor(
+    private readonly sutConfig: SutConfig,
+    private readonly loggerConfig: { logger: Logger; logLevel: LogLevel },
+    private readonly maxConcurrentTests: number,
+    // timeoutMs: number;
+  ) {}
 
-export function printTestRunnerConfig(config: TestRunnerConfig) {
-  const simplifiedConfig = {
-    folderPath: config.folderPath,
-    port: config.port,
-    logLevel: config.logLevel,
-    maxConcurrentTests: config.maxConcurrentTests,
-  };
-  return jsonStringify(simplifiedConfig);
+  getMaxConcurrentTests(): number {
+    return this.maxConcurrentTests;
+  }
+
+  getSutConfig(): SutConfig {
+    return {
+      folderPath: this.sutConfig.folderPath,
+      port: this.sutConfig.port,
+    };
+  }
+
+  getLogger(): Logger {
+    return this.loggerConfig.logger;
+  }
+
+  toPretty(): string {
+    const simplifiedConfig = {
+      folderPath: this.getSutConfig().folderPath,
+      port: this.getSutConfig().port,
+      logLevel: this.loggerConfig.logLevel,
+      maxConcurrentTests: this.maxConcurrentTests,
+    };
+    return jsonStringify(simplifiedConfig);
+  }
 }
 
 export class TestRunner {
   constructor(private readonly config: TestRunnerConfig) {}
 
+  getConfig(): TestRunnerConfig {
+    return this.config;
+  }
+
   getLogger() {
-    return this.config.logger;
+    return this.config.getLogger();
   }
 
   async executeStrategy(
@@ -78,13 +98,16 @@ export class TestRunner {
     process.on("warning", maxListenersExceededWarningHandler);
 
     try {
-      await using _server = await startDevServer(this.config, this.getLogger());
+      await using _server = await startDevServer(
+        this.config.getSutConfig(),
+        this.getLogger(),
+      );
 
       const context = await strategy.discover(
         this.config,
-        DiscoveryAgent.make(this.config, this.getLogger()),
+        DiscoveryAgent.make(this.getConfig(), this.getLogger()),
       );
-      const suite = await strategy.generateSuite(this.config, context);
+      const suite = await strategy.generateSuite(this.getConfig(), context);
       return await this.runTestSuite_(context, suite);
     } finally {
       process.off("warning", maxListenersExceededWarningHandler);
@@ -99,12 +122,12 @@ export class TestRunner {
     const startTime = Date.now();
 
     // Run tests
-    const limit = pLimit(this.config.maxConcurrentTests);
+    const limit = pLimit(this.getConfig().getMaxConcurrentTests());
     const results = await Promise.all(
       suite.getTests().map((test) =>
         limit(async () => {
           const makeAgent = (options: TestCaseAgentOptions) =>
-            TestCaseAgent.make(options, this.config, this.getLogger());
+            TestCaseAgent.make(options, this.getConfig(), this.getLogger());
           const result = await test.run(makeAgent, context, this.config);
           result.name = test.descriptiveName;
           return result;
@@ -121,7 +144,7 @@ export class TestRunner {
 
     return {
       name: suite.getName(),
-      sutFolderPath: this.config.folderPath,
+      sutFolderPath: this.config.getSutConfig().folderPath,
       timestamp: new Date(startTime).toISOString(),
       summary: {
         total: results.length,
@@ -138,7 +161,10 @@ export class TestRunner {
     context: TestContext,
     suite: Suite,
   ): Promise<TestSuiteResults> {
-    await using _server = await startDevServer(this.config, this.getLogger());
+    await using _server = await startDevServer(
+      this.config.getSutConfig(),
+      this.getLogger(),
+    );
 
     return await this.runTestSuite_(context, suite);
   }

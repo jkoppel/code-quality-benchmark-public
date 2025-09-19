@@ -21,7 +21,7 @@ export const basicColorPickerRgbSelection = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Test basic color picker functionality with a single pane -- is there an RGB color picker; can users select colors with it?
 
@@ -45,7 +45,7 @@ export const colorSelectionSharedAcrossPanes = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Verify that color selection applies globally across multiple panes
 
@@ -73,7 +73,7 @@ export const colorSelectionSurvivesPaneOps = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Verify color selection survives pane creation/deletion operations
 
@@ -102,7 +102,7 @@ export const basicMultiPaneCreation = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Check that it's possible to create more than one pane
 
@@ -127,7 +127,7 @@ export const drawingAreaIndependence = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Verify drawing in one pane doesn't affect other panes
 
@@ -156,7 +156,7 @@ export const bitmapSaveLoad = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
       
       Objective: Check basic bitmap saving and loading functionality
       
@@ -177,7 +177,7 @@ export const bitmapLoadingIsolation = makeTest({
     config: TestRunnerConfig,
   ): Promise<TestResult> {
     return await agent.check(dedent`
-      ${makeBackgroundPrompt(config)}
+      ${makeBackgroundPrompt(config.getSutConfig())}
       
       Objective: Verify loading bitmap in one pane doesn't affect what happens in another pane
       
