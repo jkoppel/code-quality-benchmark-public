@@ -2,11 +2,12 @@ import type { TestRunnerConfig } from "../../runner.ts";
 
 export type PlaywrightMCPCapability = "verify" | "vision";
 
+const PLAYWRIGHT_MCP = "@playwright/mcp@0.0.38";
+
 export function makePlaywrightMCPConfig(
   capabilities: PlaywrightMCPCapability[],
   testRunnerConfig: TestRunnerConfig,
 ) {
-  const PLAYWRIGHT_MCP = "@playwright/mcp@0.0.36";
   return {
     playwright: {
       type: "stdio" as const,
