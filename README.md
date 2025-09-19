@@ -153,6 +153,7 @@ npm run check               # TypeScript type checking
 npm run lint                # Biome
 npm run check:all           # Run both type checking and linting
 npm run fix:all             # Format code and fix linting issues
+npm run fix:changed         # Format and fix only files that have changed since `main`
 npm run check:command-refs  # Check that references to npm commands in docs, error messages are up to date using a headless Claude Code instance
 ```
 
@@ -174,6 +175,23 @@ Jujutsu doesn't support Git hooks. Run pre-commit manually before pushing:
 pre-commit run --all-files
 # or make an alias:
 alias jjpush='pre-commit run --all-files && jj git push'
+```
+
+or use `jj fix` with something like the following config (run `jj config edit --repo`):
+
+```toml
+[fix.tools.biome]
+command = ["npx", "@biomejs/biome", "check", "--stdin-file-path=$path", "--write"]
+
+patterns = [
+	"glob:'**/*.js'",
+	"glob:'**/*.ts'",
+	"glob:'**/*.tsx'",
+	"glob:'**/*.json'",
+	"glob:'**/*.html'",
+	"glob:'**/*.md'",
+	"glob:'**/*.css'",
+]
 ```
 
 ## License

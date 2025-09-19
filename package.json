@@ -15,6 +15,7 @@
     "check": "tsc --noEmit --pretty",
     "check:all": "npm run check && biome ci .",
     "fix:staged": "biome check --write --staged --verbose --files-ignore-unknown=true --no-errors-on-unmatched",
+    "fix:changed": "biome check --write --changed --files-ignore-unknown=true --no-errors-on-unmatched",
     "fix:all": "biome check --write .",
     "lint": "biome lint .",
     "format": "biome format --write .",
