@@ -4,7 +4,7 @@ import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
 import { jsonStringify } from "../../../utils/logger/pretty.ts";
 import type { TestResult } from "../report.ts";
 import { TestResultSchema } from "../report.ts";
-import type { SutConfig } from "../runner.ts";
+import type { TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import type { PlaywrightMCPCapability } from "./config/playwright-mcp-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
@@ -42,18 +42,21 @@ const baseForTestCaseAgent = {
 export class TestCaseAgent {
   static make(
     options: TestCaseAgentOptions,
-    sutConfig: SutConfig,
+    testRunnerConfig: TestRunnerConfig,
     logger?: Logger,
   ): TestCaseAgent {
     const driverConfig = makeDriverAgentConfig(
       baseForTestCaseAgent,
-      makePlaywrightMCPConfig([
-        "verify",
-        ...testCaseAgentCapabilitiesToPlaywrightCapabilities(
-          options.additionalCapabilities,
-        ),
-      ]),
-      sutConfig,
+      makePlaywrightMCPConfig(
+        [
+          "verify",
+          ...testCaseAgentCapabilitiesToPlaywrightCapabilities(
+            options.additionalCapabilities,
+          ),
+        ],
+        testRunnerConfig,
+      ),
+      testRunnerConfig.getSutConfig(),
     );
     const checkPromptPrefix = options.additionalCapabilities.includes("vision")
       ? dedent`

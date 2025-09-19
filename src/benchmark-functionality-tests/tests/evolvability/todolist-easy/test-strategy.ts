@@ -105,7 +105,7 @@ export async function discoverTodoListAppInfo(
       (see the following schema for exactly what info to collect).
 
       More concretely, here's what you should do.
-      ${makeBaseToolsPrompt(config)}
+      ${makeBaseToolsPrompt(config.getSutConfig())}
       0. Read the schema to understand exactly what information you need to collect.
       1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to collect the requested information; in particular, what you need to do to uncover key decision decisions regarding state, how it's exposed, and potential functional bugs.
       2. Collect and return that information.
@@ -114,6 +114,8 @@ export async function discoverTodoListAppInfo(
       That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
     TodoListAppInfo,
   );
-  config.logger.info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
+  config
+    .getLogger()
+    .info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
   return new TestContext(new Map([[appInfoId, appInfo]]));
 }

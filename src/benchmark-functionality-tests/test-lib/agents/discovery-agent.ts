@@ -1,19 +1,22 @@
 import type * as z from "zod";
 import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
-import type { SutConfig } from "../runner.ts";
+import type { SutConfig, TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
 import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.ts";
 
 export class DiscoveryAgent {
-  static make(sutConfig: SutConfig, logger?: Logger): DiscoveryAgent {
+  static make(
+    testRunnerConfig: TestRunnerConfig,
+    logger?: Logger,
+  ): DiscoveryAgent {
     const driverConfig = makeDriverAgentConfig(
       BASE_CONFIG,
-      makePlaywrightMCPConfig(["vision"]),
-      sutConfig,
+      makePlaywrightMCPConfig(["vision"], testRunnerConfig),
+      testRunnerConfig.getSutConfig(),
     );
     return new DiscoveryAgent(
-      sutConfig,
+      testRunnerConfig.getSutConfig(),
       new DriverAgent(driverConfig, logger),
       logger,
     );
