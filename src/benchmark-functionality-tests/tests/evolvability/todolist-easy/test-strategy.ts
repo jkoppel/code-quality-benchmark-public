@@ -108,7 +108,7 @@ export async function discoverTodoListAppInfo(
       ${makeBaseToolsPrompt(config.getSutConfig())}
       0. Read the schema to understand exactly what information you need to collect.
       1. Skim the code and make a rough plan for what UI interactions you *minimally* need to do to collect the requested information; in particular, what you need to do to uncover key decision decisions regarding state, how it's exposed, and potential functional bugs.
-      2. Collect and return that information.
+      2. Interact with the app; collect and return that information.
       If there's stuff you can't figure out, try to at least offer suggestions for what paths through the UI to investigate or look at.
       Your goal is *not* to actually test the app -- it's merely to investigate the decision decisions, enumerate all the UI / views for the various pieces of state, and flag potential issues for other testers to investigate in more depth.
       That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
