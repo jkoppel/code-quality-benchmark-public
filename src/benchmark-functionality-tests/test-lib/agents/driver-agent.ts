@@ -5,7 +5,6 @@ import { match } from "ts-pattern";
 import * as z from "zod";
 import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
 import { jsonStringify } from "../../../utils/logger/pretty.ts";
-import type { SutConfig } from "../runner.ts";
 
 // Specializing the following to Claude Code for now
 
@@ -23,18 +22,6 @@ export type DriverAgentConfig = Pick<
   | "resume"
   | "disallowedTools"
 >;
-
-export function makeDriverAgentConfig(
-  baseConfig: Partial<Options>,
-  mcpServers: Options["mcpServers"],
-  sutConfig: SutConfig,
-): DriverAgentConfig {
-  return {
-    ...baseConfig,
-    mcpServers,
-    cwd: sutConfig.folderPath,
-  };
-}
 
 /*************************************
     Custom DriverAgentErrors

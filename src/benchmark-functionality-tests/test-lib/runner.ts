@@ -75,6 +75,10 @@ export class TestRunnerConfig {
     return this.sutConfig;
   }
 
+  getSutFolderPath(): string {
+    return this.sutConfig.folderPath;
+  }
+
   getLogger(): Logger {
     return this.loggerConfig.logger;
   }

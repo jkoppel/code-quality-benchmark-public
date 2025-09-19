@@ -3,18 +3,19 @@ import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
 import type { SutConfig, TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
-import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.ts";
+import { DriverAgent } from "./driver-agent.ts";
 
 export class DiscoveryAgent {
   static make(
     testRunnerConfig: TestRunnerConfig,
     logger?: Logger,
   ): DiscoveryAgent {
-    const driverConfig = makeDriverAgentConfig(
-      BASE_CONFIG,
-      makePlaywrightMCPConfig(["vision"], testRunnerConfig),
-      testRunnerConfig.getSutConfig(),
-    );
+    const driverConfig = {
+      ...BASE_CONFIG,
+      mcpServers: makePlaywrightMCPConfig(["vision"], testRunnerConfig),
+      cwd: testRunnerConfig.getSutFolderPath(),
+    };
+
     return new DiscoveryAgent(
       testRunnerConfig.getSutConfig(),
       new DriverAgent(driverConfig, logger),
@@ -22,7 +23,7 @@ export class DiscoveryAgent {
     );
   }
 
-  constructor(
+  private constructor(
     readonly sutConfig: SutConfig,
     private readonly driver: DriverAgent,
     private readonly logger: Logger = getLoggerConfig().logger,
