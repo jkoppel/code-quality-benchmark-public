@@ -8,7 +8,7 @@ import type { TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import type { PlaywrightMCPCapability } from "./config/playwright-mcp-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
-import { DriverAgent, makeDriverAgentConfig } from "./driver-agent.ts";
+import { DriverAgent } from "./driver-agent.ts";
 
 /*************************************
   Test Case Agent Options
@@ -33,21 +33,17 @@ function testCaseAgentCapabilitiesToPlaywrightCapabilities(
   Test Case Agent
 ***************************************/
 
-/** Base of the Claude-Code-specialized driver agent config for TestCaseAgent */
-const baseForTestCaseAgent = {
-  ...BASE_CONFIG,
-  disallowedTools: ["mcp__playwright__browser_evaluate"],
-};
-
 export class TestCaseAgent {
   static make(
     options: TestCaseAgentOptions,
     testRunnerConfig: TestRunnerConfig,
     logger?: Logger,
   ): TestCaseAgent {
-    const driverConfig = makeDriverAgentConfig(
-      baseForTestCaseAgent,
-      makePlaywrightMCPConfig(
+    const driverConfig = {
+      ...BASE_CONFIG,
+      // mcp__playwright__browser_evaluate not reliable
+      disallowedTools: ["mcp__playwright__browser_evaluate"],
+      mcpServers: makePlaywrightMCPConfig(
         [
           "verify",
           ...testCaseAgentCapabilitiesToPlaywrightCapabilities(
@@ -56,8 +52,8 @@ export class TestCaseAgent {
         ],
         testRunnerConfig,
       ),
-      testRunnerConfig.getSutConfig(),
-    );
+      cwd: testRunnerConfig.getSutFolderPath(),
+    };
     const checkPromptPrefix = options.additionalCapabilities.includes("vision")
       ? dedent`
           Available tools include the standard Playwright MCP capabilities as well as vision capabilities (e.g., coordinate-based clicking and dragging).
