@@ -1,15 +1,44 @@
 # Code Quality Benchmark
 
-A TypeScript library for evaluating AI coding agents on code quality by testing their ability to consistently apply updates to existing codebases.
+A benchmark for evaluating AI coding agents on code quality -- including refactoring skill.
 
 ## Overview
 
-This library provides a framework for:
+This benchmark aims to test coding agents on code quality.
 
-1. Creating an initial program using a coding agent
-2. Creating multiple copies of that program
-3. Using Claude Code SDK to apply updates to each copy
-4. Comparing the results to evaluate consistency and quality
+In particular, it aims to test
+
+1. how good coding agents are at *designing software*
+
+as well as
+
+2. how good they are at *refactoring*
+
+### How does it do that?
+
+#### Evaluating code quality
+
+Let's start with just evaluating code quality or software design skills, without thinking about refactoring just yet.
+
+Suppose we want to evaluate a bunch of coding agents.
+For each of the agents under evaluation, we task the agent with making a small program before scoring its code quality.
+
+The scoring is where things get subtle: an agent's code quality is scored based on how hard it was for *other* coding agents to build further features on top of that initial effort.
+
+For example, we might start by getting the agent under evaluation to develop a small room-booking app. Then we clone the code base multiple times and get other agents to independently implement the same feature request --- e.g. add speaker and projector reservations to the app. (To be clear, these are independent trials.) The original agent under evaluation is then scored based on how hard it was for these feature-addition agents to extend the original agent's codebase.
+
+More specifically: For each of the *n* independent attempts at adding a feature, if there's a bug in that feature, 0 points. Else, the agent under evaluation gets a number of points based on how few lines needed to be changed.
+
+#### Evaluating refactoring skill
+
+Now suppose we want to evaluate how good a coding agent is at refactoring -- call this a *refactoring agent* for short.
+
+Start with a pre-made program that implements the initial program prompt (recall that in our benchmark, there are two prompts for each benchmark challenge, one for the initial program and another for the featur requests).
+Then have the refactoring agent refactor it. And then, just as with code quality, the refactoring agent is evaluated based on how easy it is for other agents to add features to the refactored program.
+
+## Quickstart
+
+The CLI will be improved very soon, but for now: 
 
 ## Installation
 
@@ -18,7 +47,7 @@ npm install
 npm run build
 ```
 
-### Pre-commit setup
+### If you want to use pre-commit
 
 ```bash
 # Install pre-commit if you haven't already (one-time global install)
