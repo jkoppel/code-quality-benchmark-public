@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import * as path from "node:path";
+import dedent from "dedent";
 import fs from "fs-extra";
 import * as tmp from "tmp";
 import {
@@ -7,9 +8,9 @@ import {
   isClaudeAgent,
 } from "./agents/feature-addition/claude-agent.ts";
 import { codexAgent } from "./agents/feature-addition/codex-agent.ts";
+import { DiffStats } from "./diff-stats.ts";
 import {
   type CodingAgent,
-  type DiffStats,
   type EvaluationConfig,
   EvaluationError,
   type EvaluationMetadata,
@@ -22,42 +23,6 @@ import { getLoggerConfig, type Logger } from "./utils/logger/logger.ts";
 
 // Don't automatically cleanup - we want to keep benchmark results
 // tmp.setGracefulCleanup();
-
-/**
- * Parse git diff --shortstat output
- * Example: " 4 files changed, 108 insertions(+), 24 deletions(-)"
- */
-function parseGitShortstat(output: string): DiffStats {
-  const stats: DiffStats = {
-    filesChanged: 0,
-    insertions: 0,
-    deletions: 0,
-  };
-
-  if (!output || output.trim() === "") {
-    return stats;
-  }
-
-  // Parse files changed
-  const filesMatch = output.match(/(\d+) files? changed/);
-  if (filesMatch) {
-    stats.filesChanged = parseInt(filesMatch[1], 10);
-  }
-
-  // Parse insertions
-  const insertionsMatch = output.match(/(\d+) insertions?\(\+\)/);
-  if (insertionsMatch) {
-    stats.insertions = parseInt(insertionsMatch[1], 10);
-  }
-
-  // Parse deletions
-  const deletionsMatch = output.match(/(\d+) deletions?\(-\)/);
-  if (deletionsMatch) {
-    stats.deletions = parseInt(deletionsMatch[1], 10);
-  }
-
-  return stats;
-}
 
 export async function evaluateUpdates(
   originalProgramPath: string,
@@ -135,7 +100,8 @@ export async function evaluateUpdates(
     // Log diff stats
     const diffStats = updateResults.map((r) => ({
       instance: r.instanceId,
-      stats: r.diffStats || { filesChanged: 0, insertions: 0, deletions: 0 },
+      stats:
+        r.diffStats || new DiffStats({ filesChanged: 0, linesChanged: 0 }, []),
     }));
 
     logger
@@ -152,7 +118,7 @@ export async function evaluateUpdates(
     updateResults.forEach((r) => {
       if (r.diffStats) {
         console.log(
-          `${r.instanceId} [${r.agentName}]: ${r.diffStats.filesChanged} files, +${r.diffStats.insertions}/-${r.diffStats.deletions} lines, score: ${r.score}${r.success ? "" : " (failed)"}`,
+          `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}${r.success ? "" : " (failed)"}`,
         );
       } else {
         console.log(
@@ -425,23 +391,37 @@ async function applyUpdatesToInstances(
         // First add all changes to staging to see what changed
         execSync("git add -A", { cwd: instancePath });
 
-        // Get the diff statistics using --shortstat
-        const shortstatOutput = execSync("git diff --cached --shortstat", {
+        // ***********************
+        // Get the diff statistics
+        // ***********************
+        const baseGitDiffCmd = "git diff --cached -M --ignore-space-change";
+        // -M for heuristic rename detection
+        // --ignore-space-change, because more conservative than --ignore-all-space (TODO: will need to monitor / tune this)
+        const diffThenDiffStat = `${baseGitDiffCmd} | diffstat -tm`;
+        // diffstat with -m because we want to count, e.g., changing a word on a line as being one change, as opposed to two.
+        // -t for easy parsing
+        // IMPT: Do NOT use --unified=0 with the git diff command -- that breaks the diffstat parsing
+
+        const diffStatOutput = execSync(diffThenDiffStat, {
           cwd: instancePath,
           encoding: "utf-8",
         });
+        diffStats = DiffStats.makeFromDiffstat(diffStatOutput);
 
-        diffStats = parseGitShortstat(shortstatOutput);
-
-        // Calculate score: 300 - insertions - deletions
-        score = Math.max(0, 300 - (diffStats.insertions + diffStats.deletions));
+        // Calculate score: 300 - linesChanged
+        score = Math.max(0, 300 - diffStats.getSummaryStats().linesChanged);
 
         // Also log the full diff stats for debugging
-        const fullStats = execSync("git diff --cached --stat", {
+        const gitDiffStatOutput = execSync(`${baseGitDiffCmd} --stat`, {
           cwd: instancePath,
           encoding: "utf-8",
         });
-        logger.debug(`Diff stats for ${result.instanceId}:\n${fullStats}`);
+        logger.debug(dedent`
+                Diff stats for ${result.instanceId}:
+                ${gitDiffStatOutput}`);
+        logger.debug(dedent`
+                ${diffThenDiffStat} for ${result.instanceId}: 
+                ${diffStatOutput}`);
 
         // Commit the changes for future reference
         try {
@@ -481,7 +461,7 @@ async function applyUpdatesToInstances(
     // Print diff stats to console immediately
     if (result.success && diffStats) {
       console.log(
-        `  → ${result.instanceId} [${result.agentName}]: ${diffStats.filesChanged} files changed, +${diffStats.insertions}/-${diffStats.deletions} lines, score: ${score}`,
+        `  → ${result.instanceId} [${result.agentName}]: ${diffStats.getSummaryStats().filesChanged} files changed, ${diffStats.getSummaryStats().linesChanged} lines changed, score: ${score}`,
       );
     }
 
