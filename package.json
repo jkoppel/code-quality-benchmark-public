@@ -21,7 +21,7 @@
     "format": "biome format --write .",
     "format:staged": "biome format --write --staged --verbose --files-ignore-unknown=true --no-errors-on-unmatched",
     "dev": "tsdown --watch",
-    "test": "vitest",
+    "test": "vitest --passWithNoTests",
     "benchmark": "npm run build && node dist/benchmark-runner.js",
     "benchmark:existing": "npm run build && node dist/benchmark-runner-existing.js",
     "benchmark:test-functionality": "npm run build && node dist/benchmark-test-functionality.js",
