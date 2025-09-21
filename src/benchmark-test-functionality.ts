@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 import * as path from "node:path";
-import { command, flag, number, option, positional, run, string } from "cmd-ts";
+import {
+  command,
+  flag,
+  number,
+  option,
+  optional,
+  positional,
+  run,
+  string,
+} from "cmd-ts";
 import { Reporter } from "./benchmark-functionality-tests/test-lib/report.ts";
 import {
   TestRunner,
@@ -44,6 +53,14 @@ const cmd = command({
       description: "Run browser in headed mode (show browser window)",
       defaultValue: () => false,
     }),
+    playwrightOutDir: option({
+      type: optional(string),
+      long: "playwrightOutDir",
+      description:
+        "Directory for Playwright MCP traces and sessions (won't save if not provided)",
+      // Requiring the user to provide a path if they want PW mcp to be saved,
+      // to pre-empt potential data contamination/leakage issues from, e.g., unintentionally exposing PW MCP output to coding agents
+    }),
   },
   handler: async ({
     benchmarkPath,
@@ -51,6 +68,7 @@ const cmd = command({
     port,
     maxConcurrentTests,
     headed,
+    playwrightOutDir,
   }) => {
     const resolvedBenchmarkPath = path.resolve(benchmarkPath);
     const { logger, logLevel } = getLoggerConfig();
@@ -65,6 +83,7 @@ const cmd = command({
         { logger, logLevel },
         maxConcurrentTests,
         headed,
+        playwrightOutDir,
       );
       const runner = new TestRunner(config);
       logger.info(`Started test runner with config\n${config.toPretty()}\n`);

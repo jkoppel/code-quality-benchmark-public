@@ -41,6 +41,7 @@ export class TestRunnerConfig {
     loggerConfig: { logger: Logger; logLevel: LogLevel },
     maxConcurrentTests: number,
     browserIsHeaded: boolean,
+    playwrightOutDir?: string,
     // timeoutMs: number;
   ) {
     // Need to error in order for the benchmark args parser to error if the config options not valid
@@ -55,6 +56,7 @@ export class TestRunnerConfig {
       loggerConfig,
       maxConcurrentTests,
       browserIsHeaded,
+      playwrightOutDir && path.resolve(playwrightOutDir),
     );
   }
 
@@ -64,6 +66,8 @@ export class TestRunnerConfig {
     private readonly maxConcurrentTests: number,
     /** Have playwright run browser in headed (show browser window) vs. headless mode */
     private readonly browserIsHeaded: boolean,
+    /** Abs path to directory for Playwright MCP output files (traces, sessions) */
+    private readonly playwrightOutDir?: string,
     // timeoutMs: number;
   ) {}
 
@@ -87,6 +91,11 @@ export class TestRunnerConfig {
     return this.browserIsHeaded ? "--headed" : "--headless";
   }
 
+  /** Abs path to directory for Playwright MCP output files */
+  getPlaywrightOutDir(): string | undefined {
+    return this.playwrightOutDir;
+  }
+
   toPretty(): string {
     const simplifiedConfig = {
       folderPath: this.getSutConfig().folderPath,
@@ -94,6 +103,7 @@ export class TestRunnerConfig {
       browserIsHeaded: this.browserIsHeaded,
       logLevel: this.loggerConfig.logLevel,
       maxConcurrentTests: this.maxConcurrentTests,
+      playwrightOutDir: this.playwrightOutDir,
     };
     return jsonStringify(simplifiedConfig);
   }
