@@ -2,7 +2,10 @@ import { execSync } from "node:child_process";
 import * as path from "node:path";
 import fs from "fs-extra";
 import * as tmp from "tmp";
-import { ClaudeAgent } from "./agents/feature-addition/claude-agent.ts";
+import {
+  ClaudeAgent,
+  isClaudeAgent,
+} from "./agents/feature-addition/claude-agent.ts";
 import { codexAgent } from "./agents/feature-addition/codex-agent.ts";
 import {
   type CodingAgent,
@@ -332,7 +335,7 @@ async function applyUpdatesToInstances(
   const allInstances: {
     instanceId: string;
     agentName: string;
-    agent: any;
+    agent: unknown;
     instancePath: string;
     port: number;
   }[] = [];
@@ -369,7 +372,7 @@ async function applyUpdatesToInstances(
 
     try {
       // For Claude, use its applyUpdate method, for others use the agent directly
-      if (instance.agentName === "claude") {
+      if (isClaudeAgent(instance.agent)) {
         const result = await instance.agent.applyUpdate(
           updatePrompt,
           instance.instancePath,
@@ -379,7 +382,7 @@ async function applyUpdatesToInstances(
         success = result.success;
         error = result.error;
       } else {
-        await instance.agent(
+        await (instance.agent as CodingAgent)(
           updatePrompt,
           instance.instancePath,
           instance.port,

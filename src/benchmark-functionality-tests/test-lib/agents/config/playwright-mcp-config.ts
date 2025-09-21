@@ -11,6 +11,7 @@ export function makePlaywrightMCPConfig(
   const args = [
     "-y",
     PLAYWRIGHT_MCP,
+    // impt for multiple reasons, e.g. so that CC agents don't haggle over the user data dir
     "--isolated",
     testRunnerConfig.getPlaywrightBrowserModeFlag(),
   ];
