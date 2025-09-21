@@ -27,9 +27,8 @@ jobs:
       - name: Build project
         run: npm run build
 
-      # (TODO Run check:all when remaining lint errors are fixed)
-      - name: Run TS type checker
-        run: npm run check
+      - name: Run TS type checker and linter
+        run: npm run check:all
 
       - name: Run tests
         run: npm test
