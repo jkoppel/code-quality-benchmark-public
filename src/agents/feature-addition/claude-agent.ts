@@ -7,6 +7,10 @@ import {
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
+export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
+  return agent instanceof ClaudeAgent;
+}
+
 export class ClaudeAgent {
   private readonly logger: Logger;
   private readonly config: ClaudeAgentConfig;
