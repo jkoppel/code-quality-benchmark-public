@@ -24,6 +24,13 @@ import { getLoggerConfig, type Logger } from "./utils/logger/logger.ts";
 // Don't automatically cleanup - we want to keep benchmark results
 // tmp.setGracefulCleanup();
 
+/**
+ * TODO
+ * -----
+ * - Should prob call functionality tests from e.g. the eval updates function and have the eval results include results from the functionality tests,
+ * since functionality tests are, conceptually, themselves an eval.
+ */
+
 export async function evaluateUpdates(
   originalProgramPath: string,
   updatePrompt: string,
