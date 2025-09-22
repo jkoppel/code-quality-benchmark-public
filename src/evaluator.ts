@@ -458,10 +458,11 @@ async function applyUpdatesToInstances(
       })
       .info(`Instance ${result.instanceId} completed`);
 
-    // Print diff stats to console immediately
+    // Log diff stats immediately
     if (result.success && diffStats) {
-      console.log(
-        `  → ${result.instanceId} [${result.agentName}]: ${diffStats.getSummaryStats().filesChanged} files changed, ${diffStats.getSummaryStats().linesChanged} lines changed, score: ${score}`,
+      logger.info(
+        dedent`
+          → ${result.instanceId} [${result.agentName}]: ${diffStats.getNumFilesChanged()} files changed, ${diffStats.getNumLinesChanged()} lines changed, score: ${score}`,
       );
     }
 
