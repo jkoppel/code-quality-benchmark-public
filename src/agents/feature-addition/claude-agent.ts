@@ -21,8 +21,8 @@ export class ClaudeAgent {
   ) {
     this.logger = logger;
     this.config = {
-      systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
-      allowedTools: config.allowedTools || [
+      appendSystemPrompt: config.appendSystemPrompt ?? SYSTEM_PROMPT,
+      allowedTools: config.allowedTools ?? [
         "Read",
         "Write",
         "Edit",
@@ -30,8 +30,7 @@ export class ClaudeAgent {
         "LS",
         "Glob",
       ],
-      temperature: config.temperature ?? 0.7,
-      maxTokens: config.maxTokens ?? 4096,
+      model: config.model ?? "sonnet",
     };
   }
 
@@ -57,10 +56,7 @@ export class ClaudeAgent {
 
       for await (const message of query({
         prompt: fullPrompt,
-        options: {
-          allowedTools: this.config.allowedTools,
-          model: "sonnet",
-        },
+        options: this.config,
       })) {
         if (message.type === "result") {
           if (

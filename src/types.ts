@@ -1,3 +1,4 @@
+import type { Options } from "@anthropic-ai/claude-code";
 import type { DiffStats } from "./evaluator/diff-stats.ts";
 
 export type CodingAgent = (
@@ -13,12 +14,10 @@ export interface EvaluationConfig {
   claudeConfig?: ClaudeAgentConfig;
 }
 
-export interface ClaudeAgentConfig {
-  systemPrompt?: string;
-  allowedTools?: string[];
-  temperature?: number;
-  maxTokens?: number;
-}
+export type ClaudeAgentConfig = Pick<
+  Options,
+  "allowedTools" | "appendSystemPrompt" | "model"
+>;
 
 export interface EvaluationResult {
   initialPrompt: string;
