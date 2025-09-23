@@ -1,7 +1,6 @@
 import type { Options } from "@anthropic-ai/claude-code";
 import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
-import { match } from "ts-pattern";
 import * as z from "zod";
 import {
   ClaudeCodeExecutionError,
@@ -95,6 +94,7 @@ export class DriverAgent {
       ...additionalConfig,
       resume: this.getSessionId(), // session id managed by and only by DriverAgent
     };
+
     this.logger.info(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
     const response = query({
       prompt,
@@ -108,17 +108,18 @@ export class DriverAgent {
         this.setSessionId(message.session_id);
       }
 
-      const result = match(message)
-        .with({ type: "result", subtype: "success" }, (msg) => msg.result || "")
-        .with({ type: "result", subtype: "error_max_turns" }, () => {
-          throw new DriverAgentMaxTurnsError();
-        })
-        .with({ type: "result", subtype: "error_during_execution" }, () => {
-          throw new DriverAgentExecutionError();
-        })
-        .otherwise(() => null);
-
-      if (result !== null) return result;
+      if (message.type === "result" && message.subtype === "success") {
+        return message.result;
+      }
+      if (message.type === "result" && message.subtype === "error_max_turns") {
+        throw new DriverAgentMaxTurnsError();
+      }
+      if (
+        message.type === "result" &&
+        message.subtype === "error_during_execution"
+      ) {
+        throw new DriverAgentExecutionError();
+      }
     }
 
     throw new DriverAgentUnexpectedTerminationError();
