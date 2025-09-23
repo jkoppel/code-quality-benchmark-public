@@ -2,12 +2,9 @@ import { execSync } from "node:child_process";
 import * as path from "node:path";
 import fs from "fs-extra";
 import * as tmp from "tmp";
-import {
-  type CodingAgent,
-  eval as evaluate,
-  evaluateUpdates,
-} from "./index.ts";
-import type { EvaluationResult, InstanceResult } from "./types.ts";
+import type { CodingAgent } from "./agents/types.ts";
+import type { EvaluationResult, InstanceResult } from "./evaluator/types.ts";
+import { eval as evaluate, evaluateUpdates } from "./index.ts";
 
 /**
  * Common benchmark output logic

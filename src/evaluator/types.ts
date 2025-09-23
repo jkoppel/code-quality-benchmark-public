@@ -1,11 +1,5 @@
-import type { Options } from "@anthropic-ai/claude-code";
-import type { DiffStats } from "./evaluator/diff-stats.ts";
-
-export type CodingAgent = (
-  prompt: string,
-  folderPath: string,
-  port?: number,
-) => Promise<void>;
+import type { ClaudeAgentConfig } from "../agents/types.ts";
+import type { DiffStats } from "./diff-stats.ts";
 
 export interface EvaluationConfig {
   workspaceRoot?: string;
@@ -13,11 +7,6 @@ export interface EvaluationConfig {
   logLevel?: "debug" | "info" | "warn" | "error";
   claudeConfig?: ClaudeAgentConfig;
 }
-
-export type ClaudeAgentConfig = Pick<
-  Options,
-  "allowedTools" | "appendSystemPrompt" | "model"
->;
 
 export interface EvaluationResult {
   initialPrompt: string;
@@ -55,12 +44,5 @@ export class EvaluationError extends Error {
   ) {
     super(message);
     this.name = "EvaluationError";
-  }
-}
-
-export class AgentExecutionError extends EvaluationError {
-  constructor(message: string, details?: unknown) {
-    super(message, "AGENT_EXECUTION_ERROR", details);
-    this.name = "AgentExecutionError";
   }
 }

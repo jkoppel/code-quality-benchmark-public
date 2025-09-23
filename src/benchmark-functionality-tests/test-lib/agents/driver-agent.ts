@@ -3,6 +3,11 @@ import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
 import { match } from "ts-pattern";
 import * as z from "zod";
+import {
+  ClaudeCodeExecutionError,
+  ClaudeCodeMaxTurnsError,
+  ClaudeCodeUnexpectedTerminationError,
+} from "../../../utils/claude-code-sdk/errors.ts";
 import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
 import { jsonStringify } from "../../../utils/logger/pretty.ts";
 
@@ -47,28 +52,11 @@ export type DriverAgentConfig = Pick<
   [19:54:29.622] ERROR: Failed to run tests: DriverAgentExecutionError: Failed to parse response: Driver agent response was not wrapped in <response> tags
 */
 
-export class DriverAgentMaxTurnsError extends Error {
-  constructor() {
-    super("Maximum turns exceeded during Claude Code session");
-    this.name = "DriverAgentMaxTurnsError";
-  }
-}
+export class DriverAgentMaxTurnsError extends ClaudeCodeMaxTurnsError {}
 
-export class DriverAgentExecutionError extends Error {
-  constructor(message?: string) {
-    super(message || "Error occurred during Claude Code execution");
-    this.name = "DriverAgentExecutionError";
-  }
-}
+export class DriverAgentExecutionError extends ClaudeCodeExecutionError {}
 
-export class DriverAgentUnexpectedTerminationError extends Error {
-  constructor() {
-    super(
-      "Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)",
-    );
-    this.name = "DriverAgentUnexpectedTerminationError";
-  }
-}
+export class DriverAgentUnexpectedTerminationError extends ClaudeCodeUnexpectedTerminationError {}
 
 /*************************************
            Driver Agent
