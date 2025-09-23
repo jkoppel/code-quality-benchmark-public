@@ -7,6 +7,11 @@ import {
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
 } from "../../../utils/claude-code-sdk/errors.ts";
+import {
+  isExecutionErrorResult,
+  isMaxTurnsErrorResult,
+  isSuccessResult,
+} from "../../../utils/claude-code-sdk/type-guards.ts";
 import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
 import { jsonStringify } from "../../../utils/logger/pretty.ts";
 
@@ -108,16 +113,13 @@ export class DriverAgent {
         this.setSessionId(message.session_id);
       }
 
-      if (message.type === "result" && message.subtype === "success") {
+      if (isSuccessResult(message)) {
         return message.result;
       }
-      if (message.type === "result" && message.subtype === "error_max_turns") {
+      if (isMaxTurnsErrorResult(message)) {
         throw new DriverAgentMaxTurnsError();
       }
-      if (
-        message.type === "result" &&
-        message.subtype === "error_during_execution"
-      ) {
+      if (isExecutionErrorResult(message)) {
         throw new DriverAgentExecutionError();
       }
     }

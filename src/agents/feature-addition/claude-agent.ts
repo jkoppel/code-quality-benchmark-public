@@ -5,9 +5,48 @@ import {
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
 } from "../../utils/claude-code-sdk/errors.ts";
+import {
+  isExecutionErrorResult,
+  isMaxTurnsErrorResult,
+  isSuccessResult,
+} from "../../utils/claude-code-sdk/type-guards.ts";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import type { ClaudeAgentConfig } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
+
+// TODO: These functions will be refactored and moved to a more central place in the next PR
+function makeSuccessInstanceResult(
+  instanceId: string,
+  folderPath: string,
+  executionTime: number,
+): InstanceResult {
+  return {
+    instanceId,
+    folderPath,
+    success: true,
+    error: undefined,
+    executionTime,
+    agentName: "claude",
+    score: 0,
+  };
+}
+
+function makeErrorInstanceResult(
+  instanceId: string,
+  folderPath: string,
+  error: Error,
+  executionTime: number,
+): InstanceResult {
+  return {
+    instanceId,
+    folderPath,
+    success: false,
+    error,
+    executionTime,
+    agentName: "claude",
+    score: 0,
+  };
+}
 
 export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
   return agent instanceof ClaudeAgent;
@@ -45,78 +84,82 @@ export class ClaudeAgent {
   ): Promise<InstanceResult> {
     const startTime = Date.now();
 
-    try {
+    this.logger
+      .withMetadata({
+        folderPath,
+        updatePrompt: updatePrompt.substring(0, 100),
+      })
+      .info(`Starting Claude agent for instance ${instanceId}`);
+
+    const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
+
+    for await (const message of query({
+      prompt: fullPrompt,
+      options: this.config,
+    })) {
       this.logger
-        .withMetadata({
-          folderPath,
-          updatePrompt: updatePrompt.substring(0, 100),
-        })
-        .info(`Starting Claude agent for instance ${instanceId}`);
+        .withMetadata({ instanceId, claudeCode: message })
+        .debug("Response");
 
-      const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
-
-      for await (const message of query({
-        prompt: fullPrompt,
-        options: this.config,
-      })) {
+      if (isSuccessResult(message)) {
         this.logger
-          .withMetadata({ instanceId, claudeCode: message })
-          .debug("Response");
-
-        if (message.type === "result" && message.subtype === "success") {
-          this.logger
-            .withMetadata({
-              instanceId,
-              duration: message.duration_ms,
-            })
-            .debug(`Claude completed`);
-          this.logger.info(
-            `Successfully completed update for instance ${instanceId}`,
-          );
-          return {
+          .withMetadata({
             instanceId,
-            folderPath,
-            success: true,
-            error: undefined,
-            executionTime: Date.now() - startTime,
-            agentName: "claude",
-            score: 0,
-          };
-        }
-
-        if (
-          message.type === "result" &&
-          message.subtype === "error_max_turns"
-        ) {
-          throw new ClaudeCodeMaxTurnsError();
-        }
-
-        if (
-          message.type === "result" &&
-          message.subtype === "error_during_execution"
-        ) {
-          throw new ClaudeCodeExecutionError();
-        }
+            duration: message.duration_ms,
+          })
+          .debug(`Claude completed`);
+        this.logger.info(
+          `Successfully completed update for instance ${instanceId}`,
+        );
+        return makeSuccessInstanceResult(
+          instanceId,
+          folderPath,
+          Date.now() - startTime,
+        );
       }
 
-      throw new ClaudeCodeUnexpectedTerminationError();
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      this.logger
-        .withMetadata({
-          error: error.message,
-        })
-        .error(`Failed to apply update for instance ${instanceId}`);
+      if (isMaxTurnsErrorResult(message)) {
+        const error = new ClaudeCodeMaxTurnsError();
+        this.logger
+          .withMetadata({
+            error: error.message,
+          })
+          .error(`Failed to apply update for instance ${instanceId}`);
+        return makeErrorInstanceResult(
+          instanceId,
+          folderPath,
+          error,
+          Date.now() - startTime,
+        );
+      }
 
-      return {
-        instanceId,
-        folderPath,
-        success: false,
-        error,
-        executionTime: Date.now() - startTime,
-        agentName: "claude",
-        score: 0, // Will be calculated by evaluator based on diff
-      };
+      if (isExecutionErrorResult(message)) {
+        const error = new ClaudeCodeExecutionError();
+        this.logger
+          .withMetadata({
+            error: error.message,
+          })
+          .error(`Failed to apply update for instance ${instanceId}`);
+        return makeErrorInstanceResult(
+          instanceId,
+          folderPath,
+          error,
+          Date.now() - startTime,
+        );
+      }
     }
+
+    const error = new ClaudeCodeUnexpectedTerminationError();
+    this.logger
+      .withMetadata({
+        error: error.message,
+      })
+      .error(`Failed to apply update for instance ${instanceId}`);
+    return makeErrorInstanceResult(
+      instanceId,
+      folderPath,
+      error,
+      Date.now() - startTime,
+    );
   }
 }
