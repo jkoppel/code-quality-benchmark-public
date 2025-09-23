@@ -1,10 +1,17 @@
 import { query } from "@anthropic-ai/claude-code";
-import type { ClaudeAgentConfig, InstanceResult } from "../../types";
+import { match } from "ts-pattern";
+import type { InstanceResult } from "../../evaluator/types.ts";
+import {
+  ClaudeCodeExecutionError,
+  ClaudeCodeMaxTurnsError,
+  ClaudeCodeUnexpectedTerminationError,
+} from "../../utils/claude-code-sdk/errors.ts";
 import {
   isAssistantMessage,
   isUserMessage,
 } from "../../utils/claude-code-sdk/types.ts";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
+import type { ClaudeAgentConfig } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
 export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
@@ -54,16 +61,18 @@ export class ClaudeAgent {
 
       const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
 
+      const CONTINUE_MARKER = null;
       for await (const message of query({
         prompt: fullPrompt,
         options: this.config,
       })) {
         if (message.type === "result") {
-          if (
-            message.subtype === "error_max_turns" ||
-            message.subtype === "error_during_execution"
-          ) {
-            throw new Error(`Claude execution error: ${message.subtype}`);
+          hasResult = true;
+          if (message.subtype === "error_max_turns") {
+            throw new ClaudeCodeMaxTurnsError();
+          })
+          .with({ type: "result", subtype: "error_during_execution" }, () => {
+            throw new ClaudeCodeExecutionError();
           }
           this.logger
             .withMetadata({
@@ -95,6 +104,10 @@ export class ClaudeAgent {
             })
             .debug(`Message from ${message.type}`);
         }
+      }
+
+      if (!hasResult) {
+        throw new ClaudeCodeUnexpectedTerminationError();
       }
 
       success = true;
