@@ -1,3 +1,5 @@
+import type { DiffStats } from "./diff-stats.ts";
+
 export type CodingAgent = (
   prompt: string,
   folderPath: string,
@@ -25,12 +27,6 @@ export interface EvaluationResult {
   updates: InstanceResult[];
   metadata: EvaluationMetadata;
   totalScore: number;
-}
-
-export interface DiffStats {
-  filesChanged: number;
-  insertions: number;
-  deletions: number;
 }
 
 export interface InstanceResult {
