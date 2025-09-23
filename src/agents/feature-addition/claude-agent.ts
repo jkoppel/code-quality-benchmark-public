@@ -5,10 +5,6 @@ import {
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
 } from "../../utils/claude-code-sdk/errors.ts";
-import {
-  isAssistantMessage,
-  isUserMessage,
-} from "../../utils/claude-code-sdk/types.ts";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import type { ClaudeAgentConfig } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
@@ -27,6 +23,7 @@ export class ClaudeAgent {
   ) {
     this.logger = logger;
     this.config = {
+      // TODO: Will improve this later
       appendSystemPrompt: config.appendSystemPrompt ?? SYSTEM_PROMPT,
       allowedTools: config.allowedTools ?? [
         "Read",
@@ -47,8 +44,6 @@ export class ClaudeAgent {
     port: number,
   ): Promise<InstanceResult> {
     const startTime = Date.now();
-    let success = false;
-    let error: Error | undefined;
 
     try {
       this.logger
@@ -64,73 +59,64 @@ export class ClaudeAgent {
         prompt: fullPrompt,
         options: this.config,
       })) {
-        if (message.type === "result") {
-          hasResult = true;
-          if (message.subtype === "error_max_turns") {
-            throw new ClaudeCodeMaxTurnsError();
-          })
-          .with({ type: "result", subtype: "error_during_execution" }, () => {
-            throw new ClaudeCodeExecutionError();
-          }
+        this.logger
+          .withMetadata({ instanceId, claudeCode: message })
+          .debug("Response");
+
+        if (message.type === "result" && message.subtype === "success") {
           this.logger
             .withMetadata({
               instanceId,
               duration: message.duration_ms,
             })
             .debug(`Claude completed`);
-        } else if (message.type === "user" || message.type === "assistant") {
-          let content = "Message content unavailable";
+          this.logger.info(
+            `Successfully completed update for instance ${instanceId}`,
+          );
+          return {
+            instanceId,
+            folderPath,
+            success: true,
+            error: undefined,
+            executionTime: Date.now() - startTime,
+            agentName: "claude",
+            score: 0,
+          };
+        }
 
-          if (isAssistantMessage(message)) {
-            const messageContent = message.message?.content || [];
-            content =
-              typeof messageContent === "string"
-                ? messageContent
-                : JSON.stringify(messageContent);
-          } else if (isUserMessage(message)) {
-            const userContent = message.message?.content || [];
-            content =
-              typeof userContent === "string"
-                ? userContent
-                : JSON.stringify(userContent);
-          }
+        if (
+          message.type === "result" &&
+          message.subtype === "error_max_turns"
+        ) {
+          throw new ClaudeCodeMaxTurnsError();
+        }
 
-          this.logger
-            .withMetadata({
-              instanceId,
-              contentLength: content.length,
-            })
-            .debug(`Message from ${message.type}`);
+        if (
+          message.type === "result" &&
+          message.subtype === "error_during_execution"
+        ) {
+          throw new ClaudeCodeExecutionError();
         }
       }
 
-      if (!hasResult) {
-        throw new ClaudeCodeUnexpectedTerminationError();
-      }
-
-      success = true;
-      this.logger.info(
-        `Successfully completed update for instance ${instanceId}`,
-      );
+      throw new ClaudeCodeUnexpectedTerminationError();
     } catch (err) {
-      error = err instanceof Error ? err : new Error(String(err));
+      const error = err instanceof Error ? err : new Error(String(err));
       this.logger
         .withMetadata({
           error: error.message,
         })
         .error(`Failed to apply update for instance ${instanceId}`);
+
+      return {
+        instanceId,
+        folderPath,
+        success: false,
+        error,
+        executionTime: Date.now() - startTime,
+        agentName: "claude",
+        score: 0, // Will be calculated by evaluator based on diff
+      };
     }
-
-    const result: InstanceResult = {
-      instanceId,
-      folderPath,
-      success,
-      error,
-      executionTime: Date.now() - startTime,
-      agentName: "claude",
-      score: 0, // Will be calculated by evaluator based on diff
-    };
-
-    return result;
   }
 }
