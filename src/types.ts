@@ -1,4 +1,4 @@
-import type { DiffStats } from "./diff-stats.ts";
+import type { DiffStats } from "./evaluator/diff-stats.ts";
 
 export type CodingAgent = (
   prompt: string,
