@@ -296,9 +296,8 @@ async function applyUpdatesToInstances(
     {
       name: "claude",
       agent: new ClaudeAgent(config.claudeConfig, logger),
-      applyUpdate: true,
     },
-    { name: "codex", agent: codexAgent, applyUpdate: false },
+    { name: "codex", agent: codexAgent },
     // { name: 'gemini', agent: geminiAgent, applyUpdate: false }
   ];
 
