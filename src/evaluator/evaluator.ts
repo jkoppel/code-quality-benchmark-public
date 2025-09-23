@@ -6,9 +6,8 @@ import * as tmp from "tmp";
 import {
   ClaudeAgent,
   isClaudeAgent,
-} from "./agents/feature-addition/claude-agent.ts";
-import { codexAgent } from "./agents/feature-addition/codex-agent.ts";
-import { DiffStats } from "./diff-stats.ts";
+} from "../agents/feature-addition/claude-agent.ts";
+import { codexAgent } from "../agents/feature-addition/codex-agent.ts";
 import {
   type CodingAgent,
   type EvaluationConfig,
@@ -16,8 +15,9 @@ import {
   type EvaluationMetadata,
   type EvaluationResult,
   type InstanceResult,
-} from "./types.ts";
-import { getLoggerConfig, type Logger } from "./utils/logger/logger.ts";
+} from "../types.ts";
+import { getLoggerConfig, type Logger } from "../utils/logger/logger.ts";
+import { DiffStats } from "./diff-stats.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
 
@@ -483,4 +483,4 @@ export type {
   CodingAgent,
   EvaluationConfig,
   EvaluationResult,
-} from "./types.ts";
+} from "../types.ts";

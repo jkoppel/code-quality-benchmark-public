@@ -6,7 +6,7 @@ export {
   runBenchmarkWithExistingCode,
   runBenchmarkWithNewCode,
 } from "./benchmark-lib.ts";
-export { evaluate as eval, evaluateUpdates } from "./evaluator.ts";
+export { evaluate as eval, evaluateUpdates } from "./evaluator/evaluator.ts";
 
 export type {
   AgentExecutionError,
