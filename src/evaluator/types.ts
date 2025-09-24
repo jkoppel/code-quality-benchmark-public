@@ -74,6 +74,24 @@ export interface EvaluationMetadata {
   config: EvaluationConfig;
 }
 
+// Type guard functions
+
+export function updateCompleted(
+  instance: InstanceResult,
+): instance is InstanceResult & {
+  result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
+} {
+  return instance.result.type === "invocationCompleted";
+}
+
+export function updateFailed(
+  instance: InstanceResult,
+): instance is InstanceResult & {
+  result: { type: "invocationFailed"; score: 0; error: Error };
+} {
+  return instance.result.type === "invocationFailed";
+}
+
 export class EvaluationError extends Error {
   constructor(
     message: string,

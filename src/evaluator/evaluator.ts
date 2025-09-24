@@ -17,6 +17,9 @@ import {
   type EvaluationMetadata,
   type EvaluationResult,
   type InstanceResult,
+  makeInvocationCompletedMempty,
+  updateCompleted,
+  updateFailed,
 } from "./types.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
@@ -107,21 +110,14 @@ export async function evaluateUpdates(
     // Log diff stats
     const diffStats = updateResults.map((r) => ({
       instance: r.instanceId,
-      stats:
-        r.result.type === "invocationCompleted"
-          ? r.result.diffStats
-          : DiffStats.makeMempty(),
+      stats: updateCompleted(r) ? r.result.diffStats : DiffStats.mempty(),
     }));
 
     logger
       .withMetadata({
         duration: metadata.totalDuration,
-        successfulUpdates: updateResults.filter(
-          (r) => r.result.type === "invocationCompleted",
-        ).length,
-        failedUpdates: updateResults.filter(
-          (r) => r.result.type === "invocationFailed",
-        ).length,
+        successfulUpdates: updateResults.filter(updateCompleted).length,
+        failedUpdates: updateResults.filter(updateFailed).length,
         diffStats,
       })
       .info("Evaluation completed successfully");
@@ -129,7 +125,7 @@ export async function evaluateUpdates(
     // Also print diff stats to console for visibility
     console.log("\n=== Git Diff Statistics & Scores ===");
     updateResults.forEach((r) => {
-      if (r.result.type === "invocationCompleted") {
+      if (updateCompleted(r)) {
         console.log(
           `${r.instanceId} [${r.agentName}]: ${r.result.diffStats.getNumFilesChanged()} files, ${r.result.diffStats.getNumLinesChanged()} lines, score: ${r.result.score}`,
         );
@@ -397,7 +393,7 @@ async function applyUpdatesToInstances(
     let diffStats = DiffStats.mempty();
     let score = 0;
 
-    if (result.result.type === "invocationCompleted") {
+    if (updateCompleted(result)) {
       try {
         // First add all changes to staging to see what changed
         execSync("git add -A", { cwd: instancePath });
@@ -454,21 +450,20 @@ async function applyUpdatesToInstances(
     }
 
     // Update score and diffStats for successful invocations
-    const finalResult: InstanceResult =
-      result.result.type === "invocationCompleted"
-        ? {
-            ...result,
-            result: {
-              type: "invocationCompleted",
-              score,
-              diffStats,
-            },
-          }
-        : result;
+    const finalResult: InstanceResult = updateCompleted(result)
+      ? {
+          ...result,
+          result: {
+            type: "invocationCompleted",
+            score,
+            diffStats,
+          },
+        }
+      : result;
 
     logger
       .withMetadata({
-        success: result.result.type === "invocationCompleted",
+        success: updateCompleted(result),
         executionTime: result.executionTimeMs,
         diffStats,
         score,
@@ -477,7 +472,7 @@ async function applyUpdatesToInstances(
       .info(`Instance ${result.instanceId} completed`);
 
     // Log diff stats immediately
-    if (result.result.type === "invocationCompleted") {
+    if (updateCompleted(result)) {
       logger.info(
         dedent`
           → ${result.instanceId} [${result.agentName}]: ${diffStats.getNumFilesChanged()} files changed, ${diffStats.getNumLinesChanged()} lines changed, score: ${score}`,
