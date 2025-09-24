@@ -58,7 +58,7 @@ export async function evaluateUpdates(
 
     // Calculate total score
     const totalScore = updateResults.reduce(
-      (sum, result) => sum + result.score,
+      (sum, result) => sum + result.result.score,
       0,
     );
 
@@ -108,14 +108,20 @@ export async function evaluateUpdates(
     const diffStats = updateResults.map((r) => ({
       instance: r.instanceId,
       stats:
-        r.diffStats || new DiffStats({ filesChanged: 0, linesChanged: 0 }, []),
+        r.result.type === "invocationCompleted"
+          ? r.result.diffStats
+          : DiffStats.makeMempty(),
     }));
 
     logger
       .withMetadata({
         duration: metadata.totalDuration,
-        successfulUpdates: updateResults.filter((r) => r.success).length,
-        failedUpdates: updateResults.filter((r) => !r.success).length,
+        successfulUpdates: updateResults.filter(
+          (r) => r.result.type === "invocationCompleted",
+        ).length,
+        failedUpdates: updateResults.filter(
+          (r) => r.result.type === "invocationFailed",
+        ).length,
         diffStats,
       })
       .info("Evaluation completed successfully");
@@ -123,13 +129,13 @@ export async function evaluateUpdates(
     // Also print diff stats to console for visibility
     console.log("\n=== Git Diff Statistics & Scores ===");
     updateResults.forEach((r) => {
-      if (r.diffStats) {
+      if (r.result.type === "invocationCompleted") {
         console.log(
-          `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}${r.success ? "" : " (failed)"}`,
+          `${r.instanceId} [${r.agentName}]: ${r.result.diffStats.getNumFilesChanged()} files, ${r.result.diffStats.getNumLinesChanged()} lines, score: ${r.result.score}`,
         );
       } else {
         console.log(
-          `${r.instanceId} [${r.agentName}]: No changes, score: ${r.score}${r.success ? "" : " (failed)"}`,
+          `${r.instanceId} [${r.agentName}]: Invocation failed, score: ${r.result.score}`,
         );
       }
     });
@@ -337,62 +343,61 @@ async function applyUpdatesToInstances(
   logger.info("Applying updates to all instances in parallel");
 
   // Execute all updates in parallel
-  const updatePromises = allInstances.map(async (instance) => {
-    const startTime = Date.now();
-    let success = false;
-    let error: Error | undefined;
+  const updatePromises = allInstances.map(
+    async (instance): Promise<InstanceResult> => {
+      const startTime = Date.now();
 
-    try {
-      // For Claude, use its applyUpdate method, for others use the agent directly
-      if (isClaudeAgent(instance.agent)) {
-        const result = await instance.agent.applyUpdate(
-          updatePrompt,
-          instance.instancePath,
-          instance.instanceId,
-          instance.port,
-        );
-        success = result.success;
-        error = result.error;
-      } else {
-        await (instance.agent as CodingAgent)(
-          updatePrompt,
-          instance.instancePath,
-          instance.port,
-        );
-        success = true;
+      try {
+        // For Claude, use its applyUpdate method, for others use the agent directly
+        if (isClaudeAgent(instance.agent)) {
+          return await instance.agent.applyUpdate(
+            updatePrompt,
+            instance.instancePath,
+            instance.instanceId,
+            instance.port,
+          );
+        } else {
+          await (instance.agent as CodingAgent)(
+            updatePrompt,
+            instance.instancePath,
+            instance.port,
+          );
+          // For other agents, create a success result manually
+          return makeInvocationCompletedMempty(
+            instance.instanceId,
+            instance.instancePath,
+            instance.agentName,
+            Date.now() - startTime,
+          );
+        }
+      } catch (e) {
+        const error = e instanceof Error ? e : new Error(String(e));
+        logger
+          .withMetadata({
+            error: error.message,
+          })
+          .error(`Failed to apply update for ${instance.instanceId}`);
+
+        return {
+          instanceId: instance.instanceId,
+          folderPath: instance.instancePath,
+          agentName: instance.agentName,
+          executionTimeMs: Date.now() - startTime,
+          result: { type: "invocationFailed", score: 0, error },
+        };
       }
-    } catch (e) {
-      success = false;
-      error = e instanceof Error ? e : new Error(String(e));
-      logger
-        .withMetadata({
-          error: error.message,
-        })
-        .error(`Failed to apply update for ${instance.instanceId}`);
-    }
-
-    const executionTime = Date.now() - startTime;
-
-    return {
-      instanceId: instance.instanceId,
-      folderPath: instance.instancePath,
-      success,
-      error,
-      executionTime,
-      agentName: instance.agentName,
-      score: 0, // Will be calculated later
-    };
-  });
+    },
+  );
 
   const results = await Promise.all(updatePromises);
 
   // Calculate git diff statistics and scores
   const resultsWithDiffs = results.map((result) => {
     const instancePath = result.folderPath;
-    let diffStats: DiffStats | undefined;
+    let diffStats = DiffStats.mempty();
     let score = 0;
 
-    if (result.success) {
+    if (result.result.type === "invocationCompleted") {
       try {
         // First add all changes to staging to see what changed
         execSync("git add -A", { cwd: instancePath });
@@ -448,16 +453,23 @@ async function applyUpdatesToInstances(
       }
     }
 
-    const resultWithDiff: InstanceResult = {
-      ...result,
-      diffStats,
-      score,
-    };
+    // Update score and diffStats for successful invocations
+    const finalResult: InstanceResult =
+      result.result.type === "invocationCompleted"
+        ? {
+            ...result,
+            result: {
+              type: "invocationCompleted",
+              score,
+              diffStats,
+            },
+          }
+        : result;
 
     logger
       .withMetadata({
-        success: result.success,
-        executionTime: result.executionTime,
+        success: result.result.type === "invocationCompleted",
+        executionTime: result.executionTimeMs,
         diffStats,
         score,
         agentName: result.agentName,
@@ -465,14 +477,14 @@ async function applyUpdatesToInstances(
       .info(`Instance ${result.instanceId} completed`);
 
     // Log diff stats immediately
-    if (result.success && diffStats) {
+    if (result.result.type === "invocationCompleted") {
       logger.info(
         dedent`
           → ${result.instanceId} [${result.agentName}]: ${diffStats.getNumFilesChanged()} files changed, ${diffStats.getNumLinesChanged()} lines changed, score: ${score}`,
       );
     }
 
-    return resultWithDiff;
+    return finalResult;
   });
 
   return resultsWithDiffs;
