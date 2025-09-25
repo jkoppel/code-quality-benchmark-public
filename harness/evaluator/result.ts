@@ -65,7 +65,7 @@ export function makeInvocationFailed(
 
 // Type guard functions
 
-export function updateCompleted(
+export function invocationCompleted(
   instance: InstanceResult,
 ): instance is InstanceResult & {
   result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
@@ -73,7 +73,7 @@ export function updateCompleted(
   return instance.result.type === "invocationCompleted";
 }
 
-export function updateFailed(
+export function invocationFailed(
   instance: InstanceResult,
 ): instance is InstanceResult & {
   result: { type: "invocationFailed"; score: 0; error: ErrorObject };
