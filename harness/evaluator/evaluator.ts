@@ -18,6 +18,7 @@ import {
   type EvaluationResult,
   type InstanceResult,
   makeInvocationCompletedMempty,
+  makeInvocationFailed,
   updateCompleted,
   updateFailed,
 } from "./types.ts";
@@ -374,13 +375,13 @@ async function applyUpdatesToInstances(
           })
           .error(`Failed to apply update for ${instance.instanceId}`);
 
-        return {
-          instanceId: instance.instanceId,
-          folderPath: instance.instancePath,
-          agentName: instance.agentName,
-          executionTimeMs: Date.now() - startTime,
-          result: { type: "invocationFailed", score: 0, error },
-        };
+        return makeInvocationFailed(
+          instance.instanceId,
+          instance.instancePath,
+          instance.agentName,
+          Date.now() - startTime,
+          error,
+        );
       }
     },
   );
