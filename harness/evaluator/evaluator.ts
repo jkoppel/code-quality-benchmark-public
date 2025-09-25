@@ -10,18 +10,17 @@ import {
 import { codexAgent } from "../agents/feature-addition/codex-agent.ts";
 import type { CodingAgent } from "../agents/types.ts";
 import { getLoggerConfig, type Logger } from "../utils/logger/logger.ts";
+import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
+import { EvaluationError } from "./errors.ts";
 import {
-  type EvaluationConfig,
-  EvaluationError,
-  type EvaluationMetadata,
   type EvaluationResult,
   type InstanceResult,
+  invocationCompleted,
+  invocationFailed,
   makeInvocationCompletedMempty,
   makeInvocationFailed,
-  updateCompleted,
-  updateFailed,
-} from "./types.ts";
+} from "./result.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
 
@@ -111,14 +110,14 @@ export async function evaluateUpdates(
     // Log diff stats
     const diffStats = updateResults.map((r) => ({
       instance: r.instanceId,
-      stats: updateCompleted(r) ? r.result.diffStats : DiffStats.mempty(),
+      stats: invocationCompleted(r) ? r.result.diffStats : DiffStats.mempty(),
     }));
 
     logger
       .withMetadata({
         duration: metadata.totalDuration,
-        successfulUpdates: updateResults.filter(updateCompleted).length,
-        failedUpdates: updateResults.filter(updateFailed).length,
+        successfulUpdates: updateResults.filter(invocationCompleted).length,
+        failedUpdates: updateResults.filter(invocationFailed).length,
         diffStats,
       })
       .info("Evaluation completed successfully");
@@ -126,7 +125,7 @@ export async function evaluateUpdates(
     // Also print diff stats to console for visibility
     console.log("\n=== Git Diff Statistics & Scores ===");
     updateResults.forEach((r) => {
-      if (updateCompleted(r)) {
+      if (invocationCompleted(r)) {
         console.log(
           `${r.instanceId} [${r.agentName}]: ${r.result.diffStats.getNumFilesChanged()} files, ${r.result.diffStats.getNumLinesChanged()} lines, score: ${r.result.score}`,
         );
@@ -394,7 +393,7 @@ async function applyUpdatesToInstances(
     let diffStats = DiffStats.mempty();
     let score = 0;
 
-    if (updateCompleted(result)) {
+    if (invocationCompleted(result)) {
       try {
         // First add all changes to staging to see what changed
         execSync("git add -A", { cwd: instancePath });
@@ -451,7 +450,7 @@ async function applyUpdatesToInstances(
     }
 
     // Update score and diffStats for successful invocations
-    const finalResult: InstanceResult = updateCompleted(result)
+    const finalResult: InstanceResult = invocationCompleted(result)
       ? {
           ...result,
           result: {
@@ -464,7 +463,7 @@ async function applyUpdatesToInstances(
 
     logger
       .withMetadata({
-        success: updateCompleted(result),
+        success: invocationCompleted(result),
         executionTime: result.executionTimeMs,
         diffStats,
         score,
@@ -473,7 +472,7 @@ async function applyUpdatesToInstances(
       .info(`Instance ${result.instanceId} completed`);
 
     // Log diff stats immediately
-    if (updateCompleted(result)) {
+    if (invocationCompleted(result)) {
       logger.info(
         dedent`
           → ${result.instanceId} [${result.agentName}]: ${diffStats.getNumFilesChanged()} files changed, ${diffStats.getNumLinesChanged()} lines changed, score: ${score}`,
@@ -487,7 +486,5 @@ async function applyUpdatesToInstances(
 }
 
 export type { CodingAgent } from "../agents/types.ts";
-export type {
-  EvaluationConfig,
-  EvaluationResult,
-} from "./types.ts";
+export type { EvaluationConfig } from "./config.ts";
+export type { EvaluationResult } from "./result.ts";

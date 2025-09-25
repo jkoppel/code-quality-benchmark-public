@@ -1,13 +1,6 @@
 import { type ErrorObject, serializeError } from "serialize-error";
-import type { ClaudeAgentConfig } from "../agents/types.ts";
+import type { EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
-
-export interface EvaluationConfig {
-  workspaceRoot?: string;
-  timeout?: number;
-  logLevel?: "debug" | "info" | "warn" | "error";
-  claudeConfig?: ClaudeAgentConfig;
-}
 
 export interface EvaluationResult {
   initialPrompt: string;
@@ -70,17 +63,9 @@ export function makeInvocationFailed(
   };
 }
 
-export interface EvaluationMetadata {
-  startTime: Date;
-  endTime: Date;
-  totalDuration: number;
-  agentsUsed: string[];
-  config: EvaluationConfig;
-}
-
 // Type guard functions
 
-export function updateCompleted(
+export function invocationCompleted(
   instance: InstanceResult,
 ): instance is InstanceResult & {
   result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
@@ -88,21 +73,10 @@ export function updateCompleted(
   return instance.result.type === "invocationCompleted";
 }
 
-export function updateFailed(
+export function invocationFailed(
   instance: InstanceResult,
 ): instance is InstanceResult & {
   result: { type: "invocationFailed"; score: 0; error: ErrorObject };
 } {
   return instance.result.type === "invocationFailed";
-}
-
-export class EvaluationError extends Error {
-  constructor(
-    message: string,
-    public readonly code: string,
-    public readonly details?: unknown,
-  ) {
-    super(message);
-    this.name = "EvaluationError";
-  }
 }

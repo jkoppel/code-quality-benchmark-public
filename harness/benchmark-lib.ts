@@ -6,8 +6,8 @@ import type { CodingAgent } from "./agents/types.ts";
 import {
   type EvaluationResult,
   type InstanceResult,
-  updateCompleted,
-} from "./evaluator/types.ts";
+  invocationCompleted,
+} from "./evaluator/result.ts";
 import { eval as evaluate, evaluateUpdates } from "./index.ts";
 
 /**
@@ -18,7 +18,7 @@ export function outputBenchmarkResults(
   result: EvaluationResult,
 ): void {
   // Output benchmark results as JSON
-  const successCount = result.updates.filter(updateCompleted).length;
+  const successCount = result.updates.filter(invocationCompleted).length;
   const totalUpdates = result.updates.length;
 
   // Calculate per-agent success rates
@@ -31,7 +31,7 @@ export function outputBenchmarkResults(
     }
     agentStats[u.agentName].total++;
     agentStats[u.agentName].totalScore += u.result.score;
-    if (updateCompleted(u)) {
+    if (invocationCompleted(u)) {
       agentStats[u.agentName].successful++;
     }
   });
@@ -39,9 +39,9 @@ export function outputBenchmarkResults(
   const updates = result.updates.map((u: InstanceResult) => ({
     instance: u.instanceId,
     agent: u.agentName,
-    success: updateCompleted(u),
+    success: invocationCompleted(u),
     score: u.result.score,
-    diffStats: updateCompleted(u)
+    diffStats: invocationCompleted(u)
       ? u.result.diffStats.getSummaryStats()
       : { filesChanged: 0, linesChanged: 0 },
     executionTime: u.executionTimeMs,
