@@ -17,6 +17,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/**/*", "benchmarks/**/*.ts"],
+  "include": ["benchmarks/**/*.ts", "harness/**/*"],
   "exclude": ["node_modules", "dist", "benchmarks/**/premade-pre-refactor/**"]
 }
