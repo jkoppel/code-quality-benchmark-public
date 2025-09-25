@@ -3,12 +3,12 @@ import type * as z from "zod";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
-} from "../../../../../src/benchmark-functionality-tests/test-lib/agents/test-case-agent.ts";
-import { makeBaseToolsPrompt } from "../../../../../src/benchmark-functionality-tests/test-lib/common-prompts.ts";
-import type { TestContext } from "../../../../../src/benchmark-functionality-tests/test-lib/context.ts";
-import type { TestResult } from "../../../../../src/benchmark-functionality-tests/test-lib/report.ts";
-import type { TestRunnerConfig } from "../../../../../src/benchmark-functionality-tests/test-lib/runner.ts";
-import type { TestCase } from "../../../../../src/benchmark-functionality-tests/test-lib/suite.ts";
+} from "../../../../../harness/benchmark-functionality-tests/test-lib/agents/test-case-agent.ts";
+import { makeBaseToolsPrompt } from "../../../../../harness/benchmark-functionality-tests/test-lib/common-prompts.ts";
+import type { TestContext } from "../../../../../harness/benchmark-functionality-tests/test-lib/context.ts";
+import type { TestResult } from "../../../../../harness/benchmark-functionality-tests/test-lib/report.ts";
+import type { TestRunnerConfig } from "../../../../../harness/benchmark-functionality-tests/test-lib/runner.ts";
+import type { TestCase } from "../../../../../harness/benchmark-functionality-tests/test-lib/suite.ts";
 import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
 import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import {

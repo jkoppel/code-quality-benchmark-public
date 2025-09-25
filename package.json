@@ -6,9 +6,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "cqb": "./dist/src/benchmark-runner.js",
-    "cqb-existing": "./dist/src/benchmark-runner-existing.js",
-    "cqb-test": "./dist/src/benchmark-test-functionality.js"
+    "cqb": "./dist/harness/benchmark-runner.js",
+    "cqb-existing": "./dist/harness/benchmark-runner-existing.js",
+    "cqb-test": "./dist/harness/benchmark-test-functionality.js"
   },
   "scripts": {
     "build": "tsdown",
@@ -22,10 +22,10 @@
     "format:staged": "biome format --write --staged --verbose --files-ignore-unknown=true --no-errors-on-unmatched",
     "dev": "tsdown --watch",
     "test": "vitest --passWithNoTests",
-    "benchmark": "npm run build && node dist/src/benchmark-runner.js",
-    "benchmark:existing": "npm run build && node dist/src/benchmark-runner-existing.js",
-    "benchmark:test-functionality": "npm run build && node dist/src/benchmark-test-functionality.js",
-    "check:command-refs": "claude -p 'Check that the error messages and comments and docs re the commands (eg npm run benchmark:test-functionality), eg in src/benchmark-runner.ts src/benchmark-runner-existing.ts src/benchmark-test-functionality.ts README.md, are in sync with what is actually the case (see package.json)'",
+    "benchmark": "npm run build && node dist/harness/benchmark-runner.js",
+    "benchmark:existing": "npm run build && node dist/harness/benchmark-runner-existing.js",
+    "benchmark:test-functionality": "npm run build && node dist/harness/benchmark-test-functionality.js",
+    "check:command-refs": "claude -p 'Check that the error messages and comments and docs re the commands (eg npm run benchmark:test-functionality), eg in harness/benchmark-runner.ts harness/benchmark-runner-existing.ts harness/benchmark-test-functionality.ts README.md, are in sync with what is actually the case (see package.json)'",
     "clean": "rm -rf dist"
   },
   "keywords": [

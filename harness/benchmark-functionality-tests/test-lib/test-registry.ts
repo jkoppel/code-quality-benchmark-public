@@ -14,7 +14,9 @@ import type { SuiteGenerationStrategy } from "./suite.ts";
 
 /** Path structure / conventions for test strategies */
 const TESTS_PATHS_CONVENTION = {
-  /** Root directory name for all benchmarks */
+  /** Root directory name for all benchmarks
+   * IMPT ASSUMPTION: $BENCHMARKS_ROOT is a sibling of the harness folder
+   */
   BENCHMARKS_ROOT: "benchmarks" as const,
   /** Directory name for functionality tests within each benchmark */
   TEST_DIR: "functionality-tests" as const,
@@ -40,7 +42,7 @@ export function getTestStrategyGlobPattern(): string {
 
 /**
  * Discover benchmarks with functionality tests by scanning the filesystem.
- * Depends on the TEST_STRATEGY_PATHS_CONVENTION.
+ * Depends on the TESTS_PATHS_CONVENTION.
  */
 export function discoverBenchmarksWithTests(): Array<{
   benchmarkSet: string;
@@ -102,7 +104,8 @@ async function getSuiteGenerationStrategy(
 
   const strategyPath = path
     .join(
-      "../", // Relative to the compiled location in dist/
+      // We assume $BENCHMARKS_ROOT is a sibling of the harness folder (in the compiled codebase structure)
+      "../",
       BENCHMARKS_ROOT,
       benchmarkSet,
       project,
@@ -143,7 +146,7 @@ async function getSuiteGenerationStrategy(
  *   "benchmarks/evolvability/todolist-easy" → { benchmarkSet: "evolvability", project: "todolist-easy" }
  *   "/path/to/benchmarks/evolvability/todolist-easy" → { benchmarkSet: "evolvability", project: "todolist-easy" }
  *
- * @param benchmarkPath - Path following the TEST_STRATEGY_CONVENTION
+ * @param benchmarkPath - Path following the TESTS_PATHS_CONVENTION
  */
 export function parseBenchmarkPath(benchmarkPath: string): {
   benchmarkSet: string;
