@@ -1,5 +1,5 @@
 import type * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import type { SutConfig, TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";

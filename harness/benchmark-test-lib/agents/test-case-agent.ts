@@ -1,7 +1,7 @@
 import dedent from "dedent";
 import type * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../../utils/logger/logger.ts";
-import { jsonStringify } from "../../../utils/logger/pretty.ts";
+import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
+import { jsonStringify } from "../../utils/logger/pretty.ts";
 import type { TestResult } from "../report.ts";
 import { TestResultSchema } from "../report.ts";
 import type { TestRunnerConfig } from "../runner.ts";
