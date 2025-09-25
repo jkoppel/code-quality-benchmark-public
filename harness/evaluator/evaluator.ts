@@ -10,18 +10,17 @@ import {
 import { codexAgent } from "../agents/feature-addition/codex-agent.ts";
 import type { CodingAgent } from "../agents/types.ts";
 import { getLoggerConfig, type Logger } from "../utils/logger/logger.ts";
+import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
+import { EvaluationError } from "./errors.ts";
 import {
-  type EvaluationConfig,
-  EvaluationError,
-  type EvaluationMetadata,
   type EvaluationResult,
   type InstanceResult,
   makeInvocationCompletedMempty,
   makeInvocationFailed,
   updateCompleted,
   updateFailed,
-} from "./types.ts";
+} from "./result.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
 
@@ -487,7 +486,5 @@ async function applyUpdatesToInstances(
 }
 
 export type { CodingAgent } from "../agents/types.ts";
-export type {
-  EvaluationConfig,
-  EvaluationResult,
-} from "./types.ts";
+export type { EvaluationConfig } from "./config.ts";
+export type { EvaluationResult } from "./result.ts";

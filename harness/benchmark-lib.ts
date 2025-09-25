@@ -7,7 +7,7 @@ import {
   type EvaluationResult,
   type InstanceResult,
   updateCompleted,
-} from "./evaluator/types.ts";
+} from "./evaluator/result.ts";
 import { eval as evaluate, evaluateUpdates } from "./index.ts";
 
 /**

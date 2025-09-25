@@ -1,9 +1,9 @@
 import { query } from "@anthropic-ai/claude-code";
-import type { InstanceResult } from "../../evaluator/types.ts";
+import type { InstanceResult } from "../../evaluator/result.ts";
 import {
   makeInvocationCompletedMempty,
   makeInvocationFailed,
-} from "../../evaluator/types.ts";
+} from "../../evaluator/result.ts";
 import {
   ClaudeCodeExecutionError,
   ClaudeCodeMaxTurnsError,
