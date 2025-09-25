@@ -1,3 +1,4 @@
+import { type ErrorObject, serializeError } from "serialize-error";
 import type { ClaudeAgentConfig } from "../agents/types.ts";
 import { DiffStats } from "./diff-stats.ts";
 
@@ -17,7 +18,6 @@ export interface EvaluationResult {
   totalScore: number;
 }
 
-// TODO: Refactor to use serialized errors later
 /** Scored result of an agent's feature addition attempt. */
 export interface InstanceResult {
   instanceId: string;
@@ -25,7 +25,7 @@ export interface InstanceResult {
   agentName: string;
   executionTimeMs: number;
   result:
-    | { type: "invocationFailed"; score: 0; error: Error }
+    | { type: "invocationFailed"; score: 0; error: ErrorObject }
     | { type: "invocationCompleted"; score: number; diffStats: DiffStats };
 }
 
@@ -62,7 +62,11 @@ export function makeInvocationFailed(
     folderPath,
     agentName,
     executionTimeMs,
-    result: { type: "invocationFailed", score: 0, error },
+    result: {
+      type: "invocationFailed",
+      score: 0,
+      error: serializeError(error, { useToJSON: true }),
+    },
   };
 }
 
@@ -87,7 +91,7 @@ export function updateCompleted(
 export function updateFailed(
   instance: InstanceResult,
 ): instance is InstanceResult & {
-  result: { type: "invocationFailed"; score: 0; error: Error };
+  result: { type: "invocationFailed"; score: 0; error: ErrorObject };
 } {
   return instance.result.type === "invocationFailed";
 }

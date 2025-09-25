@@ -1,3 +1,4 @@
+export type { ErrorObject } from "serialize-error";
 export { ClaudeAgent } from "./agents/feature-addition/claude-agent.ts";
 export { createShellAgent, defaultShellAgent } from "./agents/shell-agent.ts";
 export type {

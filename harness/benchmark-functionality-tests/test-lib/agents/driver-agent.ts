@@ -56,11 +56,23 @@ export type DriverAgentConfig = Pick<
   [19:54:29.622] ERROR: Failed to run tests: DriverAgentExecutionError: Failed to parse response: Driver agent response was not wrapped in <response> tags
 */
 
-export class DriverAgentMaxTurnsError extends ClaudeCodeMaxTurnsError {}
+export class DriverAgentMaxTurnsError extends ClaudeCodeMaxTurnsError {
+  static make(sessionId?: string): DriverAgentMaxTurnsError {
+    return new DriverAgentMaxTurnsError(undefined, sessionId);
+  }
+}
 
-export class DriverAgentExecutionError extends ClaudeCodeExecutionError {}
+export class DriverAgentExecutionError extends ClaudeCodeExecutionError {
+  static make(sessionId?: string): DriverAgentExecutionError {
+    return new DriverAgentExecutionError(undefined, sessionId);
+  }
+}
 
-export class DriverAgentUnexpectedTerminationError extends ClaudeCodeUnexpectedTerminationError {}
+export class DriverAgentUnexpectedTerminationError extends ClaudeCodeUnexpectedTerminationError {
+  static make(sessionId?: string): DriverAgentUnexpectedTerminationError {
+    return new DriverAgentUnexpectedTerminationError(undefined, sessionId);
+  }
+}
 
 /*************************************
            Driver Agent
@@ -117,14 +129,14 @@ export class DriverAgent {
         return message.result;
       }
       if (isMaxTurnsErrorResult(message)) {
-        throw new DriverAgentMaxTurnsError();
+        throw DriverAgentMaxTurnsError.make(this.getSessionId());
       }
       if (isExecutionErrorResult(message)) {
-        throw new DriverAgentExecutionError();
+        throw DriverAgentExecutionError.make(this.getSessionId());
       }
     }
 
-    throw new DriverAgentUnexpectedTerminationError();
+    throw DriverAgentUnexpectedTerminationError.make(this.getSessionId());
   }
 
   async query<T extends z.ZodType>(
@@ -151,10 +163,12 @@ export class DriverAgent {
       if (error instanceof z.ZodError) {
         throw new DriverAgentExecutionError(
           `Validation failed: ${z.prettifyError(error)}`,
+          this.getSessionId(),
         );
       }
       throw new DriverAgentExecutionError(
         `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
+        this.getSessionId(),
       );
     }
   }
@@ -167,6 +181,7 @@ export class DriverAgent {
 
     throw new DriverAgentExecutionError(
       "Driver agent response was not wrapped in <response> tags",
+      this.getSessionId(),
     );
   }
 
