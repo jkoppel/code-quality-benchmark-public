@@ -30,13 +30,13 @@ export function isSuccessResult(
 
 export function isMaxTurnsErrorResult(
   message: SDKMessage,
-): message is Extract<SDKResultMessage, { subtype: "error_max_turns" }> {
+): message is SDKResultMessage & { subtype: "error_max_turns" } {
   return message.type === "result" && message.subtype === "error_max_turns";
 }
 
 export function isExecutionErrorResult(
   message: SDKMessage,
-): message is Extract<SDKResultMessage, { subtype: "error_during_execution" }> {
+): message is SDKResultMessage & { subtype: "error_during_execution" } {
   return (
     message.type === "result" && message.subtype === "error_during_execution"
   );
