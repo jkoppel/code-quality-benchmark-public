@@ -1,6 +1,6 @@
-import { TestContext } from "../../../../harness/benchmark-functionality-tests/test-lib/context.ts";
-import type { SuiteGenerationStrategy } from "../../../../harness/benchmark-functionality-tests/test-lib/suite.ts";
-import { Suite } from "../../../../harness/benchmark-functionality-tests/test-lib/suite.ts";
+import { TestContext } from "../../../../harness/benchmark-test-lib/context.ts";
+import type { SuiteGenerationStrategy } from "../../../../harness/benchmark-test-lib/suite.ts";
+import { Suite } from "../../../../harness/benchmark-test-lib/suite.ts";
 import {
   basicColorPickerRgbSelection,
   basicMultiPaneCreation,

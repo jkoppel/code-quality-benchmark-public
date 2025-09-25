@@ -2,7 +2,7 @@ import { defineConfig } from "tsdown";
 import {
   discoverBenchmarksWithTests,
   getTestStrategyGlobPattern,
-} from "./harness/benchmark-functionality-tests/test-lib/test-registry.ts";
+} from "./harness/benchmark-test-lib/test-registry.ts";
 
 // Log what test strategies are being included in the build for debugging
 const testStrategies = discoverBenchmarksWithTests();

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { Logger } from "../../utils/logger/logger.ts";
-import { jsonStringify } from "../../utils/logger/pretty.ts";
+import type { Logger } from "../utils/logger/logger.ts";
+import { jsonStringify } from "../utils/logger/pretty.ts";
 
 /*********************************
     For report

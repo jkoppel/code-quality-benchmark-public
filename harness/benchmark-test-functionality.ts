@@ -10,15 +10,12 @@ import {
   run,
   string,
 } from "cmd-ts";
-import { Reporter } from "./benchmark-functionality-tests/test-lib/report.ts";
-import {
-  TestRunner,
-  TestRunnerConfig,
-} from "./benchmark-functionality-tests/test-lib/runner.ts";
+import { Reporter } from "./benchmark-test-lib/report.ts";
+import { TestRunner, TestRunnerConfig } from "./benchmark-test-lib/runner.ts";
 import {
   discoverBenchmarksWithTests,
   loadSuiteGenerationStrategy,
-} from "./benchmark-functionality-tests/test-lib/test-registry.ts";
+} from "./benchmark-test-lib/test-registry.ts";
 import { getLoggerConfig } from "./utils/logger/logger.ts";
 
 const cmd = command({
