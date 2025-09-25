@@ -1,6 +1,10 @@
 import { query } from "@anthropic-ai/claude-code";
 import type { InstanceResult } from "../../evaluator/types.ts";
 import {
+  makeInvocationCompletedMempty,
+  makeInvocationFailed,
+} from "../../evaluator/types.ts";
+import {
   ClaudeCodeExecutionError,
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
@@ -13,40 +17,6 @@ import {
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import type { ClaudeAgentConfig } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
-
-// TODO: These functions will be refactored and moved to a more central place in the next PR
-function makeSuccessInstanceResult(
-  instanceId: string,
-  folderPath: string,
-  executionTime: number,
-): InstanceResult {
-  return {
-    instanceId,
-    folderPath,
-    success: true,
-    error: undefined,
-    executionTime,
-    agentName: "claude",
-    score: 0,
-  };
-}
-
-function makeErrorInstanceResult(
-  instanceId: string,
-  folderPath: string,
-  error: Error,
-  executionTime: number,
-): InstanceResult {
-  return {
-    instanceId,
-    folderPath,
-    success: false,
-    error,
-    executionTime,
-    agentName: "claude",
-    score: 0,
-  };
-}
 
 export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
   return agent instanceof ClaudeAgent;
@@ -76,6 +46,7 @@ export class ClaudeAgent {
     };
   }
 
+  /** Feature addition agents return a 'mempty' version of InstanceResult that is subsequently augmented with a score by the evaluator */
   async applyUpdate(
     updatePrompt: string,
     folderPath: string,
@@ -111,9 +82,10 @@ export class ClaudeAgent {
         this.logger.info(
           `Successfully completed update for instance ${instanceId}`,
         );
-        return makeSuccessInstanceResult(
+        return makeInvocationCompletedMempty(
           instanceId,
           folderPath,
+          "claude",
           Date.now() - startTime,
         );
       }
@@ -125,11 +97,12 @@ export class ClaudeAgent {
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeErrorInstanceResult(
+        return makeInvocationFailed(
           instanceId,
           folderPath,
-          error,
+          "claude",
           Date.now() - startTime,
+          error,
         );
       }
 
@@ -140,11 +113,12 @@ export class ClaudeAgent {
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeErrorInstanceResult(
+        return makeInvocationFailed(
           instanceId,
           folderPath,
-          error,
+          "claude",
           Date.now() - startTime,
+          error,
         );
       }
     }
@@ -155,11 +129,12 @@ export class ClaudeAgent {
         error: error.message,
       })
       .error(`Failed to apply update for instance ${instanceId}`);
-    return makeErrorInstanceResult(
+    return makeInvocationFailed(
       instanceId,
       folderPath,
-      error,
+      "claude",
       Date.now() - startTime,
+      error,
     );
   }
 }

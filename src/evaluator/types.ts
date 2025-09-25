@@ -1,5 +1,5 @@
 import type { ClaudeAgentConfig } from "../agents/types.ts";
-import type { DiffStats } from "./diff-stats.ts";
+import { DiffStats } from "./diff-stats.ts";
 
 export interface EvaluationConfig {
   workspaceRoot?: string;
@@ -17,15 +17,53 @@ export interface EvaluationResult {
   totalScore: number;
 }
 
+// TODO: Refactor to use serialized errors later
+/** Scored result of an agent's feature addition attempt. */
 export interface InstanceResult {
   instanceId: string;
   folderPath: string;
-  success: boolean;
-  error?: Error;
-  executionTime: number;
-  diffStats?: DiffStats;
   agentName: string;
-  score: number;
+  executionTimeMs: number;
+  result:
+    | { type: "invocationFailed"; score: 0; error: Error }
+    | { type: "invocationCompleted"; score: number; diffStats: DiffStats };
+}
+
+// Helper functions for agents to create InstanceResult with mempty values
+
+export function makeInvocationCompletedMempty(
+  instanceId: string,
+  folderPath: string,
+  agentName: string,
+  executionTimeMs: number,
+): InstanceResult {
+  return {
+    instanceId,
+    folderPath,
+    agentName,
+    executionTimeMs,
+    result: {
+      type: "invocationCompleted",
+      score: 0,
+      diffStats: DiffStats.mempty(),
+    },
+  };
+}
+
+export function makeInvocationFailed(
+  instanceId: string,
+  folderPath: string,
+  agentName: string,
+  executionTimeMs: number,
+  error: Error,
+): InstanceResult {
+  return {
+    instanceId,
+    folderPath,
+    agentName,
+    executionTimeMs,
+    result: { type: "invocationFailed", score: 0, error },
+  };
 }
 
 export interface EvaluationMetadata {
@@ -34,6 +72,24 @@ export interface EvaluationMetadata {
   totalDuration: number;
   agentsUsed: string[];
   config: EvaluationConfig;
+}
+
+// Type guard functions
+
+export function updateCompleted(
+  instance: InstanceResult,
+): instance is InstanceResult & {
+  result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
+} {
+  return instance.result.type === "invocationCompleted";
+}
+
+export function updateFailed(
+  instance: InstanceResult,
+): instance is InstanceResult & {
+  result: { type: "invocationFailed"; score: 0; error: Error };
+} {
+  return instance.result.type === "invocationFailed";
 }
 
 export class EvaluationError extends Error {

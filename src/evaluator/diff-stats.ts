@@ -10,7 +10,7 @@ export class DiffStats {
     0,1,0,"b"
     1,0,0,"b/d"
     ```
-  * 
+  *
   * ```
     ❯ git diff -M | diffstat -tm
     INSERTED,DELETED,MODIFIED,FILENAME
@@ -18,6 +18,11 @@ export class DiffStats {
     3,0,1,"path/someotherfile.txt"
     ```
  */
+
+  static mempty(): DiffStats {
+    return new DiffStats({ filesChanged: 0, linesChanged: 0 }, []);
+  }
+
   static makeFromDiffstat(diffstatOutput: string): DiffStats {
     const lines = diffstatOutput.trim().split("\n");
 
