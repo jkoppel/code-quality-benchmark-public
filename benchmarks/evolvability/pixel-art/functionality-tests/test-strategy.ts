@@ -1,6 +1,6 @@
-import { TestContext } from "../../../test-lib/context.ts";
-import type { SuiteGenerationStrategy } from "../../../test-lib/suite.ts";
-import { Suite } from "../../../test-lib/suite.ts";
+import { TestContext } from "../../../../src/benchmark-functionality-tests/test-lib/context.ts";
+import type { SuiteGenerationStrategy } from "../../../../src/benchmark-functionality-tests/test-lib/suite.ts";
+import { Suite } from "../../../../src/benchmark-functionality-tests/test-lib/suite.ts";
 import {
   basicColorPickerRgbSelection,
   basicMultiPaneCreation,

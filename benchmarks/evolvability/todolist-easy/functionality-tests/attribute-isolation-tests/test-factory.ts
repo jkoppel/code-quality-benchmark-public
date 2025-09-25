@@ -3,11 +3,11 @@ import type * as z from "zod";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
-} from "../../../../test-lib/agents/test-case-agent.ts";
-import type { TestContext } from "../../../../test-lib/context.ts";
-import type { TestResult } from "../../../../test-lib/report.ts";
-import type { TestRunnerConfig } from "../../../../test-lib/runner.ts";
-import type { TestCase } from "../../../../test-lib/suite.ts";
+} from "../../../../../src/benchmark-functionality-tests/test-lib/agents/test-case-agent.ts";
+import type { TestContext } from "../../../../../src/benchmark-functionality-tests/test-lib/context.ts";
+import type { TestResult } from "../../../../../src/benchmark-functionality-tests/test-lib/report.ts";
+import type { TestRunnerConfig } from "../../../../../src/benchmark-functionality-tests/test-lib/runner.ts";
+import type { TestCase } from "../../../../../src/benchmark-functionality-tests/test-lib/suite.ts";
 import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
 import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import type { TaskAttribute } from "../shared/task-attribute.ts";

@@ -1,87 +1,172 @@
 /**
- * Registry of test suite paths.
- *
- * Key format: "<benchmarkSet>/<task>" (matches benchmark path structure)
- * Values are import paths relative to this file.
- * Test files must be named "functional-tests.ts" and export a Suite as default.
- *
- * IMPORTANT: This relies on the path convention benchmarks/<benchmarkSet>/<task>
- * where `benchmarkSet` is the name of the benchmark set, e.g. 'evolvability',
- * and `task` is the specific challenge within that set, e.g. 'todolist-easy'.
+ * This module discovers functionality test strategies from the filesystem
+ * following the conventions outlined below.
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
+import dedent from "dedent";
 import type { SuiteGenerationStrategy } from "./suite.ts";
 
+//------------------------------------------------------
+//  Path Structure / Conventions
+//------------------------------------------------------
+
+/** Path structure / conventions for test strategies */
+const TESTS_PATHS_CONVENTION = {
+  /** Root directory name for all benchmarks */
+  BENCHMARKS_ROOT: "benchmarks" as const,
+  /** Directory name for functionality tests within each benchmark */
+  TEST_DIR: "functionality-tests" as const,
+  /** Filename for test strategy modules (without extension) */
+  BASE_FILENAME: "test-strategy" as const,
+  /** Expected benchmark path pattern */
+  BENCHMARK_PATTERN: "benchmarks/<benchmarkSet>/<project>" as const,
+  /** Computed: Number of path segments after the benchmarks root */
+  get DEPTH_AFTER_ROOT() {
+    return this.BENCHMARK_PATTERN.split("/").length - 1;
+  },
+} as const;
+
+/** Derive glob pattern for build tools from the convention */
+export function getTestStrategyGlobPattern(): string {
+  const { BENCHMARKS_ROOT, TEST_DIR, BASE_FILENAME } = TESTS_PATHS_CONVENTION;
+  return `${BENCHMARKS_ROOT}/**/${TEST_DIR}/${BASE_FILENAME}.ts`;
+}
+
+//------------------------------------------------------
+//  Test Strategy Discovery
+//------------------------------------------------------
+
+/**
+ * Discover benchmarks with functionality tests by scanning the filesystem.
+ * Depends on the TEST_STRATEGY_PATHS_CONVENTION.
+ */
+export function discoverBenchmarksWithTests(): Array<{
+  benchmarkSet: string;
+  project: string;
+  testDir: string;
+}> {
+  const { BENCHMARKS_ROOT, TEST_DIR, BASE_FILENAME } = TESTS_PATHS_CONVENTION;
+
+  return fs
+    .readdirSync(BENCHMARKS_ROOT)
+    .filter((name) =>
+      fs.statSync(path.join(BENCHMARKS_ROOT, name)).isDirectory(),
+    )
+    .flatMap((benchmarkSet) =>
+      fs
+        .readdirSync(path.join(BENCHMARKS_ROOT, benchmarkSet))
+        .filter((name) =>
+          fs
+            .statSync(path.join(BENCHMARKS_ROOT, benchmarkSet, name))
+            .isDirectory(),
+        )
+        .map((project) => ({ benchmarkSet, project, testDir: TEST_DIR })),
+    )
+    .filter(({ benchmarkSet, project }) =>
+      fs.existsSync(
+        path.join(
+          BENCHMARKS_ROOT,
+          benchmarkSet,
+          project,
+          TEST_DIR,
+          `${BASE_FILENAME}.ts`,
+        ),
+      ),
+    );
+}
+
+//------------------------------------------------------
+//  Load test suite generation strategy
+//------------------------------------------------------
+
+/**
+ * Load a test suite generation strategy for a specific benchmark set.
+ * Main entry point for strategy loading.
+ */
 export async function loadSuiteGenerationStrategy(
   benchmarkPath: string,
 ): Promise<SuiteGenerationStrategy> {
-  const { benchmarkSet, task } = parseBenchmarkPath(benchmarkPath);
-  return await getSuiteGenerationStrategy(benchmarkSet, task);
+  const { benchmarkSet, project } = parseBenchmarkPath(benchmarkPath);
+  return await getSuiteGenerationStrategy(benchmarkSet, project);
 }
 
+/** Dynamically import the test suite generation strategy using convention-based path */
+async function getSuiteGenerationStrategy(
+  /** e.g., "evolvability" */
+  benchmarkSet: string,
+  project: string,
+): Promise<SuiteGenerationStrategy> {
+  const { BENCHMARKS_ROOT, TEST_DIR, BASE_FILENAME } = TESTS_PATHS_CONVENTION;
+
+  const strategyPath = path
+    .join(
+      "../", // Relative to the compiled location in dist/
+      BENCHMARKS_ROOT,
+      benchmarkSet,
+      project,
+      TEST_DIR,
+      BASE_FILENAME,
+    )
+    .concat(".js");
+  // Dynamic imports use the compiled js
+  // Using dynamic import to avoid circular dependencies since test files import stuff from the test-lib
+
+  try {
+    return (await import(strategyPath)).default;
+  } catch (error) {
+    const available = discoverBenchmarksWithTests()
+      .map(
+        ({ benchmarkSet, project, testDir }) =>
+          `${benchmarkSet}/${project}/${testDir}`,
+      )
+      .join(", ");
+
+    throw new Error(dedent`
+      Failed to load test strategy for ${benchmarkSet}/${project}.
+      Path: ${strategyPath}
+      Available strategies: ${available}
+      Error: ${error}
+    `);
+  }
+}
+
+//------------------------------------------------------
+//  Helper: Parse Benchmark Path
+//------------------------------------------------------
+
 /**
- * Parses a benchmark path following the convention: benchmarks/<benchmarkSet>/<task>
+ * Parses a benchmark path following the convention: benchmarks/<benchmarkSet>/<project>
  *
  * Examples:
- *   "benchmarks/evolvability/todolist-easy" → { benchmarkSet: "evolvability", task: "todolist-easy" }
- *   "/path/to/benchmarks/evolvability/todolist-easy" → { benchmarkSet: "evolvability", task: "todolist-easy" }
+ *   "benchmarks/evolvability/todolist-easy" → { benchmarkSet: "evolvability", project: "todolist-easy" }
+ *   "/path/to/benchmarks/evolvability/todolist-easy" → { benchmarkSet: "evolvability", project: "todolist-easy" }
  *
- * @param benchmarkPath - Path following benchmarks/<benchmarkSet>/<task> convention
+ * @param benchmarkPath - Path following the TEST_STRATEGY_CONVENTION
  */
 export function parseBenchmarkPath(benchmarkPath: string): {
   benchmarkSet: string;
-  task: string;
+  project: string;
 } {
   const parts = benchmarkPath.split("/");
+  const { BENCHMARKS_ROOT, BENCHMARK_PATTERN, DEPTH_AFTER_ROOT } =
+    TESTS_PATHS_CONVENTION;
+  const benchmarksIndex = parts.indexOf(BENCHMARKS_ROOT);
 
-  // Find the "benchmarks" segment
-  const benchmarksIndex = parts.indexOf("benchmarks");
-
-  if (benchmarksIndex === -1 || benchmarksIndex + 2 >= parts.length) {
-    throw new Error(
-      `Invalid benchmark path: ${benchmarkPath}. Expected: benchmarks/<benchmarkSet>/<task>`,
-    );
+  if (
+    benchmarksIndex === -1 ||
+    benchmarksIndex + DEPTH_AFTER_ROOT >= parts.length
+  ) {
+    throw new Error(dedent`
+      Invalid benchmark path: ${benchmarkPath}
+      Expected format: ${BENCHMARK_PATTERN}
+      Example: benchmarks/evolvability/pixel-art
+    `);
   }
 
   return {
-    benchmarkSet: parts[benchmarksIndex + 1], // e.g., "evolvability"
-    task: parts[benchmarksIndex + 2], // e.g., "todolist-easy"
+    benchmarkSet: parts[benchmarksIndex + 1],
+    project: parts[benchmarksIndex + 2],
   };
-}
-
-// Module paths without extensions --- '.js' is appended during dynamic import (dynamic imports use the compiled js)
-export const TEST_STRATEGY_REGISTRY = {
-  "evolvability/todolist-easy":
-    "./benchmark-functionality-tests/tests/evolvability/todolist-easy/test-strategy",
-  "evolvability/pixel-art":
-    "./benchmark-functionality-tests/tests/evolvability/pixel-art/test-strategy",
-  // Add more entries like: 'evolvability/calculator': '../tests/evolvability/calculator/test-strategy',
-} as const;
-
-/** Dynamically import the test suite generation strategy for the benchmark set */
-export async function getSuiteGenerationStrategy(
-  benchmarkSet: string,
-  task: string,
-): Promise<SuiteGenerationStrategy> {
-  const key = `${benchmarkSet}/${task}`;
-
-  if (!(key in TEST_STRATEGY_REGISTRY)) {
-    throw new Error(
-      `No test suite generation strategy found for ${key}. Available: ${Object.keys(TEST_STRATEGY_REGISTRY).join(", ")}`,
-    );
-  }
-
-  const strategyPath =
-    TEST_STRATEGY_REGISTRY[key as keyof typeof TEST_STRATEGY_REGISTRY];
-
-  // Using dynamic import to avoid circular dependencies since test files import the Suite type from ./suite.ts
-  // TODO: add tests / checks of the registry, and perhaps run these checks on npm run check
-  return (
-    // Dynamic imports use the compiled js
-    (
-      (await import(`${strategyPath}.js`)) as {
-        default: SuiteGenerationStrategy;
-      }
-    ).default
-  );
 }
