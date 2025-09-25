@@ -103,7 +103,7 @@
         "useNamespaceKeyword": "error"
       }
     },
-    "includes": ["**", "!src/utils/process-launcher.ts"]
+    "includes": ["**", "!harness/utils/process-launcher.ts"]
   },
   "javascript": { "formatter": { "quoteStyle": "double" }, "globals": [] },
   "overrides": [
@@ -204,7 +204,7 @@
       }
     },
     {
-      "includes": ["src/**/*.ts"],
+      "includes": ["harness/**/*.ts"],
       "javascript": { "globals": [] },
       "linter": { "rules": { "suspicious": { "useAwait": "error" } } }
     }

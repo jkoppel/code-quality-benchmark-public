@@ -15,7 +15,10 @@ import {
   TestRunner,
   TestRunnerConfig,
 } from "./benchmark-functionality-tests/test-lib/runner.ts";
-import { loadSuiteGenerationStrategy } from "./benchmark-functionality-tests/test-lib/test-registry.ts";
+import {
+  discoverBenchmarksWithTests,
+  loadSuiteGenerationStrategy,
+} from "./benchmark-functionality-tests/test-lib/test-registry.ts";
 import { getLoggerConfig } from "./utils/logger/logger.ts";
 
 const cmd = command({
@@ -72,6 +75,15 @@ const cmd = command({
   }) => {
     const resolvedBenchmarkPath = path.resolve(benchmarkPath);
     const { logger, logLevel } = getLoggerConfig();
+
+    // Log available test strategies for debugging
+    const availableStrategies = discoverBenchmarksWithTests();
+    logger.debug(
+      `Found ${availableStrategies.length} available test strategies:`,
+    );
+    availableStrategies.forEach(({ benchmarkSet, project, testDir }) => {
+      logger.debug(`  - ${benchmarkSet}/${project}/${testDir}`);
+    });
 
     try {
       // This errors if config values not valid

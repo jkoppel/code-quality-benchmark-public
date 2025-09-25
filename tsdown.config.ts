@@ -1,26 +1,31 @@
 import { defineConfig } from "tsdown";
-import { TEST_STRATEGY_REGISTRY } from "./src/benchmark-functionality-tests/test-lib/test-registry.ts";
+import {
+  discoverBenchmarksWithTests,
+  getTestStrategyGlobPattern,
+} from "./harness/benchmark-functionality-tests/test-lib/test-registry.ts";
 
-const testStrategyFiles = Object.values(TEST_STRATEGY_REGISTRY).map((path) => {
-  const [registryRelativePath, projectRelativePath] = [
-    "./benchmark-functionality-tests/",
-    "./src/benchmark-functionality-tests/",
-  ];
-  return path.replace(registryRelativePath, projectRelativePath).concat(".ts");
+// Log what test strategies are being included in the build for debugging
+const testStrategies = discoverBenchmarksWithTests();
+console.log("------------------------------------------------------------");
+console.log(
+  `Including ${testStrategies.length} functionality test suites in build:`,
+);
+testStrategies.forEach(({ benchmarkSet, project, testDir }) => {
+  console.log(`  - ${benchmarkSet}/${project}/${testDir}`);
 });
+console.log("------------------------------------------------------------");
 
 export default defineConfig({
   entry: [
-    "./src/index.ts",
+    "./harness/index.ts",
 
     // Benchmark scripts
-    "./src/benchmark-runner.ts",
-    "./src/benchmark-runner-existing.ts",
-    "./src/benchmark-test-functionality.ts",
+    "./harness/benchmark-runner.ts",
+    "./harness/benchmark-runner-existing.ts",
+    "./harness/benchmark-test-functionality.ts",
 
-    // Test strategy files -- need to include them here
-    // because they are not otherwise reachable from the other entry points (they are dynamically imported)
-    ...testStrategyFiles,
+    // Test strategy files - using convention-based glob pattern
+    `./${getTestStrategyGlobPattern()}`,
   ],
   format: ["esm"],
   dts: true,

@@ -1,6 +1,6 @@
 import dedent from "dedent";
-import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.ts";
-import type { SutConfig } from "../../../test-lib/runner.ts";
+import { makeBaseToolsPrompt } from "../../../../harness/benchmark-functionality-tests/test-lib/common-prompts.ts";
+import type { SutConfig } from "../../../../harness/benchmark-functionality-tests/test-lib/runner.ts";
 
 /***************************************
       makeBackgroundPrompt helper

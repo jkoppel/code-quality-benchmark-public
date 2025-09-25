@@ -1,12 +1,12 @@
 import dedent from "dedent";
 import type * as z from "zod";
-import { jsonStringify } from "../../../../utils/logger/pretty.ts";
-import type { DiscoveryAgent } from "../../../test-lib/agents/discovery-agent.ts";
-import { makeBaseToolsPrompt } from "../../../test-lib/common-prompts.ts";
-import { TestContext } from "../../../test-lib/context.ts";
-import type { TestRunnerConfig } from "../../../test-lib/runner.ts";
-import type { SuiteGenerationStrategy } from "../../../test-lib/suite.ts";
-import { Suite } from "../../../test-lib/suite.ts";
+import type { DiscoveryAgent } from "../../../../harness/benchmark-functionality-tests/test-lib/agents/discovery-agent.ts";
+import { makeBaseToolsPrompt } from "../../../../harness/benchmark-functionality-tests/test-lib/common-prompts.ts";
+import { TestContext } from "../../../../harness/benchmark-functionality-tests/test-lib/context.ts";
+import type { TestRunnerConfig } from "../../../../harness/benchmark-functionality-tests/test-lib/runner.ts";
+import type { SuiteGenerationStrategy } from "../../../../harness/benchmark-functionality-tests/test-lib/suite.ts";
+import { Suite } from "../../../../harness/benchmark-functionality-tests/test-lib/suite.ts";
+import { jsonStringify } from "../../../../harness/utils/logger/pretty.ts";
 import {
   attributeIsolationDueDate,
   attributeIsolationPriority,
