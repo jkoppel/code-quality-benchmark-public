@@ -91,7 +91,7 @@ export class ClaudeAgent {
       }
 
       if (isMaxTurnsErrorResult(message)) {
-        const error = new ClaudeCodeMaxTurnsError();
+        const error = ClaudeCodeMaxTurnsError.make(message.session_id);
         this.logger
           .withMetadata({
             error: error.message,
@@ -107,7 +107,7 @@ export class ClaudeAgent {
       }
 
       if (isExecutionErrorResult(message)) {
-        const error = new ClaudeCodeExecutionError();
+        const error = ClaudeCodeExecutionError.make(message.session_id);
         this.logger
           .withMetadata({
             error: error.message,
