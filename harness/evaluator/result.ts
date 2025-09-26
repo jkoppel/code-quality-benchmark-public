@@ -22,7 +22,33 @@ export interface InstanceResult {
     | { type: "invocationCompleted"; score: number; diffStats: DiffStats };
 }
 
-// Helper functions for agents to create InstanceResult with mempty values
+// Type guard functions
+
+export function invocationCompleted(
+  instance: InstanceResult,
+): instance is InstanceResult & {
+  result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
+} {
+  return instance.result.type === "invocationCompleted";
+}
+
+export function invocationFailed(
+  instance: InstanceResult,
+): instance is InstanceResult & {
+  result: { type: "invocationFailed"; score: 0; error: ErrorObject };
+} {
+  return instance.result.type === "invocationFailed";
+}
+
+// Accessors
+
+export function getDiffStats(instance: InstanceResult): DiffStats | undefined {
+  return instance.result.type === "invocationCompleted"
+    ? instance.result.diffStats
+    : undefined;
+}
+
+// Helper factory functions
 
 export function makeInvocationCompletedMempty(
   instanceId: string,
@@ -61,22 +87,4 @@ export function makeInvocationFailed(
       error: serializeError(error, { useToJSON: true }),
     },
   };
-}
-
-// Type guard functions
-
-export function invocationCompleted(
-  instance: InstanceResult,
-): instance is InstanceResult & {
-  result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
-} {
-  return instance.result.type === "invocationCompleted";
-}
-
-export function invocationFailed(
-  instance: InstanceResult,
-): instance is InstanceResult & {
-  result: { type: "invocationFailed"; score: 0; error: ErrorObject };
-} {
-  return instance.result.type === "invocationFailed";
 }
