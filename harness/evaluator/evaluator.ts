@@ -64,28 +64,7 @@ export async function evaluateUpdates(
     0,
   );
 
-  // Save complete results to JSON
-  const resultsPath = path.join(workspaceDir, "evaluation-results.json");
-  await fs.writeJson(
-    resultsPath,
-    {
-      updatePrompt,
-      originalProgramPath,
-      updates: updateResults,
-      totalScore,
-      metadata: {
-        startTime,
-        endTime: new Date(),
-        totalDuration: Date.now() - startTime.getTime(),
-        agentsUsed: ["claude-code", "codex"],
-        config,
-      },
-    },
-    { spaces: 2 },
-  );
-
-  logger.withMetadata({ path: resultsPath }).info("Saved complete results to:");
-
+  // Make EvaluationResult
   const endTime = new Date();
   const metadata: EvaluationMetadata = {
     startTime,
@@ -94,7 +73,6 @@ export async function evaluateUpdates(
     agentsUsed: ["claude-code", "codex"],
     config,
   };
-
   const result: EvaluationResult = {
     initialPrompt: "", // Not applicable for update-only evaluation
     updatePrompt,

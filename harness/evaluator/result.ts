@@ -43,9 +43,7 @@ export function invocationFailed(
 // Accessors
 
 export function getDiffStats(instance: InstanceResult): DiffStats | undefined {
-  return instance.result.type === "invocationCompleted"
-    ? instance.result.diffStats
-    : undefined;
+  return invocationCompleted(instance) ? instance.result.diffStats : undefined;
 }
 
 // Helper factory functions
