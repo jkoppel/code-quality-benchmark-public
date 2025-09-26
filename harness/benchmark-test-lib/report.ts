@@ -27,6 +27,15 @@ export interface TestSuiteResults extends Report {
   results: TestResult[];
 }
 
+export function allTestsPassed(result: TestSuiteResults): boolean {
+  return result.summary.passed === result.summary.total;
+}
+
+/** Each test in the suite either passed or was skipped */
+export function hasNoFailures(result: TestSuiteResults): boolean {
+  return result.summary.failed === 0;
+}
+
 export const TestResultSchema = z.object({
   name: z.string(),
   outcome: z.discriminatedUnion("status", [
