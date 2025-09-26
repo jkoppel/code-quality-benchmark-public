@@ -1,22 +1,35 @@
 {
+  "include": [
+    "benchmarks/**/*.ts", // For functionality tests
+    "harness/**/*"
+  ],
+  "exclude": ["node_modules", "dist", "benchmarks/**/premade-pre-refactor/**"],
   "compilerOptions": {
+    //========== Target and module ==========
     "target": "ES2022",
     "module": "ES2022",
-    "lib": ["ES2022"],
-    "strict": true,
-    "esModuleInterop": true,
+    "moduleResolution": "bundler", // We use tsdown -- see tsdown.config.ts
     "skipLibCheck": true,
+    "noUncheckedSideEffectImports": true,
+    "resolveJsonModule": true,
+
+    //========== Type checking ==========
+    "strict": true,
     "forceConsistentCasingInFileNames": true,
+    "exactOptionalPropertyTypes": false, // ambivalent; setting to false mostly for stylistic / ergo reasons
+    "allowUnreachableCode": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitReturns": true,
+    "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
+    // may want noPropertyAccessFromIndexSignature and noUncheckedIndexedAccess in the future
+
+    //========== Emitted files ==========
     "allowImportingTsExtensions": true,
-    "noEmit": true
-  },
-  "include": ["benchmarks/**/*.ts", "harness/**/*"],
-  "exclude": ["node_modules", "dist", "benchmarks/**/premade-pre-refactor/**"]
+
+    //========== Emitted files ==========
+    // Using tsc only for type-checking
+    "noEmit": true // hence no need to specify rootDir or outDir
+  }
 }

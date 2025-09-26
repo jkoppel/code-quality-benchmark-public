@@ -57,19 +57,21 @@ export type DriverAgentConfig = Pick<
 */
 
 export class DriverAgentMaxTurnsError extends ClaudeCodeMaxTurnsError {
-  static make(sessionId?: string): DriverAgentMaxTurnsError {
+  static override make(sessionId?: string): DriverAgentMaxTurnsError {
     return new DriverAgentMaxTurnsError(undefined, sessionId);
   }
 }
 
 export class DriverAgentExecutionError extends ClaudeCodeExecutionError {
-  static make(sessionId?: string): DriverAgentExecutionError {
+  static override make(sessionId?: string): DriverAgentExecutionError {
     return new DriverAgentExecutionError(undefined, sessionId);
   }
 }
 
 export class DriverAgentUnexpectedTerminationError extends ClaudeCodeUnexpectedTerminationError {
-  static make(sessionId?: string): DriverAgentUnexpectedTerminationError {
+  static override make(
+    sessionId?: string,
+  ): DriverAgentUnexpectedTerminationError {
     return new DriverAgentUnexpectedTerminationError(undefined, sessionId);
   }
 }
