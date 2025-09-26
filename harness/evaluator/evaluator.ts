@@ -50,108 +50,76 @@ export async function evaluateUpdates(
     })
     .info("Starting update evaluation");
 
-  try {
-    const updateResults = await applyUpdatesToInstances(
-      originalProgramPath,
-      updatePrompt,
-      workspaceDir,
-      config,
-      logger,
-    );
+  const updateResults = await applyUpdatesToInstances(
+    originalProgramPath,
+    updatePrompt,
+    workspaceDir,
+    config,
+    logger,
+  );
 
-    // Calculate total score
-    const totalScore = updateResults.reduce(
-      (sum, result) => sum + result.result.score,
-      0,
-    );
+  // Calculate total score
+  const totalScore = updateResults.reduce(
+    (sum, result) => sum + result.result.score,
+    0,
+  );
 
-    // Save complete results to JSON
-    const resultsPath = path.join(workspaceDir, "evaluation-results.json");
-    await fs.writeJson(
-      resultsPath,
-      {
-        updatePrompt,
-        originalProgramPath,
-        updates: updateResults,
-        totalScore,
-        metadata: {
-          startTime,
-          endTime: new Date(),
-          totalDuration: Date.now() - startTime.getTime(),
-          agentsUsed: ["claude-code", "codex"],
-          config,
-        },
-      },
-      { spaces: 2 },
-    );
+  // Make EvaluationResult
+  const endTime = new Date();
+  const metadata: EvaluationMetadata = {
+    startTime,
+    endTime,
+    totalDuration: endTime.getTime() - startTime.getTime(),
+    agentsUsed: ["claude-code", "codex"],
+    config,
+  };
+  const result: EvaluationResult = {
+    initialPrompt: "", // Not applicable for update-only evaluation
+    updatePrompt,
+    originalProgramPath,
+    updates: updateResults,
+    metadata,
+    totalScore,
+  };
 
-    logger
-      .withMetadata({ path: resultsPath })
-      .info("Saved complete results to:");
+  // Save complete results to JSON
+  const resultsPath = path.join(workspaceDir, "evaluation-results.json");
+  await fs.writeJson(resultsPath, result, { spaces: 2 });
+  logger.withMetadata({ path: resultsPath }).info("Saved complete results to:");
 
-    const endTime = new Date();
-    const metadata: EvaluationMetadata = {
-      startTime,
-      endTime,
-      totalDuration: endTime.getTime() - startTime.getTime(),
-      agentsUsed: ["claude-code", "codex"],
-      config,
-    };
+  // Log diff stats
+  const diffStats = updateResults.map((r) => ({
+    instance: r.instanceId,
+    stats: invocationCompleted(r) ? r.result.diffStats : DiffStats.mempty(),
+  }));
 
-    const result: EvaluationResult = {
-      initialPrompt: "", // Not applicable for update-only evaluation
-      updatePrompt,
-      originalProgramPath,
-      updates: updateResults,
-      metadata,
-      totalScore,
-    };
+  logger
+    .withMetadata({
+      duration: metadata.totalDuration,
+      successfulUpdates: updateResults.filter(invocationCompleted).length,
+      failedUpdates: updateResults.filter(invocationFailed).length,
+      diffStats,
+    })
+    .info("Evaluation completed successfully");
 
-    // Log diff stats
-    const diffStats = updateResults.map((r) => ({
-      instance: r.instanceId,
-      stats: invocationCompleted(r) ? r.result.diffStats : DiffStats.mempty(),
-    }));
+  // Also print diff stats to console for visibility
+  console.log("\n=== Git Diff Statistics & Scores ===");
+  updateResults.forEach((r) => {
+    if (invocationCompleted(r)) {
+      console.log(
+        `${r.instanceId} [${r.agentName}]: ${r.result.diffStats.getNumFilesChanged()} files, ${r.result.diffStats.getNumLinesChanged()} lines, score: ${r.result.score}`,
+      );
+    } else {
+      console.log(
+        `${r.instanceId} [${r.agentName}]: Invocation failed, score: ${r.result.score}`,
+      );
+    }
+  });
+  console.log(`Total Score: ${totalScore}`);
+  console.log("===========================\n");
 
-    logger
-      .withMetadata({
-        duration: metadata.totalDuration,
-        successfulUpdates: updateResults.filter(invocationCompleted).length,
-        failedUpdates: updateResults.filter(invocationFailed).length,
-        diffStats,
-      })
-      .info("Evaluation completed successfully");
-
-    // Also print diff stats to console for visibility
-    console.log("\n=== Git Diff Statistics & Scores ===");
-    updateResults.forEach((r) => {
-      if (invocationCompleted(r)) {
-        console.log(
-          `${r.instanceId} [${r.agentName}]: ${r.result.diffStats.getNumFilesChanged()} files, ${r.result.diffStats.getNumLinesChanged()} lines, score: ${r.result.score}`,
-        );
-      } else {
-        console.log(
-          `${r.instanceId} [${r.agentName}]: Invocation failed, score: ${r.result.score}`,
-        );
-      }
-    });
-    console.log(`Total Score: ${totalScore}`);
-    console.log("===========================\n");
-
-    return result;
-  } catch (error) {
-    logger
-      .withMetadata({
-        error: error instanceof Error ? error.message : String(error),
-      })
-      .error("Evaluation failed");
-
-    throw error instanceof EvaluationError
-      ? error
-      : new EvaluationError("Evaluation failed", "EVALUATION_FAILED", error);
-  } finally {
-    logger.info("Update evaluation completed");
-  }
+  logger.info("Update evaluation completed");
+  return result;
 }
 
 export async function evaluate(
