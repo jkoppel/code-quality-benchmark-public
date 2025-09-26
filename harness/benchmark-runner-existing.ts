@@ -2,6 +2,7 @@
 
 import * as path from "node:path";
 import { runBenchmarkWithExistingCode } from "./benchmark-lib.ts";
+import { checkDependenciesPresent } from "./utils/validate-dependencies.ts";
 
 // CLI interface
 const benchmarkPath = process.argv[2];
@@ -19,6 +20,9 @@ if (!benchmarkPath || !existingCodePath) {
 
 const resolvedBenchmarkPath = path.resolve(benchmarkPath);
 const resolvedCodePath = path.resolve(existingCodePath);
+
+// Upfront checks for required dependencies
+await checkDependenciesPresent();
 
 runBenchmarkWithExistingCode(resolvedBenchmarkPath, resolvedCodePath).catch(
   (error) => {
