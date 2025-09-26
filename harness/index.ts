@@ -18,5 +18,8 @@ export type {
 } from "./evaluator/config.ts";
 export { EvaluationError } from "./evaluator/errors.ts";
 export { evaluate as eval, evaluateUpdates } from "./evaluator/evaluator.ts";
-export type { EvaluationResult, InstanceResult } from "./evaluator/result.ts";
+export type {
+  EvaluationResult,
+  InstanceResult,
+} from "./evaluator/result.ts";
 export type { Logger, LogLevel } from "./utils/logger/logger.ts";

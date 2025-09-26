@@ -2,10 +2,14 @@ import { type ErrorObject, serializeError } from "serialize-error";
 import type { EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 
+export type OriginalProgramSource =
+  | { type: "pre-existing" } // i.e, supplied by the user
+  | { type: "generated"; initialPrompt: string };
+
 export interface EvaluationResult {
-  initialPrompt: string;
-  updatePrompt: string;
   originalProgramPath: string;
+  originalProgramSource: OriginalProgramSource;
+  updatePrompt: string;
   updates: InstanceResult[];
   metadata: EvaluationMetadata;
   totalScore: number;
@@ -85,4 +89,20 @@ export function makeInvocationFailed(
       error: serializeError(error, { useToJSON: true }),
     },
   };
+}
+
+// Helper functions for working with EvaluationResult
+
+export function originalProgramWasGeneratedFromScratch(
+  result: EvaluationResult,
+): result is EvaluationResult & {
+  originalProgramSource: { type: "generated" };
+} {
+  return result.originalProgramSource.type === "generated";
+}
+
+export function getInitialPrompt(result: EvaluationResult): string | undefined {
+  return originalProgramWasGeneratedFromScratch(result)
+    ? result.originalProgramSource.initialPrompt
+    : undefined;
 }
