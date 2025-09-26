@@ -27,6 +27,33 @@ export interface TestSuiteResults extends Report {
   results: TestResult[];
 }
 
+export function allTestsPassed(result: TestSuiteResults): boolean {
+  return result.summary.passed === result.summary.total;
+}
+
+/** Each test in the suite either passed or was skipped */
+export function hasNoFailures(result: TestSuiteResults): boolean {
+  return result.summary.failed === 0;
+}
+
+export interface TestResult {
+  name: string;
+  outcome:
+    | {
+        status: "passed";
+        howTested: string;
+      }
+    | {
+        status: "failed";
+        reason: string;
+        howTested: string;
+      }
+    | {
+        status: "skipped";
+        reason: string;
+      };
+}
+
 export const TestResultSchema = z.object({
   name: z.string(),
   outcome: z.discriminatedUnion("status", [
@@ -48,9 +75,7 @@ export const TestResultSchema = z.object({
       reason: z.string(),
     }),
   ]),
-});
-
-export type TestResult = z.infer<typeof TestResultSchema>;
+}) satisfies z.ZodType<TestResult>;
 
 // interface TestGroupResults {
 //   name: string;
