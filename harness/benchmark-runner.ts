@@ -3,6 +3,7 @@
 import * as path from "node:path";
 import { runBenchmarkWithNewCode } from "./benchmark-lib.ts";
 import { createShellAgent } from "./index.ts";
+import { checkDependenciesPresent } from "./utils/validate-dependencies.ts";
 
 // CLI interface
 const benchmarkPath = process.argv[2];
@@ -20,6 +21,9 @@ if (!benchmarkPath || !agentScriptPath) {
 
 const resolvedBenchmarkPath = path.resolve(benchmarkPath);
 const resolvedScriptPath = path.resolve(agentScriptPath);
+
+// Upfront checks for required dependencies
+await checkDependenciesPresent();
 
 // Create coding agent from shell script
 const codingAgent = createShellAgent(resolvedScriptPath);
