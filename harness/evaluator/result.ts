@@ -2,9 +2,9 @@ import { type ErrorObject, serializeError } from "serialize-error";
 import type { EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 
-export type OriginalProgramSource =
-  | { type: "pre-existing" } // i.e, supplied by the user
-  | { type: "generatedInRun"; initialPrompt: string };
+/*********************
+   EvaluationResult
+**********************/
 
 export interface EvaluationResult {
   originalProgramPath: string;
@@ -14,6 +14,22 @@ export interface EvaluationResult {
   metadata: EvaluationMetadata;
   totalScore: number;
 }
+
+export type OriginalProgramSource =
+  | { type: "pre-existing" } // i.e, supplied by the user
+  | { type: "generatedInRun"; initialPrompt: string };
+
+export function wasGeneratedInRun(
+  result: EvaluationResult,
+): result is EvaluationResult & {
+  originalProgramSource: { type: "generatedInRun" };
+} {
+  return result.originalProgramSource.type === "generatedInRun";
+}
+
+/*********************
+   InstanceResult
+**********************/
 
 /** Scored result of an agent's feature addition attempt. */
 export interface InstanceResult {
@@ -42,12 +58,6 @@ export function invocationFailed(
   result: { type: "invocationFailed"; score: 0; error: ErrorObject };
 } {
   return instance.result.type === "invocationFailed";
-}
-
-// Accessors
-
-export function getDiffStats(instance: InstanceResult): DiffStats | undefined {
-  return invocationCompleted(instance) ? instance.result.diffStats : undefined;
 }
 
 // Helper factory functions
@@ -91,12 +101,8 @@ export function makeInvocationFailed(
   };
 }
 
-// Helper functions for working with EvaluationResult
+// Accessors
 
-export function wasGeneratedInRun(
-  result: EvaluationResult,
-): result is EvaluationResult & {
-  originalProgramSource: { type: "generatedInRun" };
-} {
-  return result.originalProgramSource.type === "generatedInRun";
+export function getDiffStats(instance: InstanceResult): DiffStats | undefined {
+  return invocationCompleted(instance) ? instance.result.diffStats : undefined;
 }
