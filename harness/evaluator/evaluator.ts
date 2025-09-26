@@ -74,7 +74,7 @@ export async function evaluateUpdates(
     config,
   };
   const result: EvaluationResult = {
-    initialPrompt: "", // Not applicable for update-only evaluation
+    originalProgramSource: { type: "pre-existing" },
     updatePrompt,
     originalProgramPath,
     updates: updateResults,
@@ -159,15 +159,18 @@ export async function evaluate(
     );
 
     // Now run the update evaluation
-    const result = await evaluateUpdates(
+    const updateResult = await evaluateUpdates(
       originalProgramPath,
       updatePrompt,
       tempDir.name,
       config,
     );
 
-    // Set the initial prompt in the result
-    result.initialPrompt = initialPrompt;
+    // Create the final result with generated program source
+    const result: EvaluationResult = {
+      ...updateResult,
+      originalProgramSource: { type: "generatedInRun", initialPrompt },
+    };
 
     return result;
   } catch (error) {
