@@ -74,7 +74,7 @@ export async function evaluateUpdates(
     config,
   };
   const result: EvaluationResult = {
-    initialPrompt: "", // Not applicable for update-only evaluation
+    originalProgramSource: { type: "pre-existing" },
     updatePrompt,
     originalProgramPath,
     updates: updateResults,
@@ -129,7 +129,6 @@ export async function evaluate(
   config: EvaluationConfig = {},
 ): Promise<EvaluationResult> {
   const { logger } = getLoggerConfig();
-
   logger
     .withMetadata({
       initialPrompt: initialPrompt.substring(0, 100),
@@ -159,17 +158,18 @@ export async function evaluate(
     );
 
     // Now run the update evaluation
-    const result = await evaluateUpdates(
+    const updateResult = await evaluateUpdates(
       originalProgramPath,
       updatePrompt,
       tempDir.name,
       config,
     );
 
-    // Set the initial prompt in the result
-    result.initialPrompt = initialPrompt;
-
-    return result;
+    // Note that the original program was generated as part of this run; add the initial prompt
+    return {
+      ...updateResult,
+      originalProgramSource: { type: "generatedInRun", initialPrompt },
+    };
   } catch (error) {
     logger
       .withMetadata({
