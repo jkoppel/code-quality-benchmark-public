@@ -113,8 +113,14 @@ async function getSuiteGenerationStrategy(
       BASE_FILENAME,
     )
     .concat(".js");
-  // Dynamic imports use the compiled js
-  // Using dynamic import to avoid circular dependencies since test files import stuff from the test-lib
+  /*
+    Dynamic imports use the compiled js
+    Using dynamic import to avoid circular dependencies since test files import stuff from the test-lib
+
+    TODO: I'm not sure, but I'm tempted to think I prefer static imports
+    (since that way we will statically know if there's some issue with importing the functionality tests).
+    Haven't looked too much into the circular dependencies issue I ran into at the start --- there may be an easy workaround
+    */
 
   try {
     return (await import(strategyPath)).default;
