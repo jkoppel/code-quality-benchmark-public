@@ -129,7 +129,6 @@ export async function evaluate(
   config: EvaluationConfig = {},
 ): Promise<EvaluationResult> {
   const { logger } = getLoggerConfig();
-
   logger
     .withMetadata({
       initialPrompt: initialPrompt.substring(0, 100),
@@ -166,13 +165,11 @@ export async function evaluate(
       config,
     );
 
-    // Create the final result with generated program source
-    const result: EvaluationResult = {
+    // Note that the original program was generated as part of this run; add the initial prompt
+    return {
       ...updateResult,
       originalProgramSource: { type: "generatedInRun", initialPrompt },
     };
-
-    return result;
   } catch (error) {
     logger
       .withMetadata({
