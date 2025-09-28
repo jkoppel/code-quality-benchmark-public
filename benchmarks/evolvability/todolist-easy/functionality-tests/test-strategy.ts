@@ -1,4 +1,5 @@
 import dedent from "dedent";
+import { Effect } from "effect";
 import type * as z from "zod";
 import type { DiscoveryAgent } from "../../../../harness/benchmark-test-lib/agents/discovery-agent.ts";
 import { makeBaseToolsPrompt } from "../../../../harness/benchmark-test-lib/common-prompts.ts";
@@ -26,12 +27,11 @@ export const appInfoId = "todoListAppInfo";
 ************************************************/
 
 export const strategy: SuiteGenerationStrategy = {
-  async discover(config: TestRunnerConfig, discoveryAgent: DiscoveryAgent) {
-    return await discoverTodoListAppInfo(discoveryAgent, config);
+  discover(config: TestRunnerConfig, discoveryAgent: DiscoveryAgent) {
+    return discoverTodoListAppInfo(discoveryAgent, config);
   },
 
-  // biome-ignore lint/suspicious/useAwait: This generateSuite doesn't need to be async, but there could be SuiteGenerationStrategies with generateSuites that do need to be async
-  async generateSuite(_config: TestRunnerConfig, context: TestContext) {
+  generateSuite(_config: TestRunnerConfig, context: TestContext) {
     const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
 
     // Dynamically generate tests based on the app info:
@@ -67,10 +67,12 @@ export const strategy: SuiteGenerationStrategy = {
       attributeIsolationDueDate,
     ];
 
-    return new Suite("Todolist Functionality Tests", [
-      ...staticTests,
-      ...dynamicTests,
-    ]);
+    return Effect.succeed(
+      new Suite("Todolist Functionality Tests", [
+        ...staticTests,
+        ...dynamicTests,
+      ]),
+    );
   },
 };
 
@@ -80,12 +82,13 @@ export default strategy;
          discoverTodoListAppInfo
 ************************************************/
 
-export async function discoverTodoListAppInfo(
+export function discoverTodoListAppInfo(
   discoveryAgent: DiscoveryAgent,
   config: TestRunnerConfig,
-): Promise<TestContext> {
-  const appInfo = await discoveryAgent.query(
-    dedent`
+) {
+  return Effect.gen(function* () {
+    const appInfo = yield* discoveryAgent.query(
+      dedent`
       You are a senior developer trying to piece together a preliminary understanding of this program,
       to help downstream testers test its functionality.
 
@@ -112,10 +115,11 @@ export async function discoverTodoListAppInfo(
       If there's stuff you can't figure out, try to at least offer suggestions for what paths through the UI to investigate or look at.
       Your goal is *not* to actually test the app -- it's merely to investigate the decision decisions, enumerate all the UI / views for the various pieces of state, and flag potential issues for other testers to investigate in more depth.
       That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
-    TodoListAppInfo,
-  );
-  config
-    .getLogger()
-    .info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
-  return new TestContext(new Map([[appInfoId, appInfo]]));
+      TodoListAppInfo,
+    );
+    config
+      .getLogger()
+      .info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
+    return new TestContext(new Map([[appInfoId, appInfo]]));
+  });
 }

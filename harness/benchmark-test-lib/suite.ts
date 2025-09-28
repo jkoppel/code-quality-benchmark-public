@@ -18,10 +18,13 @@ export interface SuiteGenerationStrategy {
   discover(
     config: TestRunnerConfig,
     discoveryAgent: DiscoveryAgent,
-  ): Promise<TestContext>;
+  ): Effect.Effect<TestContext, DriverAgentError, never>;
 
   /** Generate the Suite using the gathered info. */
-  generateSuite(config: TestRunnerConfig, context: TestContext): Promise<Suite>;
+  generateSuite(
+    config: TestRunnerConfig,
+    context: TestContext,
+  ): Effect.Effect<Suite, never, never>;
 }
 
 /**************************

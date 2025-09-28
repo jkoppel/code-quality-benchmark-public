@@ -14,6 +14,7 @@
 import path from "node:path";
 import dedent from "dedent";
 import detect from "detect-port";
+import { Effect } from "effect";
 import fs from "fs-extra";
 import pLimit from "p-limit";
 import type { Logger, LogLevel } from "../utils/logger/logger.ts";
@@ -25,7 +26,6 @@ import {
   type TestCaseAgentOptions,
 } from "./agents/test-case-agent.ts";
 import type { TestContext } from "./context.ts";
-import type { TestSuiteResults } from "./report.ts";
 import type { Suite, SuiteGenerationStrategy } from "./suite.ts";
 
 /** Config for the system under test */
@@ -120,93 +120,109 @@ export class TestRunner {
     return this.config.getLogger();
   }
 
-  async executeStrategy(
-    strategy: SuiteGenerationStrategy,
-  ): Promise<TestSuiteResults> {
-    const maxListenersExceededWarningHandler = (warning: Error) => {
-      if (warning.name === "MaxListenersExceededWarning") {
-        this.getLogger().error(
-          `MaxListenersExceededWarning detected: ${warning.message}`,
+  executeStrategy(strategy: SuiteGenerationStrategy) {
+    const self = this;
+    return Effect.gen(function* () {
+      const maxListenersExceededWarningHandler = (warning: Error) => {
+        if (warning.name === "MaxListenersExceededWarning") {
+          self
+            .getLogger()
+            .error(`MaxListenersExceededWarning detected: ${warning.message}`);
+          throw new Error(dedent`
+            Test generation/execution aborted due to MaxListenersExceededWarning.
+            Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
+            I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
+        }
+      };
+
+      process.on("warning", maxListenersExceededWarningHandler);
+
+      try {
+        const server = yield* Effect.promise(() =>
+          startDevServer(self.config.getSutConfig(), self.getLogger()),
         );
-        throw new Error(dedent`
-          Test generation/execution aborted due to MaxListenersExceededWarning.
-          Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
-          I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
+
+        try {
+          const context = yield* strategy.discover(
+            self.config,
+            DiscoveryAgent.make(self.getConfig(), self.getLogger()),
+          );
+          const suite = yield* strategy.generateSuite(
+            self.getConfig(),
+            context,
+          );
+          return yield* self.runTestSuite_(context, suite);
+        } finally {
+          yield* Effect.promise(() => server[Symbol.asyncDispose]());
+        }
+      } finally {
+        process.off("warning", maxListenersExceededWarningHandler);
       }
-    };
-
-    process.on("warning", maxListenersExceededWarningHandler);
-
-    try {
-      await using _server = await startDevServer(
-        this.config.getSutConfig(),
-        this.getLogger(),
-      );
-
-      const context = await strategy.discover(
-        this.config,
-        DiscoveryAgent.make(this.getConfig(), this.getLogger()),
-      );
-      const suite = await strategy.generateSuite(this.getConfig(), context);
-      return await this.runTestSuite_(context, suite);
-    } finally {
-      process.off("warning", maxListenersExceededWarningHandler);
-    }
+    });
   }
 
   /** Run a test suite without starting dev server */
-  private async runTestSuite_(
-    context: TestContext,
-    suite: Suite,
-  ): Promise<TestSuiteResults> {
-    const startTime = Date.now();
+  private runTestSuite_(context: TestContext, suite: Suite) {
+    const self = this;
+    return Effect.gen(function* () {
+      const startTime = Date.now();
 
-    // Run tests
-    const limit = pLimit(this.getConfig().getMaxConcurrentTests());
-    const results = await Promise.all(
-      suite.getTests().map((test) =>
-        limit(async () => {
-          const makeAgent = (options: TestCaseAgentOptions) =>
-            TestCaseAgent.make(options, this.getConfig(), this.getLogger());
-          const result = await test.run(makeAgent, context, this.config);
+      // Run tests
+      const limit = pLimit(self.getConfig().getMaxConcurrentTests());
+      const testEffects = suite.getTests().map((test) => {
+        const makeAgent = (options: TestCaseAgentOptions) =>
+          TestCaseAgent.make(options, self.getConfig(), self.getLogger());
+        return Effect.gen(function* () {
+          const result = yield* test.run(makeAgent, context, self.config);
           result.name = test.descriptiveName;
           return result;
-        }),
-      ),
-    );
+        });
+      });
 
-    const duration = Date.now() - startTime;
-    const passed = results.filter((r) => r.outcome.status === "passed").length;
-    const failed = results.filter((r) => r.outcome.status === "failed").length;
-    const skipped = results.filter(
-      (r) => r.outcome.status === "skipped",
-    ).length;
+      const results = yield* Effect.all(testEffects, {
+        concurrency: self.getConfig().getMaxConcurrentTests(),
+      });
 
-    return {
-      name: suite.getName(),
-      sutFolderPath: this.config.getSutConfig().folderPath,
-      timestamp: new Date(startTime).toISOString(),
-      summary: {
-        total: results.length,
-        passed,
-        failed,
-        skipped,
-        duration,
-      },
-      results,
-    };
+      const duration = Date.now() - startTime;
+      const passed = results.filter(
+        (r) => r.outcome.status === "passed",
+      ).length;
+      const failed = results.filter(
+        (r) => r.outcome.status === "failed",
+      ).length;
+      const skipped = results.filter(
+        (r) => r.outcome.status === "skipped",
+      ).length;
+
+      return {
+        name: suite.getName(),
+        sutFolderPath: self.config.getSutConfig().folderPath,
+        timestamp: new Date(startTime).toISOString(),
+        summary: {
+          total: results.length,
+          passed,
+          failed,
+          skipped,
+          duration,
+        },
+        results,
+      };
+    });
   }
 
-  async runTestSuite(
-    context: TestContext,
-    suite: Suite,
-  ): Promise<TestSuiteResults> {
-    await using _server = await startDevServer(
-      this.config.getSutConfig(),
-      this.getLogger(),
-    );
+  runTestSuite(context: TestContext, suite: Suite) {
+    const self = this;
+    return Effect.gen(function* () {
+      const server = yield* Effect.promise(() =>
+        startDevServer(self.config.getSutConfig(), self.getLogger()),
+      );
 
-    return await this.runTestSuite_(context, suite);
+      try {
+        return yield* self.runTestSuite_(context, suite);
+      } finally {
+        yield* Effect.promise(() => server[Symbol.asyncDispose]());
+      }
+    });
   }
 }
 

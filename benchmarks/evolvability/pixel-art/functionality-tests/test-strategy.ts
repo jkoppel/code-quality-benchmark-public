@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { TestContext } from "../../../../harness/benchmark-test-lib/context.ts";
 import type { SuiteGenerationStrategy } from "../../../../harness/benchmark-test-lib/suite.ts";
 import { Suite } from "../../../../harness/benchmark-test-lib/suite.ts";
@@ -12,14 +13,12 @@ import {
 } from "./test-cases.ts";
 
 export const strategy: SuiteGenerationStrategy = {
-  // biome-ignore lint/suspicious/useAwait: this is a no-op
-  async discover() {
+  discover() {
     // No discovery needed for these static tests
-    return new TestContext(new Map());
+    return Effect.succeed(new TestContext(new Map()));
   },
 
-  // biome-ignore lint/suspicious/useAwait: This generateSuite doesn't need to be async, but there could be SuiteGenerationStrategies with generateSuites that do need to be async
-  async generateSuite() {
+  generateSuite() {
     const staticTests = [
       // Multiple Panes
       basicMultiPaneCreation,
@@ -37,7 +36,9 @@ export const strategy: SuiteGenerationStrategy = {
       bitmapLoadingIsolation,
     ];
 
-    return new Suite("Pixel Art Functionality Tests", staticTests);
+    return Effect.succeed(
+      new Suite("Pixel Art Functionality Tests", staticTests),
+    );
   },
 };
 
