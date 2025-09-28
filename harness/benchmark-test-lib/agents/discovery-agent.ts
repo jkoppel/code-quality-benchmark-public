@@ -1,9 +1,10 @@
+import type { Effect } from "effect";
 import type * as z from "zod";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import type { SutConfig, TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
-import { DriverAgent } from "./driver-agent.ts";
+import { DriverAgent, type DriverAgentError } from "./driver-agent.ts";
 
 export class DiscoveryAgent {
   static make(
@@ -30,10 +31,10 @@ export class DiscoveryAgent {
   ) {}
 
   // TODO: can think about limiting what tools agent can get
-  async query<T extends z.ZodType>(
+  query<T extends z.ZodType>(
     prompt: string,
     outputSchema: T,
-  ): Promise<z.infer<T>> {
-    return await this.driver.query(prompt, outputSchema);
+  ): Effect.Effect<z.infer<T>, DriverAgentError, never> {
+    return this.driver.query(prompt, outputSchema);
   }
 }

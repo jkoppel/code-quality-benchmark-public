@@ -1,5 +1,7 @@
 import dedent from "dedent";
+import type { Effect } from "effect";
 import type * as z from "zod";
+import type { DriverAgentError } from "../../../../../harness/benchmark-test-lib/agents/driver-agent.ts";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
@@ -56,14 +58,14 @@ export function makePerMutatorStateSyncTestsForStatus(
       .join(" ");
     return {
       descriptiveName: `Per-mutator state synch: ${attribute.getPrettyName()}/${mutatorName}/${stateTransition.from}->${stateTransition.to}`,
-      async run(
+      run(
         makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
         _context: TestContext,
         config: TestRunnerConfig,
-      ): Promise<TestResult> {
+      ): Effect.Effect<TestResult, DriverAgentError, never> {
         const agent = makeAgent({ additionalCapabilities: [] });
         // TODO: Consider putting info on the views for ALL attributes -- test case agent sometimes gets confused about what some bit of ui represents
-        return await agent.check(dedent`
+        return agent.check(dedent`
             You are testing synchronization of ${attribute.getPrettyName()} in a Todo list app.
             ${makeBaseToolsPrompt(config.getSutConfig())}
             
@@ -95,16 +97,16 @@ export function makePerMutatorStateSyncTestsForStatus(
 export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
   return {
     descriptiveName: `Test state synchronization of ${attribute.getPrettyName()} state (if applicable)`,
-    async run(
+    run(
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
-    ): Promise<TestResult> {
+    ): Effect.Effect<TestResult, DriverAgentError, never> {
       const agent = makeAgent({ additionalCapabilities: [] });
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
       config.getLogger().withMetadata(appInfo).debug("AppInfo fixture");
 
-      return await agent.check(dedent`
+      return agent.check(dedent`
         ${makeBackgroundPrompt(config.getSutConfig())}
         Here is some information that someone else gathered about the views of or UI elements for the ${attribute.getPrettyName()} (and related things):
         ${attribute.getInfoForStateSynchTests(appInfo)}

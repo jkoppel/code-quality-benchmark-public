@@ -1,73 +1,66 @@
 /**
- * Base Claude Code error types that correspond to Claude Code SDK result types
+ * Claude Code error types using Effect's Data.TaggedError
  *
- * Most of these map directly to the result subtypes from the Claude Code SDK.
+ * These map directly to the result subtypes from the Claude Code SDK.
  */
 
-export abstract class ClaudeCodeError extends Error {
-  /** The error type reported by Claude Code, if available */
-  abstract readonly originalErrorType?: string;
+import { Data } from "effect";
 
-  constructor(
-    message?: string,
-    public readonly sessionId?: string,
-  ) {
-    super(message);
+export type ClaudeCodeError =
+  | ClaudeCodeMaxTurnsError
+  | ClaudeCodeExecutionError
+  | ClaudeCodeUnexpectedTerminationError;
+
+interface ClaudeCodeErrorProps {
+  readonly message?: string;
+  readonly sessionId?: string;
+}
+
+export class ClaudeCodeMaxTurnsError extends Data.TaggedError(
+  "ClaudeCodeMaxTurnsError",
+)<
+  ClaudeCodeErrorProps & {
+    readonly originalErrorType: "error_max_turns";
   }
-
-  toJSON() {
-    return {
-      __errorClass: this.constructor.name,
-      originalErrorType: this.originalErrorType,
-      message: this.message,
-      name: this.name,
-      stack: this.stack,
-      sessionId: this.sessionId,
-    };
+> {
+  static make(sessionId?: string) {
+    return new ClaudeCodeMaxTurnsError({
+      message: "Maximum turns exceeded during Claude Code session",
+      sessionId,
+      originalErrorType: "error_max_turns" as const,
+    });
   }
 }
 
-export class ClaudeCodeMaxTurnsError extends ClaudeCodeError {
-  readonly originalErrorType = "error_max_turns";
-
-  constructor(
-    message = "Maximum turns exceeded during Claude Code session",
-    sessionId?: string,
-  ) {
-    super(message, sessionId);
+export class ClaudeCodeExecutionError extends Data.TaggedError(
+  "ClaudeCodeExecutionError",
+)<
+  ClaudeCodeErrorProps & {
+    readonly originalErrorType: "error_during_execution";
   }
-
-  static make(sessionId?: string): ClaudeCodeMaxTurnsError {
-    return new ClaudeCodeMaxTurnsError(undefined, sessionId);
-  }
-}
-
-export class ClaudeCodeExecutionError extends ClaudeCodeError {
-  readonly originalErrorType = "error_during_execution";
-
-  constructor(
-    message = "Error occurred during Claude Code execution",
-    sessionId?: string,
-  ) {
-    super(message, sessionId);
-  }
-
+> {
   static make(sessionId?: string): ClaudeCodeExecutionError {
-    return new ClaudeCodeExecutionError(undefined, sessionId);
+    return new ClaudeCodeExecutionError({
+      message: "Error occurred during Claude Code execution",
+      sessionId,
+      originalErrorType: "error_during_execution" as const,
+    });
   }
 }
 
-export class ClaudeCodeUnexpectedTerminationError extends ClaudeCodeError {
-  readonly originalErrorType = undefined;
-
-  constructor(
-    message = "Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)",
-    sessionId?: string,
-  ) {
-    super(message, sessionId);
+export class ClaudeCodeUnexpectedTerminationError extends Data.TaggedError(
+  "ClaudeCodeUnexpectedTerminationError",
+)<
+  ClaudeCodeErrorProps & {
+    readonly originalErrorType?: undefined;
   }
-
+> {
   static make(sessionId?: string): ClaudeCodeUnexpectedTerminationError {
-    return new ClaudeCodeUnexpectedTerminationError(undefined, sessionId);
+    return new ClaudeCodeUnexpectedTerminationError({
+      message:
+        "Claude Code stream ended without sending expected result message (network issues, service bugs, etc.)",
+      sessionId,
+      originalErrorType: undefined,
+    });
   }
 }

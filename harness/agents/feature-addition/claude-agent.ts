@@ -1,14 +1,19 @@
 import { query } from "@anthropic-ai/claude-code";
-import type { InstanceResult } from "../../evaluator/result.ts";
+import { Effect, Option } from "effect";
 import {
-  makeInvocationCompletedMempty,
-  makeInvocationFailed,
+  type InstanceResult,
+  makeInstanceResult,
 } from "../../evaluator/result.ts";
 import {
+  type ClaudeCodeError,
   ClaudeCodeExecutionError,
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
 } from "../../utils/claude-code-sdk/errors.ts";
+import {
+  consumeUntilTerminal,
+  type StreamConversionError,
+} from "../../utils/claude-code-sdk/response-stream.ts";
 import {
   isExecutionErrorResult,
   isMaxTurnsErrorResult,
@@ -47,12 +52,16 @@ export class ClaudeAgent {
   }
 
   /** Feature addition agents return a 'mempty' version of InstanceResult that is subsequently augmented with a score by the evaluator */
-  async applyUpdate(
+  applyUpdate(
     updatePrompt: string,
     folderPath: string,
     instanceId: string,
     port: number,
-  ): Promise<InstanceResult> {
+  ): Effect.Effect<
+    InstanceResult,
+    ClaudeCodeError | StreamConversionError,
+    never
+  > {
     const startTime = Date.now();
 
     this.logger
@@ -64,25 +73,41 @@ export class ClaudeAgent {
 
     const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
 
-    for await (const message of query({
+    const response = query({
       prompt: fullPrompt,
       options: this.config,
-    })) {
-      this.logger
-        .withMetadata({ instanceId, claudeCode: message })
-        .debug("Response");
+    });
+
+    const self = this;
+    return Effect.gen(function* () {
+      const maybeTerminalMessage = yield* consumeUntilTerminal({
+        response,
+        logger: self.logger,
+      });
+
+      if (Option.isNone(maybeTerminalMessage)) {
+        const error = ClaudeCodeUnexpectedTerminationError.make();
+        self.logger
+          .withMetadata({
+            error: error.message,
+          })
+          .error(`Failed to apply update for instance ${instanceId}`);
+        return yield* error;
+      }
+
+      const message = maybeTerminalMessage.value;
 
       if (isSuccessResult(message)) {
-        this.logger
+        self.logger
           .withMetadata({
             instanceId,
             duration: message.duration_ms,
           })
           .debug(`Claude completed`);
-        this.logger.info(
+        self.logger.info(
           `Successfully completed update for instance ${instanceId}`,
         );
-        return makeInvocationCompletedMempty(
+        return makeInstanceResult(
           instanceId,
           folderPath,
           "claude",
@@ -92,49 +117,32 @@ export class ClaudeAgent {
 
       if (isMaxTurnsErrorResult(message)) {
         const error = ClaudeCodeMaxTurnsError.make(message.session_id);
-        this.logger
+        self.logger
           .withMetadata({
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeInvocationFailed(
-          instanceId,
-          folderPath,
-          "claude",
-          Date.now() - startTime,
-          error,
-        );
+        return yield* error;
       }
 
       if (isExecutionErrorResult(message)) {
         const error = ClaudeCodeExecutionError.make(message.session_id);
-        this.logger
+        self.logger
           .withMetadata({
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeInvocationFailed(
-          instanceId,
-          folderPath,
-          "claude",
-          Date.now() - startTime,
-          error,
-        );
+        return yield* error;
       }
-    }
 
-    const error = new ClaudeCodeUnexpectedTerminationError();
-    this.logger
-      .withMetadata({
-        error: error.message,
-      })
-      .error(`Failed to apply update for instance ${instanceId}`);
-    return makeInvocationFailed(
-      instanceId,
-      folderPath,
-      "claude",
-      Date.now() - startTime,
-      error,
-    );
+      // should be impossible
+      const error = ClaudeCodeUnexpectedTerminationError.make();
+      self.logger
+        .withMetadata({
+          error: error.message,
+        })
+        .error(`Failed to apply update for instance ${instanceId}`);
+      return yield* error;
+    });
   }
 }

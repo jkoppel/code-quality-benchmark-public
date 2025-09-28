@@ -1,4 +1,3 @@
-import { type ErrorObject, serializeError } from "serialize-error";
 import type { EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 
@@ -10,7 +9,7 @@ export interface EvaluationResult {
   originalProgramPath: string;
   originalProgramSource: OriginalProgramSource;
   updatePrompt: string;
-  updates: InstanceResult[];
+  updates: (InstanceResult | AgentInvocationFailure)[];
   metadata: EvaluationMetadata;
   totalScore: number;
 }
@@ -27,82 +26,91 @@ export function wasGeneratedInRun(
   return result.originalProgramSource.type === "generatedInRun";
 }
 
-/*********************
-   InstanceResult
-**********************/
+/*********************************************
+   Feature Addition Agent Invocation Results
+**********************************************/
 
-/** Scored result of an agent's feature addition attempt. */
-export interface InstanceResult {
+interface InstanceMetadata {
   instanceId: string;
   folderPath: string;
   agentName: string;
   executionTimeMs: number;
-  result:
-    | { type: "invocationFailed"; score: 0; error: ErrorObject }
-    | { type: "invocationCompleted"; score: number; diffStats: DiffStats };
+}
+
+/** Successful result from a feature addition agent's attempt. */
+export interface InstanceResult extends InstanceMetadata {
+  type: "InstanceResult";
+  diffStats: DiffStats;
+  score: number;
+}
+
+/** Info from a feature addition agent's attempt that failed */
+export interface AgentInvocationFailure extends InstanceMetadata {
+  type: "AgentInvocationFailure";
+  score: 0;
+  cause: string; // Pretty-printed from Effect's Cause
+  errorType?: string; // Optional: original error _tag
 }
 
 // Type guard functions
 
-export function invocationCompleted(
-  instance: InstanceResult,
-): instance is InstanceResult & {
-  result: { type: "invocationCompleted"; score: number; diffStats: DiffStats };
-} {
-  return instance.result.type === "invocationCompleted";
+export function isInvocationSuccess(
+  result: InstanceResult | AgentInvocationFailure,
+): result is InstanceResult {
+  return result.type === "InstanceResult";
 }
 
-export function invocationFailed(
-  instance: InstanceResult,
-): instance is InstanceResult & {
-  result: { type: "invocationFailed"; score: 0; error: ErrorObject };
-} {
-  return instance.result.type === "invocationFailed";
+export function isInvocationFailure(
+  result: InstanceResult | AgentInvocationFailure,
+): result is AgentInvocationFailure {
+  return result.type === "AgentInvocationFailure";
 }
 
 // Helper factory functions
 
-export function makeInvocationCompletedMempty(
+export function makeInstanceResult(
   instanceId: string,
   folderPath: string,
   agentName: string,
   executionTimeMs: number,
+  diffStats: DiffStats = DiffStats.mempty(),
+  score: number = 0,
 ): InstanceResult {
   return {
+    type: "InstanceResult",
     instanceId,
     folderPath,
     agentName,
     executionTimeMs,
-    result: {
-      type: "invocationCompleted",
-      score: 0,
-      diffStats: DiffStats.mempty(),
-    },
+    diffStats,
+    score,
   };
 }
 
-export function makeInvocationFailed(
+export function makeAgentInvocationFailure(
   instanceId: string,
   folderPath: string,
   agentName: string,
   executionTimeMs: number,
-  error: Error,
-): InstanceResult {
+  cause: string,
+  errorType?: string,
+): AgentInvocationFailure {
   return {
+    type: "AgentInvocationFailure",
     instanceId,
     folderPath,
     agentName,
     executionTimeMs,
-    result: {
-      type: "invocationFailed",
-      score: 0,
-      error: serializeError(error, { useToJSON: true }),
-    },
+    cause,
+    errorType,
+    score: 0,
   };
 }
 
 // Accessors
 
-export function getDiffStats(instance: InstanceResult): DiffStats | undefined {
-  return invocationCompleted(instance) ? instance.result.diffStats : undefined;
+export function getDiffStats(
+  result: InstanceResult | AgentInvocationFailure,
+): DiffStats | undefined {
+  return isInvocationSuccess(result) ? result.diffStats : undefined;
 }

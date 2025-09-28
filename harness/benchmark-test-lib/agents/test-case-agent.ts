@@ -1,4 +1,5 @@
 import dedent from "dedent";
+import { Effect } from "effect";
 import type * as z from "zod";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
 import { jsonStringify } from "../../utils/logger/pretty.ts";
@@ -8,7 +9,7 @@ import type { TestRunnerConfig } from "../runner.ts";
 import { BASE_CONFIG } from "./config/base-driver-agent-config.ts";
 import type { PlaywrightMCPCapability } from "./config/playwright-mcp-config.ts";
 import { makePlaywrightMCPConfig } from "./config/playwright-mcp-config.ts";
-import { DriverAgent } from "./driver-agent.ts";
+import { DriverAgent, type DriverAgentError } from "./driver-agent.ts";
 
 /*************************************
   Test Case Agent Options
@@ -86,30 +87,38 @@ export class TestCaseAgent {
   }
 
   // TODO: Could improve the order of instructions in the prompt -- doesn't always make sense to have what im currently calling the check prompt prefix come first
-  async check(instructions: string): Promise<TestResult> {
-    const result = await this.driver.query(
-      dedent`
-      ${this.getCheckPromptPrefix()}
-      ${instructions}`,
-      TestResultSchema,
-    );
-    this.logger.info(`TestCaseAgent.check result:\n${jsonStringify(result)}\n`);
-
-    // Immediately log failed tests so user can abort without going through the rest of the suite
-    if (result.outcome.status === "failed") {
-      this.logger.error(
-        `🔴 TEST FAILED: ${result.name} - ${result.outcome.reason}`,
+  check(
+    instructions: string,
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    const testCaseAgent = this;
+    return Effect.gen(function* () {
+      const result = yield* testCaseAgent.driver.query(
+        dedent`
+        ${testCaseAgent.getCheckPromptPrefix()}
+        ${instructions}`,
+        TestResultSchema,
       );
-    }
 
-    return result;
+      testCaseAgent.logger.info(
+        `TestCaseAgent.check result:\n${jsonStringify(result)}\n`,
+      );
+
+      // Immediately log failed tests so user can abort without going through the rest of the suite
+      if (result.outcome.status === "failed") {
+        testCaseAgent.logger.error(
+          `🔴 TEST FAILED: ${result.name} - ${result.outcome.reason}`,
+        );
+      }
+
+      return result;
+    });
   }
 
-  async query<T extends z.ZodType>(
+  query<T extends z.ZodType>(
     prompt: string,
     outputSchema: T,
-  ): Promise<z.infer<T>> {
-    return await this.driver.query(prompt, outputSchema);
+  ): Effect.Effect<z.infer<T>, DriverAgentError, never> {
+    return this.driver.query(prompt, outputSchema);
   }
 }
 

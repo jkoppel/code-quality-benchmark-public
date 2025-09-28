@@ -1,4 +1,6 @@
+import type { Effect } from "effect";
 import type { DiscoveryAgent } from "./agents/discovery-agent.ts";
+import type { DriverAgentError } from "./agents/driver-agent.ts";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
@@ -16,10 +18,13 @@ export interface SuiteGenerationStrategy {
   discover(
     config: TestRunnerConfig,
     discoveryAgent: DiscoveryAgent,
-  ): Promise<TestContext>;
+  ): Effect.Effect<TestContext, DriverAgentError, never>;
 
   /** Generate the Suite using the gathered info. */
-  generateSuite(config: TestRunnerConfig, context: TestContext): Promise<Suite>;
+  generateSuite(
+    config: TestRunnerConfig,
+    context: TestContext,
+  ): Effect.Effect<Suite, never, never>;
 }
 
 /**************************
@@ -66,5 +71,5 @@ export interface TestCase {
     makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     context: TestContext,
     config: TestRunnerConfig,
-  ): Promise<TestResult>;
+  ): Effect.Effect<TestResult, DriverAgentError, never>;
 }

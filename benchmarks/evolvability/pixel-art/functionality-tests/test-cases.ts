@@ -1,4 +1,6 @@
 import dedent from "dedent";
+import type { Effect } from "effect";
+import type { DriverAgentError } from "../../../../harness/benchmark-test-lib/agents/driver-agent.ts";
 import type {
   OptionalTestCaseAgentCapability,
   TestCaseAgent,
@@ -16,11 +18,11 @@ import { makeBackgroundPrompt } from "./common-prompts.ts";
 
 export const basicColorPickerRgbSelection = makeTest({
   name: "Basic Color Picker functionality",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Test basic color picker functionality with a single pane -- is there an RGB color picker; can users select colors with it?
@@ -40,11 +42,11 @@ export const basicColorPickerRgbSelection = makeTest({
 
 export const colorSelectionSharedAcrossPanes = makeTest({
   name: "Color selection is shared across multiple panes",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Verify that color selection applies globally across multiple panes
@@ -68,11 +70,11 @@ export const colorSelectionSharedAcrossPanes = makeTest({
 // TODO: check/read more carefully
 export const colorSelectionSurvivesPaneOps = makeTest({
   name: "Color selection survives pane creation/deletion operations",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Verify color selection survives pane creation/deletion operations
@@ -97,11 +99,11 @@ export const colorSelectionSurvivesPaneOps = makeTest({
 
 export const basicMultiPaneCreation = makeTest({
   name: "Basic Multi-Pane Creation",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Check that it's possible to create more than one pane
@@ -122,11 +124,11 @@ export const basicMultiPaneCreation = makeTest({
 // TODO: check/read more carefully
 export const drawingAreaIndependence = makeTest({
   name: "Drawing Area Independence",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
       Objective: Verify drawing in one pane doesn't affect other panes
@@ -151,11 +153,11 @@ export const drawingAreaIndependence = makeTest({
 
 export const bitmapSaveLoad = makeTest({
   name: "Bitmap Save and Load",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       
       Objective: Check basic bitmap saving and loading functionality
@@ -172,11 +174,11 @@ export const bitmapSaveLoad = makeTest({
 
 export const bitmapLoadingIsolation = makeTest({
   name: "Bitmap Loading Isolation",
-  async run(
+  run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       
       Objective: Verify loading bitmap in one pane doesn't affect what happens in another pane
@@ -197,7 +199,10 @@ export const bitmapLoadingIsolation = makeTest({
 
 interface PixelArtTestOptions {
   name: string;
-  run(agent: TestCaseAgent, config: TestRunnerConfig): Promise<TestResult>;
+  run(
+    agent: TestCaseAgent,
+    config: TestRunnerConfig,
+  ): Effect.Effect<TestResult, DriverAgentError, never>;
 }
 
 const capabilitiesForPixelArtTests: OptionalTestCaseAgentCapability[] = [
@@ -207,15 +212,15 @@ const capabilitiesForPixelArtTests: OptionalTestCaseAgentCapability[] = [
 function makeTest({ name, run }: PixelArtTestOptions): TestCase {
   return {
     descriptiveName: name,
-    async run(
+    run(
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       _context: TestContext,
       config: TestRunnerConfig,
-    ): Promise<TestResult> {
+    ): Effect.Effect<TestResult, DriverAgentError, never> {
       const agent = makeAgent({
         additionalCapabilities: capabilitiesForPixelArtTests,
       });
-      return await run(agent, config);
+      return run(agent, config);
     },
   };
 }

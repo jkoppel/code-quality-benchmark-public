@@ -10,6 +10,7 @@ import {
   run,
   string,
 } from "cmd-ts";
+import { Effect } from "effect";
 import { Reporter } from "./benchmark-test-lib/report.ts";
 import { TestRunner, TestRunnerConfig } from "./benchmark-test-lib/runner.ts";
 import {
@@ -105,7 +106,7 @@ const cmd = command({
 
       // Execute suite generation strategy
       logger.info(`Executing suite generation strategy`);
-      const results = await runner.executeStrategy(strategy);
+      const results = await Effect.runPromise(runner.executeStrategy(strategy));
 
       // Handle result
       const reporter = new Reporter(logger);
