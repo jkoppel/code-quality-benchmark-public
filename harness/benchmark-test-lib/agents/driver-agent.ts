@@ -1,8 +1,10 @@
 import type { Options } from "@anthropic-ai/claude-code";
 import { query } from "@anthropic-ai/claude-code";
 import dedent from "dedent";
+import { Data, Effect, Option } from "effect";
 import * as z from "zod";
 import {
+  type ClaudeCodeError,
   ClaudeCodeExecutionError,
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
@@ -56,25 +58,24 @@ export type DriverAgentConfig = Pick<
   [19:54:29.622] ERROR: Failed to run tests: DriverAgentExecutionError: Failed to parse response: Driver agent response was not wrapped in <response> tags
 */
 
-export class DriverAgentMaxTurnsError extends ClaudeCodeMaxTurnsError {
-  static override make(sessionId?: string): DriverAgentMaxTurnsError {
-    return new DriverAgentMaxTurnsError(undefined, sessionId);
-  }
-}
+export type DriverAgentError =
+  | DriverAgentExecutionError
+  | DriverAgentResponseFormatInvalid;
 
-export class DriverAgentExecutionError extends ClaudeCodeExecutionError {
-  static override make(sessionId?: string): DriverAgentExecutionError {
-    return new DriverAgentExecutionError(undefined, sessionId);
-  }
-}
+export class DriverAgentExecutionError extends Data.TaggedError(
+  "DriverAgentExecutionError",
+)<{
+  readonly message: string;
+  readonly sessionId?: string;
+  readonly underlyingError?: ClaudeCodeError | Error;
+}> {}
 
-export class DriverAgentUnexpectedTerminationError extends ClaudeCodeUnexpectedTerminationError {
-  static override make(
-    sessionId?: string,
-  ): DriverAgentUnexpectedTerminationError {
-    return new DriverAgentUnexpectedTerminationError(undefined, sessionId);
-  }
-}
+export class DriverAgentResponseFormatInvalid extends Data.TaggedError(
+  "DriverAgentResponseInvalid",
+)<{
+  readonly message: string;
+  readonly sessionId?: string;
+}> {}
 
 /*************************************
            Driver Agent
@@ -131,14 +132,26 @@ export class DriverAgent {
         return message.result;
       }
       if (isMaxTurnsErrorResult(message)) {
-        throw DriverAgentMaxTurnsError.make(this.getSessionId());
+        throw new DriverAgentExecutionError({
+          message: "Maximum turns exceeded",
+          sessionId: this.getSessionId(),
+          underlyingError: ClaudeCodeMaxTurnsError.make(this.getSessionId()),
+        });
       }
       if (isExecutionErrorResult(message)) {
-        throw DriverAgentExecutionError.make(this.getSessionId());
+        throw new DriverAgentExecutionError({
+          message: "Execution error occurred",
+          sessionId: this.getSessionId(),
+          underlyingError: ClaudeCodeExecutionError.make(this.getSessionId()),
+        });
       }
     }
 
-    throw DriverAgentUnexpectedTerminationError.make(this.getSessionId());
+      return yield* new DriverAgentExecutionError({
+        message: "Unexpected message type",
+        sessionId: self.getSessionId(),
+      });
+    });
   }
 
   async query<T extends z.ZodType>(
@@ -163,15 +176,15 @@ export class DriverAgent {
       return validated;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        throw new DriverAgentExecutionError(
-          `Validation failed: ${z.prettifyError(error)}`,
-          this.getSessionId(),
-        );
+        throw new DriverAgentResponseFormatInvalid({
+          message: `Validation failed: ${z.prettifyError(error)}`,
+          sessionId: this.getSessionId(),
+        });
       }
-      throw new DriverAgentExecutionError(
-        `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
-        this.getSessionId(),
-      );
+      throw new DriverAgentResponseFormatInvalid({
+        message: `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
+        sessionId: this.getSessionId(),
+      });
     }
   }
 
@@ -181,9 +194,11 @@ export class DriverAgent {
       return responseMatch[1].trim();
     }
 
-    throw new DriverAgentExecutionError(
-      "Driver agent response was not wrapped in <response> tags",
-      this.getSessionId(),
+    return Effect.fail(
+      new DriverAgentResponseFormatInvalid({
+        message: "Driver agent response was not wrapped in <response> tags",
+        sessionId: this.getSessionId(),
+      }),
     );
   }
 
