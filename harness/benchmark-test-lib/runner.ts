@@ -16,7 +16,6 @@ import dedent from "dedent";
 import detect from "detect-port";
 import { Effect } from "effect";
 import fs from "fs-extra";
-import pLimit from "p-limit";
 import type { Logger, LogLevel } from "../utils/logger/logger.ts";
 import { jsonStringify } from "../utils/logger/pretty.ts";
 import { launchProcess } from "../utils/process-launcher.ts";
@@ -168,7 +167,6 @@ export class TestRunner {
       const startTime = Date.now();
 
       // Run tests
-      const limit = pLimit(self.getConfig().getMaxConcurrentTests());
       const testEffects = suite.getTests().map((test) => {
         const makeAgent = (options: TestCaseAgentOptions) =>
           TestCaseAgent.make(options, self.getConfig(), self.getLogger());
