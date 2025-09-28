@@ -9,6 +9,7 @@ import {
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
 } from "../../utils/claude-code-sdk/errors.ts";
+import { consumeUntilTerminal } from "../../utils/claude-code-sdk/response-stream.ts";
 import {
   isExecutionErrorResult,
   isMaxTurnsErrorResult,
@@ -234,7 +235,7 @@ export class DriverAgent {
   }
 
   /** Sets the session ID if not already set */
-  private setSessionId(sessionId: string): void {
+  setSessionId(sessionId: string): void {
     if (!this.sessionId) this.sessionId = sessionId;
   }
 }

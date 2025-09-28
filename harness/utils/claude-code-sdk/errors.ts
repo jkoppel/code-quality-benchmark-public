@@ -16,10 +16,6 @@ interface ClaudeCodeErrorProps {
   readonly sessionId?: string;
 }
 
-export class StreamConversionError extends Data.TaggedError(
-  "StreamConversionError",
-)<ClaudeCodeErrorProps> {}
-
 export class ClaudeCodeMaxTurnsError extends Data.TaggedError(
   "ClaudeCodeMaxTurnsError",
 )<
