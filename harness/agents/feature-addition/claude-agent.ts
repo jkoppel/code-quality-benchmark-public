@@ -123,7 +123,7 @@ export class ClaudeAgent {
       }
     }
 
-    const error = new ClaudeCodeUnexpectedTerminationError();
+    const error = ClaudeCodeUnexpectedTerminationError.make();
     this.logger
       .withMetadata({
         error: error.message,
