@@ -104,49 +104,71 @@ export class DriverAgent {
 
   // TODO: Use abort controller option to implement timeout
 
-  async ask(
+  ask(
     prompt: string,
     /** Additional config / options */
     additionalConfig?: Partial<DriverAgentConfig>,
-  ): Promise<string> {
-    const options = {
-      ...this.getConfig(),
-      ...additionalConfig,
-      resume: this.getSessionId(), // session id managed by and only by DriverAgent
-    };
+  ): Effect.Effect<string, DriverAgentError> {
+    const self = this;
+    return Effect.gen(function* () {
+      const options = {
+        ...self.getConfig(),
+        ...additionalConfig,
+        resume: self.getSessionId(), // session id managed by and only by DriverAgent
+      };
 
-    this.logger.info(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
-    const response = query({
-      prompt,
-      options,
-    });
+      self.logger.info(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
+      const response = query({
+        prompt,
+        options,
+      });
 
-    for await (const message of response) {
-      this.logger.withMetadata({ claudeCode: message }).debug("Response");
+      const result = yield* consumeUntilTerminal({
+        response,
+        sessionManager: self,
+        logger: self.logger,
+      }).pipe(
+        Effect.mapError(
+          (streamError) =>
+            new DriverAgentExecutionError({
+              message: `Stream conversion error: ${streamError.message}`,
+              sessionId: self.getSessionId(),
+              underlyingError: streamError,
+            }),
+        ),
+      );
 
-      if (!this.getSessionId()) {
-        this.setSessionId(message.session_id);
+      if (Option.isNone(result)) {
+        return yield* new DriverAgentExecutionError({
+          message: "Agent terminated unexpectedly",
+          sessionId: self.getSessionId(),
+          underlyingError: ClaudeCodeUnexpectedTerminationError.make(
+            self.getSessionId(),
+          ),
+        });
       }
+
+      const message = result.value;
 
       if (isSuccessResult(message)) {
         return message.result;
       }
       if (isMaxTurnsErrorResult(message)) {
-        throw new DriverAgentExecutionError({
+        return yield* new DriverAgentExecutionError({
           message: "Maximum turns exceeded",
-          sessionId: this.getSessionId(),
-          underlyingError: ClaudeCodeMaxTurnsError.make(this.getSessionId()),
+          sessionId: self.getSessionId(),
+          underlyingError: ClaudeCodeMaxTurnsError.make(self.getSessionId()),
         });
       }
       if (isExecutionErrorResult(message)) {
-        throw new DriverAgentExecutionError({
+        return yield* new DriverAgentExecutionError({
           message: "Execution error occurred",
-          sessionId: this.getSessionId(),
-          underlyingError: ClaudeCodeExecutionError.make(this.getSessionId()),
+          sessionId: self.getSessionId(),
+          underlyingError: ClaudeCodeExecutionError.make(self.getSessionId()),
         });
       }
-    }
 
+      // should be impossible
       return yield* new DriverAgentExecutionError({
         message: "Unexpected message type",
         sessionId: self.getSessionId(),
@@ -154,44 +176,49 @@ export class DriverAgent {
     });
   }
 
-  async query<T extends z.ZodType>(
+  query<T extends z.ZodType>(
     prompt: string,
     outputSchema: T,
     /** Additional config / options */
     additionalConfig?: Partial<DriverAgentConfig>,
-  ): Promise<z.infer<T>> {
-    const fullPrompt = dedent`
-      ${prompt}
+  ): Effect.Effect<z.infer<T>, DriverAgentError> {
+    const self = this;
+    return Effect.gen(function* () {
+      const fullPrompt = dedent`
+        ${prompt}
 
-      You must respond with the json wrapped in <response> tags like this:
-      <response>{raw JSON response}</response>
+        You must respond with the json wrapped in <response> tags like this:
+        <response>{raw JSON response}</response>
 
-      The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema))}`;
+        The JSON must conform to this schema: ${JSON.stringify(z.toJSONSchema(outputSchema))}`;
 
-    const result = await this.ask(fullPrompt, additionalConfig);
+      const result = yield* self.ask(fullPrompt, additionalConfig);
 
-    try {
-      const raw = this.extractJsonFromResponse(result);
-      const validated = outputSchema.parse(JSON.parse(raw));
-      return validated;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new DriverAgentResponseFormatInvalid({
-          message: `Validation failed: ${z.prettifyError(error)}`,
-          sessionId: this.getSessionId(),
+      try {
+        const raw = yield* self.extractJsonFromResponse(result);
+        const validated = outputSchema.parse(JSON.parse(raw));
+        return validated;
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return yield* new DriverAgentResponseFormatInvalid({
+            message: `Validation failed: ${z.prettifyError(error)}`,
+            sessionId: self.getSessionId(),
+          });
+        }
+        return yield* new DriverAgentResponseFormatInvalid({
+          message: `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
+          sessionId: self.getSessionId(),
         });
       }
-      throw new DriverAgentResponseFormatInvalid({
-        message: `Failed to parse response: ${error instanceof Error ? error.message : String(error)}`,
-        sessionId: this.getSessionId(),
-      });
-    }
+    });
   }
 
-  private extractJsonFromResponse(text: string): string {
+  private extractJsonFromResponse(
+    text: string,
+  ): Effect.Effect<string, DriverAgentResponseFormatInvalid> {
     const responseMatch = text.match(/<response>\s*([\s\S]*?)\s*<\/response>/);
     if (responseMatch) {
-      return responseMatch[1].trim();
+      return Effect.succeed(responseMatch[1].trim());
     }
 
     return Effect.fail(

@@ -1,5 +1,7 @@
 import dedent from "dedent";
+import type { Effect } from "effect";
 import type * as z from "zod";
+import type { DriverAgentError } from "../../../../../harness/benchmark-test-lib/agents/driver-agent.ts";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
@@ -14,12 +16,12 @@ import { appInfoId } from "../test-strategy.ts";
 
 export const moreThanDoneNotDoneStatuses = makeTest({
   name: "Test that the app has more than done/not-done statuses",
-  async run(
+  run(
     agent: TestCaseAgent,
     appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       Here's some info that someone has collected about the app:
       ${JSON.stringify(appInfo)}
@@ -32,12 +34,12 @@ export const moreThanDoneNotDoneStatuses = makeTest({
 
 export const tasksHavePriorities = makeTest({
   name: "Test that the app has implemented priorities for tasks",
-  async run(
+  run(
     agent: TestCaseAgent,
     appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
-  ): Promise<TestResult> {
-    return await agent.check(dedent`
+  ): Effect.Effect<TestResult, DriverAgentError, never> {
+    return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       Here's some info that someone has collected about the app:
       ${JSON.stringify(appInfo)}
@@ -57,20 +59,20 @@ interface TodoListTestOptions {
     agent: TestCaseAgent,
     appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
-  ): Promise<TestResult>;
+  ): Effect.Effect<TestResult, DriverAgentError, never>;
 }
 
 function makeTest({ name, run }: TodoListTestOptions): TestCase {
   return {
     descriptiveName: name,
-    async run(
+    run(
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
-    ): Promise<TestResult> {
+    ): Effect.Effect<TestResult, DriverAgentError, never> {
       const agent = makeAgent({ additionalCapabilities: [] });
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-      return await run(agent, appInfo, config);
+      return run(agent, appInfo, config);
     },
   };
 }

@@ -1,4 +1,6 @@
+import type { Effect } from "effect";
 import type { DiscoveryAgent } from "./agents/discovery-agent.ts";
+import type { DriverAgentError } from "./agents/driver-agent.ts";
 import type {
   TestCaseAgent,
   TestCaseAgentOptions,
@@ -66,5 +68,5 @@ export interface TestCase {
     makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
     context: TestContext,
     config: TestRunnerConfig,
-  ): Promise<TestResult>;
+  ): Effect.Effect<TestResult, DriverAgentError, never>;
 }
