@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import * as path from "node:path";
 import dedent from "dedent";
+import { Cause, Effect, Exit } from "effect";
 import fs from "fs-extra";
 import * as tmp from "tmp";
 import {
@@ -14,12 +15,14 @@ import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 import { EvaluationError } from "./errors.ts";
 import {
+  type AgentInvocationFailure,
   type EvaluationResult,
+  getDiffStats,
   type InstanceResult,
-  invocationCompleted,
-  invocationFailed,
-  makeInvocationCompletedMempty,
-  makeInvocationFailed,
+  isInvocationFailure,
+  isInvocationSuccess,
+  makeAgentInvocationFailure,
+  makeInstanceResult,
 } from "./result.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
@@ -57,10 +60,14 @@ export async function evaluateUpdates(
     config,
     logger,
   );
+  const [successfulUpdates, failedUpdates] = [
+    updateResults.filter(isInvocationSuccess),
+    updateResults.filter(isInvocationFailure),
+  ];
 
   // Calculate total score
-  const totalScore = updateResults.reduce(
-    (sum, result) => sum + result.result.score,
+  const totalScore = successfulUpdates.reduce(
+    (sum, result) => sum + result.score,
     0,
   );
 
@@ -88,16 +95,16 @@ export async function evaluateUpdates(
   logger.withMetadata({ path: resultsPath }).info("Saved complete results to:");
 
   // Log diff stats
-  const diffStats = updateResults.map((r) => ({
+  const diffStats = successfulUpdates.map((r) => ({
     instance: r.instanceId,
-    stats: invocationCompleted(r) ? r.result.diffStats : DiffStats.mempty(),
+    stats: getDiffStats(r),
   }));
 
   logger
     .withMetadata({
       duration: metadata.totalDuration,
-      successfulUpdates: updateResults.filter(invocationCompleted).length,
-      failedUpdates: updateResults.filter(invocationFailed).length,
+      successfulUpdates: successfulUpdates.length,
+      failedUpdates: failedUpdates.length,
       diffStats,
     })
     .info("Evaluation completed successfully");
@@ -105,13 +112,13 @@ export async function evaluateUpdates(
   // Also print diff stats to console for visibility
   console.log("\n=== Git Diff Statistics & Scores ===");
   updateResults.forEach((r) => {
-    if (invocationCompleted(r)) {
+    if (isInvocationSuccess(r)) {
       console.log(
-        `${r.instanceId} [${r.agentName}]: ${r.result.diffStats.getNumFilesChanged()} files, ${r.result.diffStats.getNumLinesChanged()} lines, score: ${r.result.score}`,
+        `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}`,
       );
     } else {
       console.log(
-        `${r.instanceId} [${r.agentName}]: Invocation failed, score: ${r.result.score}`,
+        `${r.instanceId} [${r.agentName}]: Invocation failed - ${r.cause}`,
       );
     }
   });
@@ -260,7 +267,7 @@ async function applyUpdatesToInstances(
   workspaceDir: string,
   config: EvaluationConfig,
   logger: Logger,
-): Promise<InstanceResult[]> {
+): Promise<(InstanceResult | AgentInvocationFailure)[]> {
   // Define agents and their configurations
   const agents = [
     {
@@ -308,18 +315,42 @@ async function applyUpdatesToInstances(
 
   // Execute all updates in parallel
   const updatePromises = allInstances.map(
-    async (instance): Promise<InstanceResult> => {
+    async (instance): Promise<InstanceResult | AgentInvocationFailure> => {
       const startTime = Date.now();
 
       try {
         // For Claude, use its applyUpdate method, for others use the agent directly
         if (isClaudeAgent(instance.agent)) {
-          return await instance.agent.applyUpdate(
-            updatePrompt,
-            instance.instancePath,
-            instance.instanceId,
-            instance.port,
+          const exit = await Effect.runPromiseExit(
+            instance.agent.applyUpdate(
+              updatePrompt,
+              instance.instancePath,
+              instance.instanceId,
+              instance.port,
+            ),
           );
+
+          return Exit.match(exit, {
+            onFailure: (cause): AgentInvocationFailure => {
+              logger
+                .withMetadata({
+                  cause: Cause.pretty(cause),
+                })
+                .error(`Claude agent failed for ${instance.instanceId}`);
+
+              return makeAgentInvocationFailure(
+                instance.instanceId,
+                instance.instancePath,
+                instance.agentName,
+                Date.now() - startTime,
+                Cause.pretty(cause),
+                // Try to extract error type from cause if possible
+                // For now, we'll leave this undefined but could enhance later
+                undefined,
+              );
+            },
+            onSuccess: (result): InstanceResult => result,
+          });
         } else {
           await (instance.agent as CodingAgent)(
             updatePrompt,
@@ -327,7 +358,7 @@ async function applyUpdatesToInstances(
             instance.port,
           );
           // For other agents, create a success result manually
-          return makeInvocationCompletedMempty(
+          return makeInstanceResult(
             instance.instanceId,
             instance.instancePath,
             instance.agentName,
@@ -342,12 +373,13 @@ async function applyUpdatesToInstances(
           })
           .error(`Failed to apply update for ${instance.instanceId}`);
 
-        return makeInvocationFailed(
+        return makeAgentInvocationFailure(
           instance.instanceId,
           instance.instancePath,
           instance.agentName,
           Date.now() - startTime,
-          error,
+          error.message,
+          undefined,
         );
       }
     },
@@ -356,99 +388,99 @@ async function applyUpdatesToInstances(
   const results = await Promise.all(updatePromises);
 
   // Calculate git diff statistics and scores
-  const resultsWithDiffs = results.map((result) => {
-    const instancePath = result.folderPath;
-    let diffStats = DiffStats.mempty();
-    let score = 0;
+  const resultsWithDiffs = results.map(
+    (result: InstanceResult | AgentInvocationFailure) => {
+      const instancePath = result.folderPath;
+      let diffStats = DiffStats.mempty();
+      let score = 0;
 
-    if (invocationCompleted(result)) {
-      try {
-        // First add all changes to staging to see what changed
-        execSync("git add -A", { cwd: instancePath });
+      if (isInvocationSuccess(result)) {
+        try {
+          // First add all changes to staging to see what changed
+          execSync("git add -A", { cwd: instancePath });
 
-        // ***********************
-        // Get the diff statistics
-        // ***********************
-        const baseGitDiffCmd = "git diff --cached -M --ignore-space-change";
-        // -M for heuristic rename detection
-        // --ignore-space-change, because more conservative than --ignore-all-space (TODO: will need to monitor / tune this)
-        const diffThenDiffStat = `${baseGitDiffCmd} | diffstat -tm`;
-        // diffstat with -m because we want to count, e.g., changing a word on a line as being one change, as opposed to two.
-        // -t for easy parsing
-        // IMPT: Do NOT use --unified=0 with the git diff command -- that breaks the diffstat parsing
+          // ***********************
+          // Get the diff statistics
+          // ***********************
+          const baseGitDiffCmd = "git diff --cached -M --ignore-space-change";
+          // -M for heuristic rename detection
+          // --ignore-space-change, because more conservative than --ignore-all-space (TODO: will need to monitor / tune this)
+          const diffThenDiffStat = `${baseGitDiffCmd} | diffstat -tm`;
+          // diffstat with -m because we want to count, e.g., changing a word on a line as being one change, as opposed to two.
+          // -t for easy parsing
+          // IMPT: Do NOT use --unified=0 with the git diff command -- that breaks the diffstat parsing
 
-        const diffStatOutput = execSync(diffThenDiffStat, {
-          cwd: instancePath,
-          encoding: "utf-8",
-        });
-        diffStats = DiffStats.makeFromDiffstat(diffStatOutput);
+          const diffStatOutput = execSync(diffThenDiffStat, {
+            cwd: instancePath,
+            encoding: "utf-8",
+          });
+          diffStats = DiffStats.makeFromDiffstat(diffStatOutput);
 
-        // Calculate score: 300 - linesChanged
-        score = Math.max(0, 300 - diffStats.getSummaryStats().linesChanged);
+          // Calculate score: 300 - linesChanged
+          score = Math.max(0, 300 - diffStats.getSummaryStats().linesChanged);
 
-        // Also log the full diff stats for debugging
-        const gitDiffStatOutput = execSync(`${baseGitDiffCmd} --stat`, {
-          cwd: instancePath,
-          encoding: "utf-8",
-        });
-        logger.debug(dedent`
+          // Also log the full diff stats for debugging
+          const gitDiffStatOutput = execSync(`${baseGitDiffCmd} --stat`, {
+            cwd: instancePath,
+            encoding: "utf-8",
+          });
+          logger.debug(dedent`
                 Diff stats for ${result.instanceId}:
                 ${gitDiffStatOutput}`);
-        logger.debug(dedent`
+          logger.debug(dedent`
                 ${diffThenDiffStat} for ${result.instanceId}: 
                 ${diffStatOutput}`);
 
-        // Commit the changes for future reference
-        try {
-          execSync(
-            `git commit -m "Update: Applied modifications by ${result.agentName}"`,
-            { cwd: instancePath },
-          );
-        } catch (_commitError) {
-          // If commit fails (e.g., nothing to commit), that's okay
-          logger.debug(`No changes to commit for ${result.instanceId}`);
+          // Commit the changes for future reference
+          try {
+            execSync(
+              `git commit -m "Update: Applied modifications by ${result.agentName}"`,
+              { cwd: instancePath },
+            );
+          } catch (_commitError) {
+            // If commit fails (e.g., nothing to commit), that's okay
+            logger.debug(`No changes to commit for ${result.instanceId}`);
+          }
+        } catch (error) {
+          logger
+            .withMetadata({
+              error: error instanceof Error ? error.message : String(error),
+            })
+            .warn(`Failed to get git diff for ${result.instanceId}`);
         }
-      } catch (error) {
-        logger
-          .withMetadata({
-            error: error instanceof Error ? error.message : String(error),
-          })
-          .warn(`Failed to get git diff for ${result.instanceId}`);
       }
-    }
 
-    // Update score and diffStats for successful invocations
-    const finalResult: InstanceResult = invocationCompleted(result)
-      ? {
-          ...result,
-          result: {
-            type: "invocationCompleted",
-            score,
-            diffStats,
-          },
-        }
-      : result;
+      // Update score and diffStats for successful invocations
+      const finalResult: InstanceResult | AgentInvocationFailure =
+        isInvocationSuccess(result)
+          ? {
+              ...result,
+              score,
+              diffStats,
+            }
+          : result;
 
-    logger
-      .withMetadata({
-        success: invocationCompleted(result),
-        executionTime: result.executionTimeMs,
-        diffStats,
-        score,
-        agentName: result.agentName,
-      })
-      .info(`Instance ${result.instanceId} completed`);
+      logger
+        .withMetadata({
+          success: isInvocationSuccess(result),
+          executionTime: result.executionTimeMs,
+          diffStats,
+          score,
+          agentName: result.agentName,
+        })
+        .info(`Instance ${result.instanceId} completed`);
 
-    // Log diff stats immediately
-    if (invocationCompleted(result)) {
-      logger.info(
-        dedent`
+      // Log diff stats immediately
+      if (isInvocationSuccess(result)) {
+        logger.info(
+          dedent`
           → ${result.instanceId} [${result.agentName}]: ${diffStats.getNumFilesChanged()} files changed, ${diffStats.getNumLinesChanged()} lines changed, score: ${score}`,
-      );
-    }
+        );
+      }
 
-    return finalResult;
-  });
+      return finalResult;
+    },
+  );
 
   return resultsWithDiffs;
 }

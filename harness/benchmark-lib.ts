@@ -4,9 +4,11 @@ import fs from "fs-extra";
 import * as tmp from "tmp";
 import type { CodingAgent } from "./agents/types.ts";
 import {
+  type AgentInvocationFailure,
   type EvaluationResult,
+  getDiffStats,
   type InstanceResult,
-  invocationCompleted,
+  isInvocationSuccess,
 } from "./evaluator/result.ts";
 import { eval as evaluate, evaluateUpdates } from "./index.ts";
 
@@ -18,34 +20,37 @@ export function outputBenchmarkResults(
   result: EvaluationResult,
 ): void {
   // Output benchmark results as JSON
-  const successCount = result.updates.filter(invocationCompleted).length;
+  const successCount = result.updates.filter(isInvocationSuccess).length;
   const totalUpdates = result.updates.length;
 
   // Calculate per-agent success rates
   const agentStats: {
     [key: string]: { successful: number; total: number; totalScore: number };
   } = {};
-  result.updates.forEach((u: InstanceResult) => {
+  result.updates.forEach((u: InstanceResult | AgentInvocationFailure) => {
     if (!agentStats[u.agentName]) {
       agentStats[u.agentName] = { successful: 0, total: 0, totalScore: 0 };
     }
     agentStats[u.agentName].total++;
-    agentStats[u.agentName].totalScore += u.result.score;
-    if (invocationCompleted(u)) {
+    agentStats[u.agentName].totalScore += u.score;
+    if (isInvocationSuccess(u)) {
       agentStats[u.agentName].successful++;
     }
   });
 
-  const updates = result.updates.map((u: InstanceResult) => ({
-    instance: u.instanceId,
-    agent: u.agentName,
-    success: invocationCompleted(u),
-    score: u.result.score,
-    diffStats: invocationCompleted(u)
-      ? u.result.diffStats.getSummaryStats()
-      : { filesChanged: 0, linesChanged: 0 },
-    executionTime: u.executionTimeMs,
-  }));
+  const updates = result.updates.map(
+    (u: InstanceResult | AgentInvocationFailure) => ({
+      instance: u.instanceId,
+      agent: u.agentName,
+      success: isInvocationSuccess(u),
+      score: u.score,
+      diffStats: getDiffStats(u)?.getSummaryStats() ?? {
+        filesChanged: 0,
+        linesChanged: 0,
+      },
+      executionTime: u.executionTimeMs,
+    }),
+  );
 
   console.log(
     JSON.stringify(

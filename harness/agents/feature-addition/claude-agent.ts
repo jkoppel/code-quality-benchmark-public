@@ -1,9 +1,8 @@
 import { query } from "@anthropic-ai/claude-code";
 import { Effect, Option } from "effect";
-import type { InstanceResult } from "../../evaluator/result.ts";
 import {
-  makeInvocationCompletedMempty,
-  makeInvocationFailed,
+  type InstanceResult,
+  makeInstanceResult,
 } from "../../evaluator/result.ts";
 import {
   type ClaudeCodeError,
@@ -93,13 +92,7 @@ export class ClaudeAgent {
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeInvocationFailed(
-          instanceId,
-          folderPath,
-          "claude",
-          Date.now() - startTime,
-          error,
-        );
+        return yield* error;
       }
 
       const message = maybeTerminalMessage.value;
@@ -114,7 +107,7 @@ export class ClaudeAgent {
         self.logger.info(
           `Successfully completed update for instance ${instanceId}`,
         );
-        return makeInvocationCompletedMempty(
+        return makeInstanceResult(
           instanceId,
           folderPath,
           "claude",
@@ -129,13 +122,7 @@ export class ClaudeAgent {
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeInvocationFailed(
-          instanceId,
-          folderPath,
-          "claude",
-          Date.now() - startTime,
-          error,
-        );
+        return yield* error;
       }
 
       if (isExecutionErrorResult(message)) {
@@ -145,29 +132,17 @@ export class ClaudeAgent {
             error: error.message,
           })
           .error(`Failed to apply update for instance ${instanceId}`);
-        return makeInvocationFailed(
-          instanceId,
-          folderPath,
-          "claude",
-          Date.now() - startTime,
-          error,
-        );
+        return yield* error;
       }
 
-      // This should never happen given our find condition
+      // should be impossible
       const error = ClaudeCodeUnexpectedTerminationError.make();
       self.logger
         .withMetadata({
           error: error.message,
         })
         .error(`Failed to apply update for instance ${instanceId}`);
-      return makeInvocationFailed(
-        instanceId,
-        folderPath,
-        "claude",
-        Date.now() - startTime,
-        error,
-      );
+      return yield* error;
     });
   }
 }
