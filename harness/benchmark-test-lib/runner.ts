@@ -242,9 +242,10 @@ async function startDevServer(
   sutConfig: SutConfig,
   logger: Logger,
 ): Promise<DevServerHandle> {
+  logger.debug("Pre-validation checks before starting dev server...");
+
   // Check port availability first
   const availablePort = await detect(sutConfig.port);
-
   if (availablePort !== sutConfig.port) {
     throw new Error(
       `Port ${sutConfig.port.toString()} is already in use. ` +
@@ -252,10 +253,6 @@ async function startDevServer(
         `Next available port is ${availablePort.toString()}.`,
     );
   }
-
-  logger.info(
-    `Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`,
-  );
 
   const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
 
@@ -267,7 +264,6 @@ async function startDevServer(
       Make sure you're in a Node.js project directory or that the project has been properly initialized.
     `);
   }
-
   // Check for node_modules to ensure dependencies are installed
   const nodeModulesPath = path.join(sutConfig.folderPath, "node_modules");
   if (!fs.existsSync(nodeModulesPath)) {
@@ -276,6 +272,10 @@ async function startDevServer(
       Please install project dependencies by running 'npm install' in this directory.
     `);
   }
+
+  logger.info(
+    `Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`,
+  );
 
   // Using process launcher adapted from Playwright,
   // because a naive, vibe-coded approach had issues with stopping the dev server
