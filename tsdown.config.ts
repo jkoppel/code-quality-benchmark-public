@@ -19,10 +19,8 @@ export default defineConfig({
   entry: [
     "./harness/index.ts",
 
-    // Benchmark scripts
-    "./harness/benchmark-runner.ts",
-    "./harness/benchmark-runner-existing.ts",
-    "./harness/benchmark-test-functionality.ts",
+    // Unified CLI
+    "./harness/benchmark-cli.ts",
 
     // Test strategy files - using convention-based glob pattern
     `./${getTestStrategyGlobPattern()}`,
