@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import * as path from "node:path";
 import { Command, FileSystem } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
@@ -208,30 +207,39 @@ export function evaluate(
   );
 }
 
-async function generateOriginalProgram(
+function generateOriginalProgram(
   initialPrompt: string,
   codingAgent: CodingAgent,
   workspaceDir: string,
-  logger: Logger,
-): Promise<string> {
-  logger.info("Generating original program");
+): Effect.Effect<
+  string,
+  EvaluationError,
+  FileSystem.FileSystem | CommandExecutor
+> {
+  return Effect.gen(function* () {
+    yield* Effect.logInfo("Generating original program");
 
-  const originalFolder = path.join(workspaceDir, "original-program");
-  await runWithNodeFileSystem(
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem;
-      yield* fs.makeDirectory(originalFolder, { recursive: true });
-    }),
-  );
+    const originalFolder = path.join(workspaceDir, "original-program");
+    const fs = yield* FileSystem.FileSystem;
+    yield* fs.makeDirectory(originalFolder, { recursive: true });
 
-  try {
-    await codingAgent(initialPrompt, originalFolder);
+    yield* Effect.tryPromise({
+      try: () => codingAgent(initialPrompt, originalFolder),
+      catch: (error) =>
+        new EvaluationError(
+          "Failed to generate original program",
+          "GENERATION_FAILED",
+          error,
+        ),
+    });
 
     const files = yield* fs.readDirectory(originalFolder);
     if (files.length === 0) {
-      throw new EvaluationError(
-        "Coding agent did not generate any files",
-        "NO_FILES_GENERATED",
+      return yield* Effect.fail(
+        new EvaluationError(
+          "Coding agent did not generate any files",
+          "NO_FILES_GENERATED",
+        ),
       );
     }
 
@@ -251,27 +259,36 @@ build/
     }
 
     // Initialize git repo and commit
-    execSync("git init", { cwd: originalFolder });
-    execSync("git add -A", { cwd: originalFolder });
-    execSync('git commit -m "Initial commit: Generated program"', {
-      cwd: originalFolder,
-    });
+    yield* gitCmd(originalFolder, "init");
+    yield* gitCmd(originalFolder, "add", "-A");
+    yield* gitCmd(
+      originalFolder,
+      "commit",
+      "-m",
+      "Initial commit: Generated program",
+    );
 
-    logger
-      .withMetadata({
+    yield* Effect.logInfo(
+      "Original program generated and committed to git",
+    ).pipe(
+      Effect.annotateLogs({
         path: originalFolder,
         fileCount: files.length,
-      })
-      .info("Original program generated and committed to git");
+      }),
+    );
 
     return originalFolder;
-  } catch (error) {
-    throw new EvaluationError(
-      "Failed to generate original program",
-      "GENERATION_FAILED",
-      error,
-    );
-  }
+  }).pipe(
+    Effect.mapError((error) =>
+      error instanceof EvaluationError
+        ? error
+        : new EvaluationError(
+            "Failed to generate original program",
+            "GENERATION_FAILED",
+            error,
+          ),
+    ),
+  );
 }
 
 function applyUpdatesToInstances(
@@ -347,7 +364,6 @@ function applyUpdatesToInstances(
           yield* Effect.logInfo(
             dedent`
               → ${result.instanceId} [${result.agentName}]: ${result.diffStats.getNumFilesChanged()} files changed, ${result.diffStats.getNumLinesChanged()} lines changed, score: ${result.score}`,
-            ),
           );
         }
 
@@ -414,6 +430,87 @@ function augmentWithDiffStats(
     return { ...result, diffStats };
   });
 }
+
+// TODO: Will refactor this at some point
+const runFeatureAgent = (
+  logger: Logger,
+  updatePrompt: string,
+  descriptor: InstanceDescriptor,
+): Effect.Effect<InstanceResult | AgentInvocationFailure, never> =>
+  Effect.gen(function* () {
+    const startTime = yield* Effect.sync(() => Date.now());
+    if (isClaudeAgent(descriptor.agent)) {
+      return yield* descriptor.agent
+        .applyUpdate(
+          updatePrompt,
+          descriptor.instancePath,
+          descriptor.instanceId,
+          descriptor.port,
+        )
+        .pipe(
+          Effect.matchCauseEffect({
+            onFailure: (cause) =>
+              Effect.gen(function* () {
+                const elapsed = yield* Effect.sync(
+                  () => Date.now() - startTime,
+                );
+                const prettyCause = Cause.pretty(cause);
+                yield* Effect.sync(() =>
+                  logger
+                    .withMetadata({ cause: prettyCause })
+                    .error(`Claude agent failed for ${descriptor.instanceId}`),
+                );
+
+                return makeAgentInvocationFailure(
+                  descriptor.instanceId,
+                  descriptor.instancePath,
+                  descriptor.agentName,
+                  elapsed,
+                  prettyCause,
+                );
+              }),
+            onSuccess: (success) => Effect.succeed(success),
+          }),
+        );
+    }
+
+    return yield* Effect.tryPromise({
+      try: () =>
+        (descriptor.agent as CodingAgent)(
+          updatePrompt,
+          descriptor.instancePath,
+          descriptor.port,
+        ),
+      catch: (cause) =>
+        cause instanceof Error ? cause : new Error(String(cause)),
+    }).pipe(
+      Effect.map(() =>
+        makeInstanceResult(
+          descriptor.instanceId,
+          descriptor.instancePath,
+          descriptor.agentName,
+          Date.now() - startTime,
+        ),
+      ),
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          const elapsed = yield* Effect.sync(() => Date.now() - startTime);
+          yield* Effect.sync(() =>
+            logger
+              .withMetadata({ error: error.message })
+              .error(`Failed to apply update for ${descriptor.instanceId}`),
+          );
+          return makeAgentInvocationFailure(
+            descriptor.instanceId,
+            descriptor.instancePath,
+            descriptor.agentName,
+            elapsed,
+            error.message,
+          );
+        }),
+      ),
+    );
+  });
 
 export type { CodingAgent } from "../agents/types.ts";
 export type { EvaluationConfig } from "./config.ts";
