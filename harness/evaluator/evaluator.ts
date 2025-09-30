@@ -1,8 +1,9 @@
-import { execSync } from "node:child_process";
 import * as path from "node:path";
+import { Command, FileSystem } from "@effect/platform";
+import type { CommandExecutor } from "@effect/platform/CommandExecutor";
+import type { PlatformError } from "@effect/platform/Error";
 import dedent from "dedent";
-import { Cause, Effect, Exit } from "effect";
-import fs from "fs-extra";
+import { Cause, Effect } from "effect";
 import * as tmp from "tmp";
 import {
   ClaudeAgent,
@@ -10,10 +11,12 @@ import {
 } from "../agents/feature-addition/claude-agent.ts";
 import { codexAgent } from "../agents/feature-addition/codex-agent.ts";
 import type { CodingAgent } from "../agents/types.ts";
+import { gitCmd } from "../utils/git.ts";
 import { getLoggerConfig, type Logger } from "../utils/logger/logger.ts";
 import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 import { EvaluationError } from "./errors.ts";
+import { type InstanceDescriptor, makeInstances } from "./instance.ts";
 import {
   type AgentInvocationFailure,
   type EvaluationResult,
@@ -37,195 +40,213 @@ import {
  * since functionality tests are, conceptually, themselves an eval.
  */
 
-export async function evaluateUpdates(
+export function evaluateUpdates(
   originalProgramPath: string,
   updatePrompt: string,
   workspaceDir: string,
   config: EvaluationConfig = {},
-): Promise<EvaluationResult> {
+) {
   const startTime = new Date();
-  const { logger } = getLoggerConfig();
 
-  logger
-    .withMetadata({
+  return Effect.gen(function* () {
+    yield* Effect.logInfo("Starting update evaluation").pipe(
+      Effect.annotateLogs({
+        originalProgramPath,
+        updatePrompt: updatePrompt.substring(0, 100),
+      }),
+    );
+
+    const updateResults = yield* applyUpdatesToInstances(
       originalProgramPath,
-      updatePrompt: updatePrompt.substring(0, 100),
-    })
-    .info("Starting update evaluation");
+      updatePrompt,
+      workspaceDir,
+      config,
+    );
+    const [successfulUpdates, failedUpdates] = [
+      updateResults.filter(isInvocationSuccess),
+      updateResults.filter(isInvocationFailure),
+    ];
 
-  const updateResults = await applyUpdatesToInstances(
-    originalProgramPath,
-    updatePrompt,
-    workspaceDir,
-    config,
-    logger,
-  );
-  const [successfulUpdates, failedUpdates] = [
-    updateResults.filter(isInvocationSuccess),
-    updateResults.filter(isInvocationFailure),
-  ];
+    // Calculate total score
+    const totalScore = successfulUpdates.reduce(
+      (sum, result) => sum + result.score,
+      0,
+    );
 
-  // Calculate total score
-  const totalScore = successfulUpdates.reduce(
-    (sum, result) => sum + result.score,
-    0,
-  );
+    // Make EvaluationResult
+    const endTime = new Date();
+    const metadata: EvaluationMetadata = {
+      startTime,
+      endTime,
+      totalDuration: endTime.getTime() - startTime.getTime(),
+      agentsUsed: ["claude-code", "codex"],
+      config,
+    };
+    const result: EvaluationResult = {
+      originalProgramSource: { type: "pre-existing" },
+      updatePrompt,
+      originalProgramPath,
+      updates: updateResults,
+      metadata,
+      totalScore,
+    };
 
-  // Make EvaluationResult
-  const endTime = new Date();
-  const metadata: EvaluationMetadata = {
-    startTime,
-    endTime,
-    totalDuration: endTime.getTime() - startTime.getTime(),
-    agentsUsed: ["claude-code", "codex"],
-    config,
-  };
-  const result: EvaluationResult = {
-    originalProgramSource: { type: "pre-existing" },
-    updatePrompt,
-    originalProgramPath,
-    updates: updateResults,
-    metadata,
-    totalScore,
-  };
+    // Save complete results to JSON
+    const resultsPath = path.join(workspaceDir, "evaluation-results.json");
 
-  // Save complete results to JSON
-  const resultsPath = path.join(workspaceDir, "evaluation-results.json");
-  await fs.writeJson(resultsPath, result, { spaces: 2 });
-  logger.withMetadata({ path: resultsPath }).info("Saved complete results to:");
+    const fs = yield* FileSystem.FileSystem;
+    yield* fs.writeFileString(resultsPath, JSON.stringify(result, null, 2));
+    yield* Effect.logInfo(`Saved complete results to: ${resultsPath}`);
 
-  // Log diff stats
-  const diffStats = successfulUpdates.map((r) => ({
-    instance: r.instanceId,
-    stats: getDiffStats(r),
-  }));
+    // Log diff stats
+    const diffStats = successfulUpdates.map((r) => ({
+      instance: r.instanceId,
+      stats: getDiffStats(r),
+    }));
 
-  logger
-    .withMetadata({
-      duration: metadata.totalDuration,
-      successfulUpdates: successfulUpdates.length,
-      failedUpdates: failedUpdates.length,
-      diffStats,
-    })
-    .info("Evaluation completed successfully");
+    yield* Effect.logInfo("Evaluation completed successfully").pipe(
+      Effect.annotateLogs({
+        duration: metadata.totalDuration,
+        successfulUpdates: successfulUpdates.length,
+        failedUpdates: failedUpdates.length,
+        diffStats,
+      }),
+    );
 
-  // Also print diff stats to console for visibility
-  console.log("\n=== Git Diff Statistics & Scores ===");
-  updateResults.forEach((r) => {
-    if (isInvocationSuccess(r)) {
-      console.log(
-        `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}`,
-      );
-    } else {
-      console.log(
-        `${r.instanceId} [${r.agentName}]: Invocation failed - ${r.cause}`,
-      );
+    // Also print diff stats for visibility
+    yield* Effect.log("\n=== Git Diff Statistics & Scores ===");
+    for (const r of updateResults) {
+      if (isInvocationSuccess(r)) {
+        yield* Effect.log(
+          `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}`,
+        );
+      } else {
+        yield* Effect.log(
+          `${r.instanceId} [${r.agentName}]: Invocation failed - ${r.cause}`,
+        );
+      }
     }
-  });
-  console.log(`Total Score: ${totalScore}`);
-  console.log("===========================\n");
+    yield* Effect.log(`Total Score: ${totalScore}`);
+    yield* Effect.log("===========================\n");
 
-  logger.info("Update evaluation completed");
-  return result;
+    yield* Effect.logInfo("Update evaluation completed");
+    return result;
+  });
 }
 
-export async function evaluate(
+export function evaluate(
   initialPrompt: string,
   codingAgent: CodingAgent,
   updatePrompt: string,
   config: EvaluationConfig = {},
-): Promise<EvaluationResult> {
-  const { logger } = getLoggerConfig();
-  logger
-    .withMetadata({
-      initialPrompt: initialPrompt.substring(0, 100),
-      updatePrompt: updatePrompt.substring(0, 100),
-    })
-    .info("Starting full evaluation");
+): Effect.Effect<
+  EvaluationResult,
+  EvaluationError,
+  FileSystem.FileSystem | CommandExecutor
+> {
+  return Effect.gen(function* () {
+    yield* Effect.logInfo("Starting full evaluation").pipe(
+      Effect.annotateLogs({
+        initialPrompt: initialPrompt.substring(0, 100),
+        updatePrompt: updatePrompt.substring(0, 100),
+      }),
+    );
 
-  let tempDir: tmp.DirResult | null = null;
+    const tempDir = yield* Effect.sync(() =>
+      tmp.dirSync({
+        prefix: "benchmark-",
+        unsafeCleanup: true,
+        keep: true,
+      }),
+    );
 
-  try {
-    // Create temporary workspace - always keep it
-    tempDir = tmp.dirSync({
-      prefix: "benchmark-",
-      unsafeCleanup: true,
-      keep: true,
-    });
+    yield* Effect.logDebug(`Created temporary workspace: ${tempDir.name}`);
 
-    logger
-      .withMetadata({ path: tempDir.name })
-      .debug("Created temporary workspace");
-
-    const originalProgramPath = await generateOriginalProgram(
+    const originalProgramPath = yield* generateOriginalProgram(
       initialPrompt,
       codingAgent,
       tempDir.name,
-      logger,
     );
 
-    // Now run the update evaluation
-    const updateResult = await evaluateUpdates(
+    const updateResult = yield* evaluateUpdates(
       originalProgramPath,
       updatePrompt,
       tempDir.name,
       config,
     );
 
-    // Note that the original program was generated as part of this run; add the initial prompt
+    yield* Effect.logInfo(`Benchmark results saved at: ${tempDir.name}`);
+
     return {
       ...updateResult,
-      originalProgramSource: { type: "generatedInRun", initialPrompt },
+      originalProgramSource: {
+        type: "generatedInRun" as const,
+        initialPrompt,
+      },
     };
-  } catch (error) {
-    logger
-      .withMetadata({
-        error: error instanceof Error ? error.message : String(error),
-      })
-      .error("Full evaluation failed");
-
-    throw error instanceof EvaluationError
-      ? error
-      : new EvaluationError(
-          "Full evaluation failed",
-          "EVALUATION_FAILED",
-          error,
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Full evaluation failed").pipe(
+          Effect.annotateLogs({
+            error: error instanceof Error ? error.message : String(error),
+          }),
         );
-  } finally {
-    // Never cleanup - we want to keep the results
-    if (tempDir) {
-      logger
-        .withMetadata({ path: tempDir.name })
-        .info("Benchmark results saved at:");
-    }
-  }
+
+        return yield* Effect.fail(
+          error instanceof EvaluationError
+            ? error
+            : new EvaluationError(
+                "Full evaluation failed",
+                "EVALUATION_FAILED",
+                error,
+              ),
+        );
+      }),
+    ),
+  );
 }
 
-async function generateOriginalProgram(
+function generateOriginalProgram(
   initialPrompt: string,
   codingAgent: CodingAgent,
   workspaceDir: string,
-  logger: Logger,
-): Promise<string> {
-  logger.info("Generating original program");
+): Effect.Effect<
+  string,
+  EvaluationError,
+  FileSystem.FileSystem | CommandExecutor
+> {
+  return Effect.gen(function* () {
+    yield* Effect.logInfo("Generating original program");
 
-  const originalFolder = path.join(workspaceDir, "original-program");
-  await fs.ensureDir(originalFolder);
+    const originalFolder = path.join(workspaceDir, "original-program");
+    const fs = yield* FileSystem.FileSystem;
+    yield* fs.makeDirectory(originalFolder, { recursive: true });
 
-  try {
-    await codingAgent(initialPrompt, originalFolder);
+    yield* Effect.tryPromise({
+      try: () => codingAgent(initialPrompt, originalFolder),
+      catch: (error) =>
+        new EvaluationError(
+          "Failed to generate original program",
+          "GENERATION_FAILED",
+          error,
+        ),
+    });
 
-    const files = await fs.readdir(originalFolder);
+    const files = yield* fs.readDirectory(originalFolder);
     if (files.length === 0) {
-      throw new EvaluationError(
-        "Coding agent did not generate any files",
-        "NO_FILES_GENERATED",
+      return yield* Effect.fail(
+        new EvaluationError(
+          "Coding agent did not generate any files",
+          "NO_FILES_GENERATED",
+        ),
       );
     }
 
     // Create .gitignore if it doesn't exist
     const gitignorePath = path.join(originalFolder, ".gitignore");
-    if (!(await fs.pathExists(gitignorePath))) {
+    const gitignoreExists = yield* fs.exists(gitignorePath);
+    if (!gitignoreExists) {
       const gitignoreContent = `node_modules/
 .DS_Store
 *.log
@@ -234,45 +255,57 @@ package-lock.json
 dist/
 build/
 `;
-      await fs.writeFile(gitignorePath, gitignoreContent);
+      yield* fs.writeFileString(gitignorePath, gitignoreContent);
     }
 
     // Initialize git repo and commit
-    execSync("git init", { cwd: originalFolder });
-    execSync("git add -A", { cwd: originalFolder });
-    execSync('git commit -m "Initial commit: Generated program"', {
-      cwd: originalFolder,
-    });
+    yield* gitCmd(originalFolder, "init");
+    yield* gitCmd(originalFolder, "add", "-A");
+    yield* gitCmd(
+      originalFolder,
+      "commit",
+      "-m",
+      "Initial commit: Generated program",
+    );
 
-    logger
-      .withMetadata({
+    yield* Effect.logInfo(
+      "Original program generated and committed to git",
+    ).pipe(
+      Effect.annotateLogs({
         path: originalFolder,
         fileCount: files.length,
-      })
-      .info("Original program generated and committed to git");
+      }),
+    );
 
     return originalFolder;
-  } catch (error) {
-    throw new EvaluationError(
-      "Failed to generate original program",
-      "GENERATION_FAILED",
-      error,
-    );
-  }
+  }).pipe(
+    Effect.mapError((error) =>
+      error instanceof EvaluationError
+        ? error
+        : new EvaluationError(
+            "Failed to generate original program",
+            "GENERATION_FAILED",
+            error,
+          ),
+    ),
+  );
 }
 
-async function applyUpdatesToInstances(
+function applyUpdatesToInstances(
   originalProgramPath: string,
   updatePrompt: string,
   workspaceDir: string,
   config: EvaluationConfig,
-  logger: Logger,
-): Promise<(InstanceResult | AgentInvocationFailure)[]> {
-  // Define agents and their configurations
+): Effect.Effect<
+  (InstanceResult | AgentInvocationFailure)[],
+  PlatformError,
+  FileSystem.FileSystem | CommandExecutor
+> {
+  // Make instances
   const agents = [
     {
       name: "claude",
-      agent: new ClaudeAgent(config.claudeConfig, logger),
+      agent: new ClaudeAgent(config.claudeConfig),
     },
     { name: "codex", agent: codexAgent },
     // { name: 'gemini', agent: geminiAgent, applyUpdate: false }
@@ -280,210 +313,204 @@ async function applyUpdatesToInstances(
 
   const instancesPerAgent = 3;
   const basePort = 30000;
-  let currentPort = basePort;
-  const allInstances: {
-    instanceId: string;
-    agentName: string;
-    agent: unknown;
-    instancePath: string;
-    port: number;
-  }[] = [];
-
-  logger.info("Creating program instances for updates");
-
-  // Create instance directories for all agents
-  for (const agentConfig of agents) {
-    for (let i = 1; i <= instancesPerAgent; i++) {
-      const instanceId = `${agentConfig.name}-${i}`;
-      const instancePath = path.join(workspaceDir, instanceId);
-      await fs.copy(originalProgramPath, instancePath);
-      logger
-        .withMetadata({ path: instancePath })
-        .debug(`Created instance ${instanceId}`);
-
-      allInstances.push({
-        instanceId,
-        agentName: agentConfig.name,
-        agent: agentConfig.agent,
-        instancePath,
-        port: currentPort++,
-      });
-    }
-  }
-
-  logger.info("Applying updates to all instances in parallel");
+  const instances: readonly InstanceDescriptor[] = makeInstances(
+    getLoggerConfig().logger,
+    workspaceDir,
+    basePort,
+    instancesPerAgent,
+    agents,
+  );
 
   // Execute all updates in parallel
-  const updatePromises = allInstances.map(
-    async (instance): Promise<InstanceResult | AgentInvocationFailure> => {
-      const startTime = Date.now();
+  Effect.logInfo("Applying updates to all instances in parallel");
+  return Effect.forEach(
+    instances,
+    (instance) =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.copy(originalProgramPath, instance.instancePath);
+        yield* Effect.logDebug(`Created instance ${instance.instanceId}`);
 
-      try {
-        // For Claude, use its applyUpdate method, for others use the agent directly
-        if (isClaudeAgent(instance.agent)) {
-          const exit = await Effect.runPromiseExit(
-            instance.agent.applyUpdate(
-              updatePrompt,
-              instance.instancePath,
-              instance.instanceId,
-              instance.port,
-            ),
-          );
+        // 1. Try to update with feature addition agent
+        let result = yield* runFeatureAgent(
+          getLoggerConfig().logger,
+          updatePrompt,
+          instance,
+        );
 
-          return Exit.match(exit, {
-            onFailure: (cause): AgentInvocationFailure => {
-              logger
-                .withMetadata({
-                  cause: Cause.pretty(cause),
-                })
-                .error(`Claude agent failed for ${instance.instanceId}`);
+        // 2. Compute diff stats
+        result = yield* augmentWithDiffStats(result);
+        if (isInvocationFailure(result)) {
+          return result;
+        }
 
-              return makeAgentInvocationFailure(
-                instance.instanceId,
-                instance.instancePath,
-                instance.agentName,
-                Date.now() - startTime,
-                Cause.pretty(cause),
-                // Try to extract error type from cause if possible
-                // For now, we'll leave this undefined but could enhance later
-                undefined,
-              );
-            },
-            onSuccess: (result): InstanceResult => result,
-          });
-        } else {
-          await (instance.agent as CodingAgent)(
-            updatePrompt,
-            instance.instancePath,
-            instance.port,
-          );
-          // For other agents, create a success result manually
-          return makeInstanceResult(
-            instance.instanceId,
-            instance.instancePath,
-            instance.agentName,
-            Date.now() - startTime,
+        // 3. Calculate score: 300 - linesChanged
+        result.score = Math.max(
+          0,
+          300 - result.diffStats.getSummaryStats().linesChanged,
+        );
+
+        // 4. Commit the changes for future reference
+        yield* gitCmd(
+          result.folderPath,
+          "commit",
+          "-m",
+          `Update: Applied modifications by ${result.agentName}`,
+        );
+
+        // 5. Log
+        yield* Effect.logInfo(`Instance ${instance.instanceId} completed`);
+        if (isInvocationSuccess(result)) {
+          yield* Effect.logInfo(
+            dedent`
+              → ${result.instanceId} [${result.agentName}]: ${result.diffStats.getNumFilesChanged()} files changed, ${result.diffStats.getNumLinesChanged()} lines changed, score: ${result.score}`,
           );
         }
-      } catch (e) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        logger
-          .withMetadata({
-            error: error.message,
-          })
-          .error(`Failed to apply update for ${instance.instanceId}`);
 
-        return makeAgentInvocationFailure(
-          instance.instanceId,
-          instance.instancePath,
-          instance.agentName,
-          Date.now() - startTime,
-          error.message,
-          undefined,
-        );
-      }
-    },
+        return result;
+      }),
+    { concurrency: "unbounded" },
   );
-
-  const results = await Promise.all(updatePromises);
-
-  // Calculate git diff statistics and scores
-  const resultsWithDiffs = results.map(
-    (result: InstanceResult | AgentInvocationFailure) => {
-      const instancePath = result.folderPath;
-      let diffStats = DiffStats.mempty();
-      let score = 0;
-
-      if (isInvocationSuccess(result)) {
-        try {
-          // First add all changes to staging to see what changed
-          execSync("git add -A", { cwd: instancePath });
-
-          // ***********************
-          // Get the diff statistics
-          // ***********************
-          const baseGitDiffCmd = "git diff --cached -M --ignore-space-change";
-          // -M for heuristic rename detection
-          // --ignore-space-change, because more conservative than --ignore-all-space (TODO: will need to monitor / tune this)
-          const diffThenDiffStat = `${baseGitDiffCmd} | diffstat -tm`;
-          // diffstat with -m because we want to count, e.g., changing a word on a line as being one change, as opposed to two.
-          // -t for easy parsing
-          // IMPT: Do NOT use --unified=0 with the git diff command -- that breaks the diffstat parsing
-
-          const diffStatOutput = execSync(diffThenDiffStat, {
-            cwd: instancePath,
-            encoding: "utf-8",
-          });
-          diffStats = DiffStats.makeFromDiffstat(diffStatOutput);
-
-          // Calculate score: 300 - linesChanged
-          score = Math.max(0, 300 - diffStats.getSummaryStats().linesChanged);
-
-          // Also log the full diff stats for debugging
-          const gitDiffStatOutput = execSync(`${baseGitDiffCmd} --stat`, {
-            cwd: instancePath,
-            encoding: "utf-8",
-          });
-          logger.debug(dedent`
-                Diff stats for ${result.instanceId}:
-                ${gitDiffStatOutput}`);
-          logger.debug(dedent`
-                ${diffThenDiffStat} for ${result.instanceId}: 
-                ${diffStatOutput}`);
-
-          // Commit the changes for future reference
-          try {
-            execSync(
-              `git commit -m "Update: Applied modifications by ${result.agentName}"`,
-              { cwd: instancePath },
-            );
-          } catch (_commitError) {
-            // If commit fails (e.g., nothing to commit), that's okay
-            logger.debug(`No changes to commit for ${result.instanceId}`);
-          }
-        } catch (error) {
-          logger
-            .withMetadata({
-              error: error instanceof Error ? error.message : String(error),
-            })
-            .warn(`Failed to get git diff for ${result.instanceId}`);
-        }
-      }
-
-      // Update score and diffStats for successful invocations
-      const finalResult: InstanceResult | AgentInvocationFailure =
-        isInvocationSuccess(result)
-          ? {
-              ...result,
-              score,
-              diffStats,
-            }
-          : result;
-
-      logger
-        .withMetadata({
-          success: isInvocationSuccess(result),
-          executionTime: result.executionTimeMs,
-          diffStats,
-          score,
-          agentName: result.agentName,
-        })
-        .info(`Instance ${result.instanceId} completed`);
-
-      // Log diff stats immediately
-      if (isInvocationSuccess(result)) {
-        logger.info(
-          dedent`
-          → ${result.instanceId} [${result.agentName}]: ${diffStats.getNumFilesChanged()} files changed, ${diffStats.getNumLinesChanged()} lines changed, score: ${score}`,
-        );
-      }
-
-      return finalResult;
-    },
-  );
-
-  return resultsWithDiffs;
 }
+
+function augmentWithDiffStats(
+  result: InstanceResult | AgentInvocationFailure,
+): Effect.Effect<
+  InstanceResult | AgentInvocationFailure,
+  PlatformError,
+  CommandExecutor
+> {
+  if (!isInvocationSuccess(result)) {
+    return Effect.succeed(result);
+  }
+
+  return Effect.gen(function* () {
+    // **************************************************
+    // a. Add all changes to staging to see what changed
+    // **************************************************
+    yield* gitCmd(result.folderPath, "add", "-A");
+
+    // **************************************************
+    // b. Get the diff statistics
+    // **************************************************
+    const baseGitDiffArgs = [
+      "diff",
+      "--cached",
+      "-M",
+      // for heuristic rename detection
+      "--ignore-space-change",
+      // more conservative than --ignore-all-space (TODO: will need to monitor / tune this)
+    ];
+    const diffOutput = yield* gitCmd(result.folderPath, ...baseGitDiffArgs);
+
+    const diffStatOutput = yield* Command.make("diffstat", "-tm").pipe(
+      Command.feed(diffOutput),
+      Command.string,
+    );
+    // diffstat with -m because we want to count, e.g., changing a word on a line as being one change, as opposed to two.
+    // -t for easy parsing
+    // IMPT: Do NOT use --unified=0 with the git diff command -- that breaks the diffstat parsing
+    const diffStats = DiffStats.makeFromDiffstat(diffStatOutput);
+
+    // **************************************************
+    // c. Log the full diff stats for debugging
+    // **************************************************
+    const gitDiffStatOutput = yield* gitCmd(
+      result.folderPath,
+      ...baseGitDiffArgs,
+      "--stat",
+    );
+    yield* Effect.logDebug(dedent`
+            Diff stats for ${result.instanceId}:
+            ${gitDiffStatOutput}`);
+    yield* Effect.logDebug(dedent`
+            ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${result.instanceId}: 
+            ${diffStatOutput}`);
+
+    return { ...result, diffStats };
+  });
+}
+
+// TODO: Will refactor this at some point
+const runFeatureAgent = (
+  logger: Logger,
+  updatePrompt: string,
+  descriptor: InstanceDescriptor,
+): Effect.Effect<InstanceResult | AgentInvocationFailure, never> =>
+  Effect.gen(function* () {
+    const startTime = yield* Effect.sync(() => Date.now());
+    if (isClaudeAgent(descriptor.agent)) {
+      return yield* descriptor.agent
+        .applyUpdate(
+          updatePrompt,
+          descriptor.instancePath,
+          descriptor.instanceId,
+          descriptor.port,
+        )
+        .pipe(
+          Effect.matchCauseEffect({
+            onFailure: (cause) =>
+              Effect.gen(function* () {
+                const elapsed = yield* Effect.sync(
+                  () => Date.now() - startTime,
+                );
+                const prettyCause = Cause.pretty(cause);
+                yield* Effect.sync(() =>
+                  logger
+                    .withMetadata({ cause: prettyCause })
+                    .error(`Claude agent failed for ${descriptor.instanceId}`),
+                );
+
+                return makeAgentInvocationFailure(
+                  descriptor.instanceId,
+                  descriptor.instancePath,
+                  descriptor.agentName,
+                  elapsed,
+                  prettyCause,
+                );
+              }),
+            onSuccess: (success) => Effect.succeed(success),
+          }),
+        );
+    }
+
+    return yield* Effect.tryPromise({
+      try: () =>
+        (descriptor.agent as CodingAgent)(
+          updatePrompt,
+          descriptor.instancePath,
+          descriptor.port,
+        ),
+      catch: (cause) =>
+        cause instanceof Error ? cause : new Error(String(cause)),
+    }).pipe(
+      Effect.map(() =>
+        makeInstanceResult(
+          descriptor.instanceId,
+          descriptor.instancePath,
+          descriptor.agentName,
+          Date.now() - startTime,
+        ),
+      ),
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          const elapsed = yield* Effect.sync(() => Date.now() - startTime);
+          yield* Effect.sync(() =>
+            logger
+              .withMetadata({ error: error.message })
+              .error(`Failed to apply update for ${descriptor.instanceId}`),
+          );
+          return makeAgentInvocationFailure(
+            descriptor.instanceId,
+            descriptor.instancePath,
+            descriptor.agentName,
+            elapsed,
+            error.message,
+          );
+        }),
+      ),
+    );
+  });
 
 export type { CodingAgent } from "../agents/types.ts";
 export type { EvaluationConfig } from "./config.ts";

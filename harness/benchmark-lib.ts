@@ -1,5 +1,9 @@
 import { execSync } from "node:child_process";
 import * as path from "node:path";
+import { FileSystem } from "@effect/platform";
+import type { CommandExecutor } from "@effect/platform/CommandExecutor";
+import type { PlatformError } from "@effect/platform/Error";
+import { Effect } from "effect";
 import fs from "fs-extra";
 import * as tmp from "tmp";
 import type { CodingAgent } from "./agents/types.ts";
@@ -117,81 +121,101 @@ export async function readBenchmarkPrompts(
 /**
  * Run benchmark with generated initial code
  */
-export async function runBenchmarkWithNewCode(
+export function runBenchmarkWithNewCode(
   benchmarkPath: string,
   codingAgent: CodingAgent,
-): Promise<void> {
-  const benchmarkName = path.basename(benchmarkPath);
-  const { initialPrompt, updatePrompt } =
-    await readBenchmarkPrompts(benchmarkPath);
+): Effect.Effect<
+  void,
+  PlatformError | Error,
+  FileSystem.FileSystem | CommandExecutor
+> {
+  return Effect.gen(function* () {
+    const benchmarkName = path.basename(benchmarkPath);
+    const { initialPrompt, updatePrompt } = yield* Effect.promise(() =>
+      readBenchmarkPrompts(benchmarkPath),
+    );
 
-  if (!initialPrompt) {
-    throw new Error(`Missing initial-prompt.txt in ${benchmarkPath}`);
-  }
+    if (!initialPrompt) {
+      throw new Error(`Missing initial-prompt.txt in ${benchmarkPath}`);
+    }
 
-  // Run the evaluation
-  const result = await evaluate(initialPrompt, codingAgent, updatePrompt, {
-    logLevel: "info",
+    const result = yield* evaluate(initialPrompt, codingAgent, updatePrompt, {
+      logLevel: "info",
+    });
+
+    yield* Effect.sync(() => outputBenchmarkResults(benchmarkName, result));
   });
-
-  outputBenchmarkResults(benchmarkName, result);
 }
 
 /**
  * Run benchmark with existing initial code
  */
-export async function runBenchmarkWithExistingCode(
+export function runBenchmarkWithExistingCode(
   benchmarkPath: string,
   existingCodePath: string,
-): Promise<void> {
-  const benchmarkName = path.basename(benchmarkPath);
-  const { updatePrompt } = await readBenchmarkPrompts(benchmarkPath);
-
-  // Verify existing code has git repo
-  try {
-    execSync("git status", { cwd: existingCodePath, stdio: "ignore" });
-  } catch (_error) {
-    throw new Error(
-      `Existing code at ${existingCodePath} is not a git repository`,
+): Effect.Effect<
+  void,
+  PlatformError | Error,
+  FileSystem.FileSystem | CommandExecutor
+> {
+  return Effect.gen(function* () {
+    const benchmarkName = path.basename(benchmarkPath);
+    const { updatePrompt } = yield* Effect.promise(() =>
+      readBenchmarkPrompts(benchmarkPath),
     );
-  }
 
-  // Create temporary workspace - always keep it
-  const tempDir = tmp.dirSync({
-    prefix: `benchmark-existing-${benchmarkName}-`,
-    unsafeCleanup: true,
-    keep: true,
-  });
-
-  console.log(`Created temporary workspace: ${tempDir.name}`);
-
-  // Copy existing code to temp dir as "original-program"
-  const originalProgramPath = path.join(tempDir.name, "original-program");
-  await fs.copy(existingCodePath, originalProgramPath);
-
-  // Check if the destination directory is already a git repository
-  try {
-    execSync("git status", { cwd: originalProgramPath, stdio: "ignore" });
-  } catch (_error) {
-    // Not a git repository, initialize it
-    execSync("git init", { cwd: originalProgramPath });
-    execSync("git add -A", { cwd: originalProgramPath });
-    execSync('git commit -m "Initial commit: Generated program"', {
-      cwd: originalProgramPath,
+    // Verify existing code has git repo
+    yield* Effect.try({
+      try: () =>
+        execSync("git status", { cwd: existingCodePath, stdio: "ignore" }),
+      catch: (_error) =>
+        new Error(
+          `Existing code at ${existingCodePath} is not a git repository`,
+        ),
     });
-  }
 
-  // Run the update evaluation only
-  const result = await evaluateUpdates(
-    originalProgramPath,
-    updatePrompt,
-    tempDir.name,
-    {
-      logLevel: "info",
-    },
-  );
+    // Create temporary workspace - always keep it
+    const tempDir = yield* Effect.sync(() =>
+      tmp.dirSync({
+        prefix: `benchmark-existing-${benchmarkName}-`,
+        unsafeCleanup: true,
+        keep: true,
+      }),
+    );
 
-  outputBenchmarkResults(benchmarkName, result);
+    yield* Effect.log(`Created temporary workspace: ${tempDir.name}`);
 
-  console.log(`\nBenchmark results saved at: ${tempDir.name}`);
+    // Copy existing code to temp dir as "original-program"
+    const originalProgramPath = path.join(tempDir.name, "original-program");
+    const fs = yield* FileSystem.FileSystem;
+    yield* fs.copy(existingCodePath, originalProgramPath);
+
+    // Check if the destination directory is already a git repository
+    yield* Effect.try({
+      try: () =>
+        execSync("git status", { cwd: originalProgramPath, stdio: "ignore" }),
+      catch: (_error) =>
+        Effect.sync(() => {
+          // Not a git repository, initialize it
+          execSync("git init", { cwd: originalProgramPath });
+          execSync("git add -A", { cwd: originalProgramPath });
+          execSync('git commit -m "Initial commit: Generated program"', {
+            cwd: originalProgramPath,
+          });
+        }),
+    }).pipe(Effect.catchAll(() => Effect.void));
+
+    // Run the update evaluation only
+    const result = yield* evaluateUpdates(
+      originalProgramPath,
+      updatePrompt,
+      tempDir.name,
+      {
+        logLevel: "info",
+      },
+    );
+
+    yield* Effect.sync(() => outputBenchmarkResults(benchmarkName, result));
+    yield* Effect.log(`\nBenchmark results saved at: ${tempDir.name}`);
+  });
 }

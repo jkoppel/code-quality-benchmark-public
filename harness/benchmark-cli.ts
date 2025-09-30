@@ -162,9 +162,7 @@ function makeRunFromScratchSubCommand() {
         const codingAgent = createShellAgent(resolvedScriptPath);
 
         // Run benchmark
-        yield* Effect.promise(() =>
-          runBenchmarkWithNewCode(resolvedBenchmarkPath, codingAgent),
-        );
+        yield* runBenchmarkWithNewCode(resolvedBenchmarkPath, codingAgent);
       }),
     ),
   );
@@ -198,11 +196,9 @@ function makeRunWithExistingSubCommand() {
         yield* Console.log(`Existing code: ${resolvedProgramPath}`);
 
         // Run benchmark
-        yield* Effect.promise(() =>
-          runBenchmarkWithExistingCode(
-            resolvedBenchmarkPath,
-            resolvedProgramPath,
-          ),
+        yield* runBenchmarkWithExistingCode(
+          resolvedBenchmarkPath,
+          resolvedProgramPath,
         );
       }),
     ),
