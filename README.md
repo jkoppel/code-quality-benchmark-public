@@ -42,60 +42,82 @@ And then, just as with code quality, the refactoring agent is evaluated based on
 
 ## Quickstart
 
-There will be a better, more streamlined CLI very soon.
-
-But for now, you can run the benchmark by installing with npm, and then running the specific scripts you are interested in.
-
 ### Installation
-
-To install the core harness:
 
 ```bash
 npm install
 npm run build
+npm link # to make the cqb benchmark cli available globally
 ```
 
 You will also need Claude Code if you want to run the functionality tests.
 
-### Running the benchmark
-
-There are three key scripts: two scripts for running the evaluation and scoring it based on the diffs, and a third for running functionality tests for the benchmark tasks.
-
-The benchmark harness and infrastructure will be streamlined and improved in the very near future.
+### Basic Usage
 
 ```bash
-npm run benchmark <folder containing initial and update prompts> <agent runner script>`
+# Generate a program for the benchmark project with the supplied coding agent
+# and then apply feature requests and evaluate it
+cqb run <benchmark-path> <agent-script-path>
+
+# Run benchmark with existing/refactored code
+cqb existing <benchmark-path> <existing-code-path>
+
+# Test functionality of a benchmark attempt (that satisfies not only the initial but also the update prompt)
+cqb test <benchmark-path> <system-under-test> [options]
 ```
+
+### CLI Help
 
 ```bash
-npm run benchmark:existing <folder containing initial and update prompts> <refactored program>
-# (where the refactored program was refactored / created elsewhere)
+cqb --help                    # Show all commands
+cqb run --help                # Show specific command help
+cqb --wizard                  # Interactive command builder
 ```
 
+### Test Command Options
 
-### Testing functionality of benchmark attempts
-
-To test the functionality of an attempt at a benchmark task:
-
-```bash
-npm run benchmark:test-functionality <benchmark-path> <program-path> [options]
-```
-
-Options:
+The `cqb test` command supports additional options:
 - `-p, --port <number>`: Port to use for the dev server (default: 3000)
 - `-t, --max-concurrent-tests <number>`: Max number of test cases to run concurrently (default: 4)
+- `--headed`: Run browser in headed mode (show browser window)
+- `--playwright-out-dir <path>`: Directory for Playwright MCP traces and sessions
 
 Example:
-
 ```bash
-LOG_LEVEL=debug npm run benchmark:test-functionality benchmarks/evolvability/todolist-easy /path/to/generated/program
+LOG_LEVEL=debug cqb test benchmarks/evolvability/todolist-easy /path/to/generated/program
 ```
 
-This uses Claude Code agents with Playwright MCP to check generated programs against a pre-defined test suite.
-The test suite is formulated at a higher level, and partially in natural language, because we intentionally don't impose a lot of constraints on the data representation in the benchmark specs.
+### Shell Completion
+
+To enable tab completion for your shell:
+
+```bash
+# Bash (add to ~/.bashrc)
+echo 'source <(cqb --completions bash)' >> ~/.bashrc
+
+# Zsh (add to ~/.zshrc)
+echo 'source <(cqb --completions zsh)' >> ~/.zshrc
+
+# Fish
+cqb --completions fish > ~/.config/fish/completions/cqb.fish
+```
+
+### Wizard Mode
+
+The CLI also allows you to build commands step-by-step, interactively, with the wizard mode:
+
+```bash
+cqb --wizard
+```
+
+## Testing Framework
+
+Functionality tests use Claude Code agents with Playwright MCP to check generated programs against pre-defined test suites. The test suites are formulated at a higher level and partially in natural language, because we intentionally don't impose many constraints on data representation in the benchmark specs.
 
 
 ## For contributors
+
+### Development Scripts
 
 ```bash
 npm run dev                 # Watch mode for development
@@ -110,6 +132,29 @@ npm run fix:all             # Format code and fix linting issues
 npm run fix:changed         # Format and fix only files that have changed since `main`
 npm run check:command-refs  # Check that references to npm commands in docs, error messages are up to date using a headless Claude Code instance
 ```
+
+### Development Setup
+
+For contributors working on the CLI:
+
+1. Install and link for development:
+   ```bash
+   npm install
+   npm run build
+   npm link        # Makes 'cqb' available globally
+   ```
+
+2. Start watch mode:
+   ```bash
+   npm run dev     # Rebuilds on file changes
+   ```
+
+3. Test your changes:
+   ```bash
+   cqb run benchmarks/...   # Uses your local development version
+   ```
+
+Alternative: Use `npx cqb` to test the local version without global linking.
 
 ## Pre-commit hooks
 

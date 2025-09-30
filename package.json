@@ -6,9 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "cqb": "./dist/harness/benchmark-runner.js",
-    "cqb-existing": "./dist/harness/benchmark-runner-existing.js",
-    "cqb-test": "./dist/harness/benchmark-test-functionality.js"
+    "cqb": "./dist/harness/benchmark-cli.js"
   },
   "scripts": {
     "build": "tsdown",
@@ -22,10 +20,10 @@
     "format:staged": "biome format --write --staged --verbose --files-ignore-unknown=true --no-errors-on-unmatched",
     "dev": "tsdown --watch",
     "test": "vitest --passWithNoTests",
-    "benchmark": "npm run build && node dist/harness/benchmark-runner.js",
-    "benchmark:existing": "npm run build && node dist/harness/benchmark-runner-existing.js",
-    "benchmark:test-functionality": "npm run build && node dist/harness/benchmark-test-functionality.js",
-    "check:command-refs": "claude -p 'Check that the error messages and comments and docs re the commands (eg npm run benchmark:test-functionality), eg in harness/benchmark-runner.ts harness/benchmark-runner-existing.ts harness/benchmark-test-functionality.ts README.md, are in sync with what is actually the case (see package.json)'",
+    "benchmark": "npm run build && node dist/harness/benchmark-cli.js run",
+    "benchmark:existing": "npm run build && node dist/harness/benchmark-cli.js existing",
+    "benchmark:test-functionality": "npm run build && node dist/harness/benchmark-cli.js test",
+    "check:command-refs": "claude -p 'Check that the error messages and comments and docs re the commands (eg npm run benchmark:test-functionality), eg in harness/benchmark-cli.ts README.md, are in sync with what is actually the case (see package.json)'",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -39,6 +37,8 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
+    "@effect/cli": "^0.70.0",
+    "@effect/platform-node": "^0.97.1",
     "@loglayer/transport-pino": "^2.2.3",
     "@types/fs-extra": "^11.0.4",
     "@types/tmp": "^0.2.6",
