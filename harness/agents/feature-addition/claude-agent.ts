@@ -104,9 +104,7 @@ export class ClaudeAgent {
             duration: message.duration_ms,
           })
           .debug(`Claude completed`);
-        self.logger.info(
-          `Successfully completed update for instance ${instanceId}`,
-        );
+        self.logger.info(`✓ Update for instance ${instanceId} completed`);
         return makeInstanceResult(
           instanceId,
           folderPath,

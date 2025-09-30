@@ -64,6 +64,8 @@ cqb existing <benchmark-path> <existing-code-path>
 
 # Test functionality of a benchmark attempt (that satisfies not only the initial but also the update prompt)
 cqb test <benchmark-path> <system-under-test> [options]
+# List functionality test strategies discovered by the harness (debugging aid)
+cqb debug:list-tests
 ```
 
 ### CLI Help

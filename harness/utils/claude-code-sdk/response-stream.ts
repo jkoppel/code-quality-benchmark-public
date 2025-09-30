@@ -54,12 +54,8 @@ export function consumeUntilTerminal<T extends SessionManager>(
   ).pipe(
     Stream.tap((message) =>
       Effect.sync(() => {
-        if (sessionManager && !sessionManager.getSessionId()) {
-          sessionManager.setSessionId(message.session_id);
-        }
-        if (logger) {
-          logger.withMetadata({ claudeCode: message }).debug("Response");
-        }
+        sessionManager?.setSessionId(message.session_id);
+        logger?.withMetadata({ claudeCode: message }).debug("Response");
       }),
     ),
     Stream.takeUntil(

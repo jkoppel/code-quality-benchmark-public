@@ -15,7 +15,7 @@ export interface Report {
   timestamp: string;
 }
 
-export interface TestSuiteResults extends Report {
+export interface TestSuiteResult extends Report {
   name: string;
   summary: {
     total: number;
@@ -27,12 +27,12 @@ export interface TestSuiteResults extends Report {
   results: TestResult[];
 }
 
-export function allTestsPassed(result: TestSuiteResults): boolean {
+export function allTestsPassed(result: TestSuiteResult): boolean {
   return result.summary.passed === result.summary.total;
 }
 
 /** Each test in the suite either passed or was skipped */
-export function hasNoFailures(result: TestSuiteResults): boolean {
+export function hasNoFailures(result: TestSuiteResult): boolean {
   return result.summary.failed === 0;
 }
 
@@ -85,7 +85,7 @@ export const TestResultSchema = z.object({
 export class Reporter {
   constructor(private logger: Logger) {}
 
-  report(results: TestSuiteResults): void {
+  report(results: TestSuiteResult): void {
     this.logger.info(jsonStringify(results));
 
     // Summary logging
