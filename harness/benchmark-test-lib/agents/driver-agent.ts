@@ -39,8 +39,6 @@ export type DriverAgentConfig = Pick<
     Custom DriverAgentErrors
 ***************************************/
 
-// We throw errors because errors here are likely reflect either
-// infra issues or a badly written test case.
 // We never want to convert DriverAgentErrors to failed TestResults -- if there is a
 // DriverAgentError, there will not be a TestResult.
 
@@ -195,10 +193,10 @@ export class DriverAgent {
 
       const result = yield* self.ask(fullPrompt, additionalConfig);
 
+      // TODO: Refactor away the try/catch at some point
       try {
         const raw = yield* self.extractJsonFromResponse(result);
-        const validated = outputSchema.parse(JSON.parse(raw));
-        return validated;
+        return outputSchema.parse(JSON.parse(raw));
       } catch (error) {
         if (error instanceof z.ZodError) {
           return yield* new DriverAgentResponseFormatInvalid({

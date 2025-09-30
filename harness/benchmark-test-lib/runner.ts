@@ -20,11 +20,13 @@ import type { Logger, LogLevel } from "../utils/logger/logger.ts";
 import { jsonStringify } from "../utils/logger/pretty.ts";
 import { launchProcess } from "../utils/process-launcher.ts";
 import { DiscoveryAgent } from "./agents/discovery-agent.ts";
+import type { DriverAgentError } from "./agents/driver-agent.ts";
 import {
   TestCaseAgent,
   type TestCaseAgentOptions,
 } from "./agents/test-case-agent.ts";
 import type { TestContext } from "./context.ts";
+import type { TestSuiteResult } from "./report.ts";
 import type { Suite, SuiteGenerationStrategy } from "./suite.ts";
 
 /** Config for the system under test */
@@ -119,7 +121,9 @@ export class TestRunner {
     return this.config.getLogger();
   }
 
-  executeStrategy(strategy: SuiteGenerationStrategy) {
+  executeStrategy(
+    strategy: SuiteGenerationStrategy,
+  ): Effect.Effect<TestSuiteResult, DriverAgentError, never> {
     const self = this;
     return Effect.gen(function* () {
       const maxListenersExceededWarningHandler = (warning: Error) => {
@@ -135,6 +139,8 @@ export class TestRunner {
       };
 
       process.on("warning", maxListenersExceededWarningHandler);
+
+      // TODO: Clean up the stuff below at some point
 
       try {
         const server = yield* Effect.promise(() =>
@@ -161,7 +167,10 @@ export class TestRunner {
   }
 
   /** Run a test suite without starting dev server */
-  private runTestSuite_(context: TestContext, suite: Suite) {
+  private runTestSuite_(
+    context: TestContext,
+    suite: Suite,
+  ): Effect.Effect<TestSuiteResult, DriverAgentError, never> {
     const self = this;
     return Effect.gen(function* () {
       const startTime = Date.now();
