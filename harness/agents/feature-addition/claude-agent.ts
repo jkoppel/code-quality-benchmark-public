@@ -1,33 +1,34 @@
-import { query } from "@anthropic-ai/claude-code";
+import { type Options, query } from "@anthropic-ai/claude-code";
 import { Effect, Option } from "effect";
 import {
   type InstanceResult,
   makeInstanceResult,
 } from "../../evaluator/result.ts";
 import {
-  type ClaudeCodeError,
   ClaudeCodeExecutionError,
   ClaudeCodeMaxTurnsError,
   ClaudeCodeUnexpectedTerminationError,
 } from "../../utils/claude-code-sdk/errors.ts";
-import {
-  consumeUntilTerminal,
-  type StreamConversionError,
-} from "../../utils/claude-code-sdk/response-stream.ts";
+import { consumeUntilTerminal } from "../../utils/claude-code-sdk/response-stream.ts";
 import {
   isExecutionErrorResult,
   isMaxTurnsErrorResult,
   isSuccessResult,
 } from "../../utils/claude-code-sdk/type-guards.ts";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
-import type { ClaudeAgentConfig } from "../types.ts";
+import { AgentInvocationError, type FeatureAgent } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
+
+export type ClaudeAgentConfig = Pick<
+  Options,
+  "allowedTools" | "appendSystemPrompt" | "model"
+>;
 
 export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
   return agent instanceof ClaudeAgent;
 }
 
-export class ClaudeAgent {
+export class ClaudeAgent implements FeatureAgent {
   private readonly logger: Logger;
   private readonly config: ClaudeAgentConfig;
 
@@ -57,11 +58,7 @@ export class ClaudeAgent {
     folderPath: string,
     instanceId: string,
     port: number,
-  ): Effect.Effect<
-    InstanceResult,
-    ClaudeCodeError | StreamConversionError,
-    never
-  > {
+  ): Effect.Effect<InstanceResult, AgentInvocationError, never> {
     const startTime = Date.now();
 
     this.logger
@@ -86,13 +83,7 @@ export class ClaudeAgent {
       });
 
       if (Option.isNone(maybeTerminalMessage)) {
-        const error = ClaudeCodeUnexpectedTerminationError.make();
-        self.logger
-          .withMetadata({
-            error: error.message,
-          })
-          .error(`Failed to apply update for instance ${instanceId}`);
-        return yield* error;
+        return yield* ClaudeCodeUnexpectedTerminationError.make();
       }
 
       const message = maybeTerminalMessage.value;
@@ -114,33 +105,29 @@ export class ClaudeAgent {
       }
 
       if (isMaxTurnsErrorResult(message)) {
-        const error = ClaudeCodeMaxTurnsError.make(message.session_id);
-        self.logger
-          .withMetadata({
-            error: error.message,
-          })
-          .error(`Failed to apply update for instance ${instanceId}`);
-        return yield* error;
+        return yield* ClaudeCodeMaxTurnsError.make(message.session_id);
       }
 
       if (isExecutionErrorResult(message)) {
-        const error = ClaudeCodeExecutionError.make(message.session_id);
-        self.logger
-          .withMetadata({
-            error: error.message,
-          })
-          .error(`Failed to apply update for instance ${instanceId}`);
-        return yield* error;
+        return yield* ClaudeCodeExecutionError.make(message.session_id);
       }
 
       // should be impossible
-      const error = ClaudeCodeUnexpectedTerminationError.make();
-      self.logger
-        .withMetadata({
-          error: error.message,
-        })
-        .error(`Failed to apply update for instance ${instanceId}`);
-      return yield* error;
-    });
+      return yield* ClaudeCodeUnexpectedTerminationError.make();
+    }).pipe(
+      Effect.tapError((error) => {
+        return Effect.logError(
+          `Failed to apply update for instance ${instanceId}`,
+          error,
+        );
+      }),
+      Effect.mapError(
+        (error) =>
+          new AgentInvocationError({
+            message: error.message,
+            cause: error,
+          }),
+      ),
+    );
   }
 }

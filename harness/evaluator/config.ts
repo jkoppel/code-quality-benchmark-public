@@ -1,4 +1,4 @@
-import type { ClaudeAgentConfig } from "../agents/types.ts";
+import type { ClaudeAgentConfig } from "../agents/feature-addition/claude-agent.ts";
 
 export interface EvaluationConfig {
   workspaceRoot?: string;
