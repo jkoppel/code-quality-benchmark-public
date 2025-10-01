@@ -16,7 +16,7 @@ import dedent from "dedent";
 import detect from "detect-port";
 import { Effect } from "effect";
 import fs from "fs-extra";
-import type { Logger, LogLevel } from "../utils/logger/logger.ts";
+import { LoggerConfig } from "../utils/logger/logger.ts";
 import { jsonStringify } from "../utils/logger/pretty.ts";
 import { launchProcess } from "../utils/process-launcher.ts";
 import { DiscoveryAgent } from "./agents/discovery-agent.ts";
@@ -26,6 +26,14 @@ import {
   type TestCaseAgentOptions,
 } from "./agents/test-case-agent.ts";
 import type { TestContext } from "./context.ts";
+import {
+  DevServerDependenciesNotInstalledError,
+  type DevServerError,
+  DevServerPortInUseError,
+  DevServerProjectNotFoundError,
+  DevServerStartupTimeoutError,
+  type TestRunnerError,
+} from "./errors.ts";
 import type { TestSuiteResult } from "./report.ts";
 import type { Suite, SuiteGenerationStrategy } from "./suite.ts";
 
@@ -39,11 +47,9 @@ export interface SutConfig {
 export class TestRunnerConfig {
   static make(
     sutConfig: SutConfig,
-    loggerConfig: { logger: Logger; logLevel: LogLevel },
     maxConcurrentTests: number,
     browserIsHeaded: boolean,
     playwrightOutDir?: string,
-    // timeoutMs: number;
   ) {
     // Need to error in order for the benchmark args parser to error if the config options not valid
     if (!(sutConfig.port >= 1 && sutConfig.port <= 65535))
@@ -54,7 +60,6 @@ export class TestRunnerConfig {
 
     return new TestRunnerConfig(
       sutConfig,
-      loggerConfig,
       maxConcurrentTests,
       browserIsHeaded,
       playwrightOutDir && path.resolve(playwrightOutDir),
@@ -63,13 +68,11 @@ export class TestRunnerConfig {
 
   private constructor(
     private readonly sutConfig: SutConfig,
-    private readonly loggerConfig: { logger: Logger; logLevel: LogLevel },
     private readonly maxConcurrentTests: number,
     /** Have playwright run browser in headed (show browser window) vs. headless mode */
     private readonly browserIsHeaded: boolean,
     /** Abs path to directory for Playwright MCP output files (traces, sessions) */
     private readonly playwrightOutDir?: string,
-    // timeoutMs: number;
   ) {}
 
   getMaxConcurrentTests(): number {
@@ -82,10 +85,6 @@ export class TestRunnerConfig {
 
   getSutFolderPath(): string {
     return this.sutConfig.folderPath;
-  }
-
-  getLogger(): Logger {
-    return this.loggerConfig.logger;
   }
 
   getPlaywrightBrowserModeFlag(): string {
@@ -102,7 +101,6 @@ export class TestRunnerConfig {
       folderPath: this.getSutConfig().folderPath,
       port: this.getSutConfig().port,
       browserIsHeaded: this.browserIsHeaded,
-      logLevel: this.loggerConfig.logLevel,
       maxConcurrentTests: this.maxConcurrentTests,
       playwrightOutDir: this.playwrightOutDir,
     };
@@ -117,20 +115,17 @@ export class TestRunner {
     return this.config;
   }
 
-  getLogger() {
-    return this.config.getLogger();
-  }
-
   executeStrategy(
     strategy: SuiteGenerationStrategy,
-  ): Effect.Effect<TestSuiteResult, DriverAgentError, never> {
+  ): Effect.Effect<TestSuiteResult, TestRunnerError, LoggerConfig> {
     const self = this;
     return Effect.gen(function* () {
       const maxListenersExceededWarningHandler = (warning: Error) => {
         if (warning.name === "MaxListenersExceededWarning") {
-          self
-            .getLogger()
-            .error(`MaxListenersExceededWarning detected: ${warning.message}`);
+          // Note: can't use Effect logger here since we're in a sync callback
+          console.error(
+            `MaxListenersExceededWarning detected: ${warning.message}`,
+          );
           throw new Error(dedent`
             Test generation/execution aborted due to MaxListenersExceededWarning.
             Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
@@ -143,14 +138,12 @@ export class TestRunner {
       // TODO: Clean up the stuff below at some point
 
       try {
-        const server = yield* Effect.promise(() =>
-          startDevServer(self.config.getSutConfig(), self.getLogger()),
-        );
+        const server = yield* startDevServer(self.config.getSutConfig());
 
         try {
           const context = yield* strategy.discover(
             self.config,
-            DiscoveryAgent.make(self.getConfig(), self.getLogger()),
+            DiscoveryAgent.make(self.getConfig()),
           );
           const suite = yield* strategy.generateSuite(
             self.getConfig(),
@@ -170,7 +163,7 @@ export class TestRunner {
   private runTestSuite_(
     context: TestContext,
     suite: Suite,
-  ): Effect.Effect<TestSuiteResult, DriverAgentError, never> {
+  ): Effect.Effect<TestSuiteResult, DriverAgentError, LoggerConfig> {
     const self = this;
     return Effect.gen(function* () {
       const startTime = Date.now();
@@ -178,7 +171,7 @@ export class TestRunner {
       // Run tests
       const testEffects = suite.getTests().map((test) => {
         const makeAgent = (options: TestCaseAgentOptions) =>
-          TestCaseAgent.make(options, self.getConfig(), self.getLogger());
+          TestCaseAgent.make(options, self.getConfig());
         return Effect.gen(function* () {
           const result = yield* test.run(makeAgent, context, self.config);
           result.name = test.descriptiveName;
@@ -217,12 +210,13 @@ export class TestRunner {
     });
   }
 
-  runTestSuite(context: TestContext, suite: Suite) {
+  runTestSuite(
+    context: TestContext,
+    suite: Suite,
+  ): Effect.Effect<TestSuiteResult, TestRunnerError, LoggerConfig> {
     const self = this;
     return Effect.gen(function* () {
-      const server = yield* Effect.promise(() =>
-        startDevServer(self.config.getSutConfig(), self.getLogger()),
-      );
+      const server = yield* startDevServer(self.config.getSutConfig());
 
       try {
         return yield* self.runTestSuite_(context, suite);
@@ -247,134 +241,142 @@ const DEFAULT_ENVIRONMENT_VARIABLES = {
   DEBUG_COLORS: "1",
 };
 
-async function startDevServer(
+function startDevServer(
   sutConfig: SutConfig,
-  logger: Logger,
-): Promise<DevServerHandle> {
-  logger.debug("Pre-validation checks before starting dev server...");
+): Effect.Effect<DevServerHandle, DevServerError, LoggerConfig> {
+  return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
 
-  // Check port availability first
-  const availablePort = await detect(sutConfig.port);
-  if (availablePort !== sutConfig.port) {
-    throw new Error(
-      `Port ${sutConfig.port.toString()} is already in use. ` +
-        `Please stop the process using this port or configure a different port. ` +
-        `Next available port is ${availablePort.toString()}.`,
+    yield* logger.debug("Pre-validation checks before starting dev server...");
+
+    // Check port availability first
+    const availablePort = yield* Effect.promise(() => detect(sutConfig.port));
+    if (availablePort !== sutConfig.port) {
+      return yield* Effect.fail(
+        new DevServerPortInUseError({
+          port: sutConfig.port,
+          nextAvailablePort: availablePort,
+        }),
+      );
+    }
+
+    const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
+
+    // Check for package.json before attempting to run npm
+    const packageJsonPath = path.join(sutConfig.folderPath, "package.json");
+    if (!fs.existsSync(packageJsonPath)) {
+      return yield* Effect.fail(
+        new DevServerProjectNotFoundError({
+          folderPath: sutConfig.folderPath,
+        }),
+      );
+    }
+    // Check for node_modules to ensure dependencies are installed
+    const nodeModulesPath = path.join(sutConfig.folderPath, "node_modules");
+    if (!fs.existsSync(nodeModulesPath)) {
+      return yield* Effect.fail(
+        new DevServerDependenciesNotInstalledError({
+          folderPath: sutConfig.folderPath,
+        }),
+      );
+    }
+
+    yield* logger.info(
+      `Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`,
     );
-  }
 
-  const serverUrl = `http://localhost:${sutConfig.port.toString()}`;
+    // Using process launcher adapted from Playwright,
+    // because a naive, vibe-coded approach had issues with stopping the dev server
+    const { launchedProcess, gracefullyClose } = yield* Effect.promise(() =>
+      launchProcess({
+        // Crucial assumption: all the apps under test have a `npm run start` script
+        // We pass both PORT env var and --port CLI args to support different dev server types:
+        // - CRA apps (react-scripts) respect the PORT environment variable
+        // - Vite apps ignore PORT env var but accept --port CLI argument
+        // This approach works for both since each ignores what it doesn't need
+        command: "npm",
+        args: [
+          "run",
+          "start",
+          "--",
+          "--port",
+          sutConfig.port.toString(),
+          "--no-open",
+        ],
+        env: {
+          ...DEFAULT_ENVIRONMENT_VARIABLES,
+          ...process.env,
+          PORT: sutConfig.port.toString(),
+        },
+        shell: false,
+        handleSIGINT: true,
+        handleSIGTERM: true,
+        handleSIGHUP: true,
+        stdio: "pipe",
+        tempDirectories: [],
+        cwd: sutConfig.folderPath,
+        // biome-ignore lint/suspicious/useAwait: Returns Promise from new Promise constructor
+        attemptToGracefullyClose: async () => {
+          // Send SIGTERM to process group (-pid) to kill npm + webpack + all child processes
+          if (process.platform === "win32") {
+            throw new Error("Use default force kill on Windows");
+          }
 
-  // Check for package.json before attempting to run npm
-  const packageJsonPath = path.join(sutConfig.folderPath, "package.json");
-  if (!fs.existsSync(packageJsonPath)) {
-    throw new Error(dedent`
-      Cannot start dev server in directory "${sutConfig.folderPath}": package.json not found.
-      Make sure you're in a Node.js project directory or that the project has been properly initialized.
-    `);
-  }
-  // Check for node_modules to ensure dependencies are installed
-  const nodeModulesPath = path.join(sutConfig.folderPath, "node_modules");
-  if (!fs.existsSync(nodeModulesPath)) {
-    throw new Error(dedent`
-      Cannot start dev server in directory "${sutConfig.folderPath}": node_modules not found.
-      Please install project dependencies by running 'npm install' in this directory.
-    `);
-  }
+          if (launchedProcess.pid) {
+            process.kill(-launchedProcess.pid, "SIGTERM");
+          } else {
+            throw new Error("Process PID not available for graceful shutdown");
+          }
 
-  logger.info(
-    `Starting dev server at ${sutConfig.folderPath} on port ${sutConfig.port.toString()}`,
-  );
+          // Wait up to 5 seconds for graceful shutdown
+          return new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error("Graceful shutdown timed out"));
+            }, 5000);
 
-  // Using process launcher adapted from Playwright,
-  // because a naive, vibe-coded approach had issues with stopping the dev server
-  const { launchedProcess, gracefullyClose } = await launchProcess({
-    // Crucial assumption: all the apps under test have a `npm run start` script
-    // We pass both PORT env var and --port CLI args to support different dev server types:
-    // - CRA apps (react-scripts) respect the PORT environment variable
-    // - Vite apps ignore PORT env var but accept --port CLI argument
-    // This approach works for both since each ignores what it doesn't need
-    command: "npm",
-    args: [
-      "run",
-      "start",
-      "--",
-      "--port",
-      sutConfig.port.toString(),
-      "--no-open",
-    ],
-    env: {
-      ...DEFAULT_ENVIRONMENT_VARIABLES,
-      ...process.env,
-      PORT: sutConfig.port.toString(),
-    },
-    shell: false,
-    handleSIGINT: true,
-    handleSIGTERM: true,
-    handleSIGHUP: true,
-    stdio: "pipe",
-    tempDirectories: [],
-    cwd: sutConfig.folderPath,
-    // biome-ignore lint/suspicious/useAwait: Returns Promise from new Promise constructor
-    attemptToGracefullyClose: async () => {
-      // Send SIGTERM to process group (-pid) to kill npm + webpack + all child processes
-      if (process.platform === "win32") {
-        throw new Error("Use default force kill on Windows");
-      }
+            launchedProcess.once("close", () => {
+              clearTimeout(timeout);
+              resolve();
+            });
+          });
+        },
+        onExit: (exitCode, signal) => {
+          if (exitCode && exitCode !== 0) {
+            console.warn(
+              `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
+            );
+          } else {
+            console.info("Dev server exited cleanly");
+          }
+        },
+        log: (message) => {
+          // Parse and format dev server output
+          if (message.includes("[out]")) {
+            console.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
+          } else if (message.includes("[err]")) {
+            console.error(
+              message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
+            );
+          } else {
+            console.log(message);
+          }
+        },
+      }),
+    );
 
-      if (launchedProcess.pid) {
-        process.kill(-launchedProcess.pid, "SIGTERM");
-      } else {
-        throw new Error("Process PID not available for graceful shutdown");
-      }
+    // Wait for server to be ready
+    yield* logger.info(`Waiting for server to be ready at ${serverUrl}...`);
+    yield* Effect.promise(() => waitForServerReady(serverUrl));
+    yield* logger.info("Dev server is ready");
 
-      // Wait up to 5 seconds for graceful shutdown
-      return new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("Graceful shutdown timed out"));
-        }, 5000);
-
-        launchedProcess.once("close", () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-      });
-    },
-    onExit: (exitCode, signal) => {
-      if (exitCode && exitCode !== 0) {
-        logger.warn(
-          `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
-        );
-      } else {
-        logger.info("Dev server exited cleanly");
-      }
-    },
-    log: (message) => {
-      // Parse and format dev server output
-      if (message.includes("[out]")) {
-        logger.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
-      } else if (message.includes("[err]")) {
-        logger.error(
-          message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
-        );
-      } else {
-        logger.debug(message);
-      }
-    },
+    return {
+      async [Symbol.asyncDispose]() {
+        await console.log("Stopping dev server...");
+        await gracefullyClose();
+        await console.log("Dev server stopped");
+      },
+    };
   });
-
-  // Wait for server to be ready
-  logger.info(`Waiting for server to be ready at ${serverUrl}...`);
-  await waitForServerReady(serverUrl);
-  logger.info("Dev server is ready");
-
-  return {
-    async [Symbol.asyncDispose]() {
-      logger.info("Stopping dev server...");
-      await gracefullyClose();
-      logger.info("Dev server stopped");
-    },
-  };
 }
 
 /** Adapted from https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts */
@@ -406,7 +408,8 @@ async function waitForServerReady(
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
-  throw new Error(
-    `Server at ${url} failed to start within ${timeoutMs.toString()}ms`,
-  );
+  throw new DevServerStartupTimeoutError({
+    url,
+    timeoutMs,
+  });
 }
