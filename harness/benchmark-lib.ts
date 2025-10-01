@@ -8,11 +8,11 @@ import fs from "fs-extra";
 import * as tmp from "tmp";
 import type { CodingAgent } from "./agents/types.ts";
 import {
-  type AgentInvocationFailure,
   type EvaluationResult,
+  type FailedInstanceResult,
   getDiffStats,
-  type InstanceResult,
-  isInvocationSuccess,
+  isSuccessInstanceResult,
+  type SuccessInstanceResult,
 } from "./evaluator/result.ts";
 import { eval as evaluate, evaluateUpdates } from "./index.ts";
 
@@ -24,29 +24,29 @@ export function outputBenchmarkResults(
   result: EvaluationResult,
 ): void {
   // Output benchmark results as JSON
-  const successCount = result.updates.filter(isInvocationSuccess).length;
+  const successCount = result.updates.filter(isSuccessInstanceResult).length;
   const totalUpdates = result.updates.length;
 
   // Calculate per-agent success rates
   const agentStats: {
     [key: string]: { successful: number; total: number; totalScore: number };
   } = {};
-  result.updates.forEach((u: InstanceResult | AgentInvocationFailure) => {
+  result.updates.forEach((u: SuccessInstanceResult | FailedInstanceResult) => {
     if (!agentStats[u.agentName]) {
       agentStats[u.agentName] = { successful: 0, total: 0, totalScore: 0 };
     }
     agentStats[u.agentName].total++;
     agentStats[u.agentName].totalScore += u.score;
-    if (isInvocationSuccess(u)) {
+    if (isSuccessInstanceResult(u)) {
       agentStats[u.agentName].successful++;
     }
   });
 
   const updates = result.updates.map(
-    (u: InstanceResult | AgentInvocationFailure) => ({
+    (u: SuccessInstanceResult | FailedInstanceResult) => ({
       instance: u.instanceId,
       agent: u.agentName,
-      success: isInvocationSuccess(u),
+      success: isSuccessInstanceResult(u),
       score: u.score,
       diffStats: getDiffStats(u)?.getSummaryStats() ?? {
         filesChanged: 0,
