@@ -103,16 +103,16 @@ function makeTestSubCommand() {
 
   const port = Options.integer("port").pipe(
     Options.withAlias("p"),
-    Options.withDefault(3000),
+    Options.optional,
     Options.withDescription("Port to use for the dev server"),
   );
   const maxConcurrentTests = Options.integer("max-concurrent-tests").pipe(
     Options.withAlias("t"),
-    Options.withDefault(4),
+    Options.optional,
     Options.withDescription("Max number of test cases to run concurrently"),
   );
   const headed = Options.boolean("headed").pipe(
-    Options.withDefault(false),
+    Options.optional,
     Options.withDescription(
       "Run browser in headed mode (show browser window). Useful for debugging functionality tests",
     ),
@@ -154,9 +154,9 @@ function makeTestSubCommand() {
           const testResults = yield* runFunctionalityTests({
             benchmarkPath,
             systemUnderTestPath: systemUnderTest,
-            port,
-            maxConcurrentTests,
-            headed,
+            port: Option.getOrUndefined(port),
+            maxConcurrentTests: Option.getOrUndefined(maxConcurrentTests),
+            headed: Option.getOrUndefined(headed),
             playwrightOutDir: Option.getOrUndefined(playwrightOutDir),
           });
 

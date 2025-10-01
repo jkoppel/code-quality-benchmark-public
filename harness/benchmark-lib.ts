@@ -141,14 +141,14 @@ export async function readBenchmarkPrompts(
 export function runFunctionalityTests({
   benchmarkPath,
   systemUnderTestPath,
-  port,
+  port = 3000,
   maxConcurrentTests = 4,
   headed = false,
   playwrightOutDir,
 }: {
   benchmarkPath: string;
   systemUnderTestPath: string;
-  port: number;
+  port?: number;
   maxConcurrentTests?: number;
   headed?: boolean;
   playwrightOutDir?: string;
