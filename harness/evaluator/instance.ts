@@ -7,7 +7,7 @@ import type { EvaluationConfig } from "./config.ts";
 export type InstanceDescriptor = {
   readonly instanceId: string;
   readonly agentName: string;
-  readonly agent: unknown;
+  readonly agent: FeatureAgent;
   readonly instancePath: string;
   readonly port: number;
 };

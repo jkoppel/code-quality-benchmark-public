@@ -5,10 +5,7 @@ import type { PlatformError } from "@effect/platform/Error";
 import dedent from "dedent";
 import { Cause, Effect } from "effect";
 import * as tmp from "tmp";
-import {
-  ClaudeAgent,
-  isClaudeAgent,
-} from "../agents/feature-addition/claude-agent.ts";
+import { ClaudeAgent } from "../agents/feature-addition/claude-agent.ts";
 import { CodexAgent } from "../agents/feature-addition/codex-agent.ts";
 import type { CodingAgent, FeatureAgent } from "../agents/types.ts";
 import { runFunctionalityTests } from "../benchmark-lib.ts";
@@ -27,7 +24,6 @@ import {
   isFailedInstanceResult,
   isSuccessInstanceResult,
   makeFailedInstanceResult,
-  makeSuccessInstanceResult,
   type SuccessInstanceResult,
   type SuccessInstanceResultWithTestSuiteResult,
 } from "./result.ts";
@@ -475,72 +471,38 @@ const runFeatureAgent = (
   Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
     const startTime = yield* Effect.sync(() => Date.now());
-    if (isClaudeAgent(descriptor.agent)) {
-      return yield* descriptor.agent
-        .applyUpdate(
-          updatePrompt,
-          descriptor.instancePath,
-          descriptor.instanceId,
-          descriptor.port,
-        )
-        .pipe(
-          Effect.matchCauseEffect({
-            onFailure: (cause) =>
-              Effect.gen(function* () {
-                const elapsed = yield* Effect.sync(
-                  () => Date.now() - startTime,
-                );
-                const prettyCause = Cause.pretty(cause);
-                yield* logger.error(
-                  `Claude agent failed for ${descriptor.instanceId}`,
-                  { cause: prettyCause },
-                );
 
-                return makeFailedInstanceResult(
-                  descriptor.instanceId,
-                  descriptor.instancePath,
-                  descriptor.agentName,
-                  elapsed,
-                  prettyCause,
-                );
-              }),
-            onSuccess: (success) => Effect.succeed(success),
-          }),
-        );
-    }
+    return yield* descriptor.agent
+      .applyUpdate(
+        updatePrompt,
+        descriptor.instancePath,
+        descriptor.instanceId,
+        descriptor.port,
+      )
+      .pipe(
+        Effect.matchCauseEffect({
+          onFailure: (cause) =>
+            Effect.gen(function* () {
+              const elapsed = yield* Effect.sync(() => Date.now() - startTime);
+              const prettyCause = Cause.pretty(cause);
+              yield* logger.error(
+                `Feature agent failed for ${descriptor.instanceId}`,
+                {
+                  cause: prettyCause,
+                },
+              );
 
-    return yield* (descriptor.agent as CodingAgent)(
-      updatePrompt,
-      descriptor.instancePath,
-      descriptor.port,
-    ).pipe(
-      Effect.map(() =>
-        makeSuccessInstanceResult(
-          descriptor.instanceId,
-          descriptor.instancePath,
-          descriptor.agentName,
-          Date.now() - startTime,
-        ),
-      ),
-      Effect.catchAll((error) =>
-        Effect.gen(function* () {
-          const elapsed = yield* Effect.sync(() => Date.now() - startTime);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          yield* logger.error(
-            `Failed to apply update for ${descriptor.instanceId}`,
-            { error: errorMessage },
-          );
-          return makeFailedInstanceResult(
-            descriptor.instanceId,
-            descriptor.instancePath,
-            descriptor.agentName,
-            elapsed,
-            errorMessage,
-          );
+              return makeFailedInstanceResult(
+                descriptor.instanceId,
+                descriptor.instancePath,
+                descriptor.agentName,
+                elapsed,
+                prettyCause,
+              );
+            }),
+          onSuccess: (success) => Effect.succeed(success),
         }),
-      ),
-    );
+      );
   });
 
 export type { CodingAgent } from "../agents/types.ts";
