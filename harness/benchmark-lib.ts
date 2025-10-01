@@ -142,7 +142,7 @@ export function runFunctionalityTests({
   benchmarkPath,
   systemUnderTestPath,
   port = 3000,
-  maxConcurrentTests = 4,
+  maxConcurrentTests = 3,
   headed = false,
   playwrightOutDir,
 }: {

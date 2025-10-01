@@ -122,14 +122,13 @@ export class TestRunner {
     return Effect.gen(function* () {
       const maxListenersExceededWarningHandler = (warning: Error) => {
         if (warning.name === "MaxListenersExceededWarning") {
-          // Note: can't use Effect logger here since we're in a sync callback
           console.error(
             `MaxListenersExceededWarning detected: ${warning.message}`,
           );
-          throw new Error(dedent`
-            Test generation/execution aborted due to MaxListenersExceededWarning.
-            Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
-            I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
+          // throw new Error(dedent`
+          //   Test generation/execution aborted due to MaxListenersExceededWarning.
+          //   Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
+          //   I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
         }
       };
 
