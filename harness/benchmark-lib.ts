@@ -141,14 +141,14 @@ export async function readBenchmarkPrompts(
 export function runFunctionalityTests({
   benchmarkPath,
   systemUnderTestPath,
-  port,
+  port = 3000,
   maxConcurrentTests = 4,
   headed = false,
   playwrightOutDir,
 }: {
   benchmarkPath: string;
   systemUnderTestPath: string;
-  port: number;
+  port?: number;
   maxConcurrentTests?: number;
   headed?: boolean;
   playwrightOutDir?: string;
@@ -183,9 +183,7 @@ export function runFunctionalityTests({
 
     // Execute suite generation strategy
     yield* logger.info(`Executing suite generation strategy`);
-    const testResults = yield* runner.executeStrategy(strategy);
-
-    return testResults;
+    return yield* runner.executeStrategy(strategy);
   });
 }
 

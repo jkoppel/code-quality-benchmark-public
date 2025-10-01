@@ -19,6 +19,29 @@ import { checkDependenciesPresent } from "./utils/validate-dependencies.ts";
 // TODO: Refactor the path args to use Effect's path args facilities (which also do validation)
 
 /*************************************************
+    Shared Arguments and Options
+**************************************************/
+
+// Shared arguments
+
+const benchmarkPath = Args.text({
+  name: "benchmark-path",
+}).pipe(
+  Args.withDescription(
+    "Path to the benchmark task dir (e.g., benchmarks/evolvability/calculator)",
+  ),
+);
+
+// Shared options
+
+const logLevelOption = Options.text("log-level").pipe(
+  Options.optional,
+  Options.withDescription(
+    "Set log level (trace, debug, info, warn, error). Overrides LOG_LEVEL environment variable",
+  ),
+);
+
+/*************************************************
     Main Command
 **************************************************/
 
@@ -72,25 +95,6 @@ cli(process.argv).pipe(
     Subcommands
 **************************************************/
 
-// Shared arguments
-
-const benchmarkPath = Args.text({
-  name: "benchmark-path",
-}).pipe(
-  Args.withDescription(
-    "Path to the benchmark task dir (e.g., benchmarks/evolvability/calculator)",
-  ),
-);
-
-// Shared options
-
-const logLevelOption = Options.text("log-level").pipe(
-  Options.optional,
-  Options.withDescription(
-    "Set log level (trace, debug, info, warn, error). Overrides LOG_LEVEL environment variable",
-  ),
-);
-
 /* Subcommand: cqb test <benchmark-path> <system-under-test> [options] */
 function makeTestSubCommand() {
   const systemUnderTest = Args.text({
@@ -103,16 +107,16 @@ function makeTestSubCommand() {
 
   const port = Options.integer("port").pipe(
     Options.withAlias("p"),
-    Options.withDefault(3000),
+    Options.optional,
     Options.withDescription("Port to use for the dev server"),
   );
   const maxConcurrentTests = Options.integer("max-concurrent-tests").pipe(
     Options.withAlias("t"),
-    Options.withDefault(4),
+    Options.optional,
     Options.withDescription("Max number of test cases to run concurrently"),
   );
   const headed = Options.boolean("headed").pipe(
-    Options.withDefault(false),
+    Options.optional,
     Options.withDescription(
       "Run browser in headed mode (show browser window). Useful for debugging functionality tests",
     ),
@@ -154,9 +158,9 @@ function makeTestSubCommand() {
           const testResults = yield* runFunctionalityTests({
             benchmarkPath,
             systemUnderTestPath: systemUnderTest,
-            port,
-            maxConcurrentTests,
-            headed,
+            port: Option.getOrUndefined(port),
+            maxConcurrentTests: Option.getOrUndefined(maxConcurrentTests),
+            headed: Option.getOrUndefined(headed),
             playwrightOutDir: Option.getOrUndefined(playwrightOutDir),
           });
 
