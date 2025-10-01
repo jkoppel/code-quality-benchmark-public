@@ -19,6 +19,29 @@ import { checkDependenciesPresent } from "./utils/validate-dependencies.ts";
 // TODO: Refactor the path args to use Effect's path args facilities (which also do validation)
 
 /*************************************************
+    Shared Arguments and Options
+**************************************************/
+
+// Shared arguments
+
+const benchmarkPath = Args.text({
+  name: "benchmark-path",
+}).pipe(
+  Args.withDescription(
+    "Path to the benchmark task dir (e.g., benchmarks/evolvability/calculator)",
+  ),
+);
+
+// Shared options
+
+const logLevelOption = Options.text("log-level").pipe(
+  Options.optional,
+  Options.withDescription(
+    "Set log level (trace, debug, info, warn, error). Overrides LOG_LEVEL environment variable",
+  ),
+);
+
+/*************************************************
     Main Command
 **************************************************/
 
@@ -71,25 +94,6 @@ cli(process.argv).pipe(
 /*************************************************
     Subcommands
 **************************************************/
-
-// Shared arguments
-
-const benchmarkPath = Args.text({
-  name: "benchmark-path",
-}).pipe(
-  Args.withDescription(
-    "Path to the benchmark task dir (e.g., benchmarks/evolvability/calculator)",
-  ),
-);
-
-// Shared options
-
-const logLevelOption = Options.text("log-level").pipe(
-  Options.optional,
-  Options.withDescription(
-    "Set log level (trace, debug, info, warn, error). Overrides LOG_LEVEL environment variable",
-  ),
-);
 
 /* Subcommand: cqb test <benchmark-path> <system-under-test> [options] */
 function makeTestSubCommand() {
