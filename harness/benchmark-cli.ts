@@ -3,23 +3,42 @@
 import * as path from "node:path";
 import { Args, CliConfig, Command, HelpDoc, Options } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
-import { Cause, Console, Effect, Layer, Option } from "effect";
+import { Cause, ConfigProvider, Effect, Layer, Option } from "effect";
 
 import {
   runBenchmarkWithExistingCode,
   runBenchmarkWithNewCode,
+  runFunctionalityTests,
 } from "./benchmark-lib.ts";
 import { Reporter } from "./benchmark-test-lib/report.ts";
-import { TestRunner, TestRunnerConfig } from "./benchmark-test-lib/runner.ts";
-import {
-  discoverBenchmarksWithTests,
-  loadSuiteGenerationStrategy,
-} from "./benchmark-test-lib/test-registry.ts";
+import { discoverBenchmarksWithTests } from "./benchmark-test-lib/test-registry.ts";
 import { createShellAgent } from "./index.ts";
-import { getLoggerConfig } from "./utils/logger/logger.ts";
+import { LoggerConfig, LoggerConfigLayer } from "./utils/logger/logger.ts";
 import { checkDependenciesPresent } from "./utils/validate-dependencies.ts";
 
 // TODO: Refactor the path args to use Effect's path args facilities (which also do validation)
+
+/*************************************************
+    Logger Layer Helpers
+**************************************************/
+
+/**
+ * Creates the logger layer with CLI log level override support.
+ * Precedence: CLI > env > default (from LoggerConfigSpec)
+ */
+function makeLoggerLayer(cliLogLevel: Option.Option<string>) {
+  const provider = Option.match(cliLogLevel, {
+    onNone: () => ConfigProvider.fromEnv(),
+    onSome: (value) => ConfigProvider.fromJson({ LOG_LEVEL: value }),
+  });
+  return LoggerConfigLayer.pipe(
+    Layer.provide(Layer.setConfigProvider(provider)),
+  );
+}
+
+/*************************************************
+    Shared Arguments & Options
+**************************************************/
 
 // Shared arguments
 
@@ -28,6 +47,15 @@ const benchmarkPath = Args.text({
 }).pipe(
   Args.withDescription(
     "Path to the benchmark task dir (e.g., benchmarks/evolvability/calculator)",
+  ),
+);
+
+// Shared options
+
+const logLevelOption = Options.text("log-level").pipe(
+  Options.optional,
+  Options.withDescription(
+    "Set log level (trace, debug, info, warn, error). Overrides LOG_LEVEL environment variable",
   ),
 );
 
@@ -75,6 +103,7 @@ function makeTestSubCommand() {
     maxConcurrentTests,
     headed,
     playwrightOutDir,
+    logLevel: logLevelOption,
   }).pipe(
     Command.withDescription(
       "Run functionality tests against an attempt at a benchmark task",
@@ -87,45 +116,23 @@ function makeTestSubCommand() {
         maxConcurrentTests,
         headed,
         playwrightOutDir,
+        logLevel: cliLogLevel,
       }) =>
         Effect.gen(function* () {
-          const resolvedBenchmarkPath = path.resolve(benchmarkPath);
-          const { logger, logLevel } = getLoggerConfig();
-
-          yield* Console.log(`Running functionality tests`);
-          yield* Console.log(`Benchmark: ${resolvedBenchmarkPath}`);
-          yield* Console.log(`System under test: ${systemUnderTest}`);
-
-          // Create test runner config
-          const config = TestRunnerConfig.make(
-            {
-              folderPath: path.resolve(systemUnderTest),
-              port,
-            },
-            { logger, logLevel },
+          // Run functionality tests
+          const testResults = yield* runFunctionalityTests({
+            benchmarkPath,
+            systemUnderTestPath: systemUnderTest,
+            port,
             maxConcurrentTests,
             headed,
-            Option.getOrUndefined(playwrightOutDir),
-          );
-          const runner = new TestRunner(config);
-          logger.info(`Started test runner with config ${config.toPretty()}`);
-
-          // Load test suite generation strategy
-          logger.info(
-            `Loading test suite generation strategy for ${resolvedBenchmarkPath}`,
-          );
-          const strategy = yield* Effect.promise(() =>
-            loadSuiteGenerationStrategy(resolvedBenchmarkPath),
-          );
-
-          // Execute suite generation strategy
-          logger.info(`Executing suite generation strategy`);
-          const testResults = yield* runner.executeStrategy(strategy);
+            playwrightOutDir: Option.getOrUndefined(playwrightOutDir),
+          });
 
           // Report test results
-          const reporter = new Reporter(logger);
-          reporter.report(testResults);
-        }),
+          const reporter = new Reporter();
+          yield* reporter.report(testResults);
+        }).pipe(Effect.provide(makeLoggerLayer(cliLogLevel))),
     ),
   );
 }
@@ -140,30 +147,37 @@ function makeRunFromScratchSubCommand() {
     ),
   );
 
-  return Command.make("run", { benchmarkPath, agentScriptPath }).pipe(
+  return Command.make("run", {
+    benchmarkPath,
+    agentScriptPath,
+    logLevel: logLevelOption,
+  }).pipe(
     Command.withDescription(
       "Run benchmark for a given project with a program that's generated from scratch by the supplied coding agent",
     ),
-    Command.withHandler(({ benchmarkPath, agentScriptPath }) =>
-      Effect.gen(function* () {
-        const resolvedBenchmarkPath = path.resolve(benchmarkPath);
-        const resolvedScriptPath = path.resolve(agentScriptPath);
+    Command.withHandler(
+      ({ benchmarkPath, agentScriptPath, logLevel: cliLogLevel }) =>
+        Effect.gen(function* () {
+          const { logger } = yield* LoggerConfig;
 
-        // Upfront checks for required dependencies
-        yield* Effect.promise(() => checkDependenciesPresent());
+          const resolvedBenchmarkPath = path.resolve(benchmarkPath);
+          const resolvedScriptPath = path.resolve(agentScriptPath);
 
-        yield* Console.log(
-          `Generating a program for the benchmark project with the supplied coding agent`,
-        );
-        yield* Console.log(`Benchmark: ${resolvedBenchmarkPath}`);
-        yield* Console.log(`Agent script: ${resolvedScriptPath}`);
+          // Upfront checks for required dependencies
+          yield* Effect.promise(() => checkDependenciesPresent());
 
-        // Create coding agent from shell script
-        const codingAgent = createShellAgent(resolvedScriptPath);
+          yield* logger.info(
+            `Generating a program for the benchmark project with the supplied coding agent`,
+          );
+          yield* logger.info(`Benchmark: ${resolvedBenchmarkPath}`);
+          yield* logger.info(`Agent script: ${resolvedScriptPath}`);
 
-        // Run benchmark
-        yield* runBenchmarkWithNewCode(resolvedBenchmarkPath, codingAgent);
-      }),
+          // Create coding agent from shell script
+          const codingAgent = createShellAgent(resolvedScriptPath);
+
+          // Run benchmark
+          yield* runBenchmarkWithNewCode(resolvedBenchmarkPath, codingAgent);
+        }).pipe(Effect.provide(makeLoggerLayer(cliLogLevel))),
     ),
   );
 }
@@ -181,26 +195,30 @@ function makeRunWithExistingSubCommand() {
   return Command.make("existing", {
     benchmarkPath,
     existingCodePath: existingProgramPath,
+    logLevel: logLevelOption,
   }).pipe(
     Command.withDescription("Run benchmark with existing/refactored program"),
-    Command.withHandler(({ benchmarkPath, existingCodePath }) =>
-      Effect.gen(function* () {
-        const resolvedBenchmarkPath = path.resolve(benchmarkPath);
-        const resolvedProgramPath = path.resolve(existingCodePath);
+    Command.withHandler(
+      ({ benchmarkPath, existingCodePath, logLevel: cliLogLevel }) =>
+        Effect.gen(function* () {
+          const { logger } = yield* LoggerConfig;
 
-        // Upfront checks for required dependencies
-        yield* Effect.promise(() => checkDependenciesPresent());
+          const resolvedBenchmarkPath = path.resolve(benchmarkPath);
+          const resolvedProgramPath = path.resolve(existingCodePath);
 
-        yield* Console.log(`Running benchmark with existing program`);
-        yield* Console.log(`Benchmark: ${resolvedBenchmarkPath}`);
-        yield* Console.log(`Existing code: ${resolvedProgramPath}`);
+          // Upfront checks for required dependencies
+          yield* Effect.promise(() => checkDependenciesPresent());
 
-        // Run benchmark
-        yield* runBenchmarkWithExistingCode(
-          resolvedBenchmarkPath,
-          resolvedProgramPath,
-        );
-      }),
+          yield* logger.info(`Running benchmark with existing program`);
+          yield* logger.info(`Benchmark: ${resolvedBenchmarkPath}`);
+          yield* logger.info(`Existing code: ${resolvedProgramPath}`);
+
+          // Run benchmark
+          yield* runBenchmarkWithExistingCode(
+            resolvedBenchmarkPath,
+            resolvedProgramPath,
+          );
+        }).pipe(Effect.provide(makeLoggerLayer(cliLogLevel))),
     ),
   );
 }
@@ -213,20 +231,22 @@ function makeListTestStrategiesSubCommand() {
     ),
     Command.withHandler(() =>
       Effect.gen(function* () {
+        const { logger } = yield* LoggerConfig;
+
         const availableStrategies = discoverBenchmarksWithTests();
 
         if (availableStrategies.length === 0) {
-          yield* Console.log("No functionality test strategies found.");
+          yield* logger.info("No functionality test strategies found.");
           return;
         }
 
-        yield* Console.log(
+        yield* logger.info(
           `Found ${availableStrategies.length} functionality test strategies:`,
         );
         for (const { benchmarkSet, project, testDir } of availableStrategies) {
-          yield* Console.log(`  - ${benchmarkSet}/${project}/${testDir}`);
+          yield* logger.info(`  - ${benchmarkSet}/${project}/${testDir}`);
         }
-      }),
+      }).pipe(Effect.provide(makeLoggerLayer(Option.none()))),
     ),
   );
 }
@@ -265,7 +285,7 @@ const cli = Command.run(command, {
 cli(process.argv).pipe(
   Effect.catchAllCause((cause) =>
     Effect.gen(function* () {
-      yield* Console.error(Cause.pretty(cause));
+      yield* Effect.sync(() => console.error(Cause.pretty(cause)));
       yield* Effect.sync(() => process.exit(1));
     }),
   ),

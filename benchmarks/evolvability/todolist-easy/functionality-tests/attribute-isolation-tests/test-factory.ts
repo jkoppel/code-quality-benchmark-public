@@ -1,5 +1,5 @@
 import dedent from "dedent";
-import type { Effect } from "effect";
+import { Effect } from "effect";
 import type * as z from "zod";
 import type { DriverAgentError } from "../../../../../harness/benchmark-test-lib/agents/driver-agent.ts";
 import type {
@@ -10,6 +10,7 @@ import type { TestContext } from "../../../../../harness/benchmark-test-lib/cont
 import type { TestResult } from "../../../../../harness/benchmark-test-lib/report.ts";
 import type { TestRunnerConfig } from "../../../../../harness/benchmark-test-lib/runner.ts";
 import type { TestCase } from "../../../../../harness/benchmark-test-lib/suite.ts";
+import { LoggerConfig } from "../../../../../harness/utils/logger/logger.ts";
 import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
 import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import type { TaskAttribute } from "../shared/task-attribute.ts";
@@ -27,17 +28,21 @@ export function makeAttributeIsolationTest(attribute: TaskAttribute): TestCase {
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
-    ): Effect.Effect<TestResult, DriverAgentError, never> {
-      const agent = makeAgent({ additionalCapabilities: [] });
-      const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-      const availableStatuses = appInfo.taskInfo.statuses;
-      const availablePriorities = appInfo.taskInfo.priorityLevels;
-      const taskConfigs = generateDiverseTaskConfigs(
-        availableStatuses,
-        availablePriorities,
-      );
+    ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
+      return Effect.gen(function* () {
+        const { logger } = yield* LoggerConfig;
+        const agent = makeAgent({ additionalCapabilities: [] });
+        const appInfo = context.get(appInfoId) as z.infer<
+          typeof TodoListAppInfo
+        >;
+        const availableStatuses = appInfo.taskInfo.statuses;
+        const availablePriorities = appInfo.taskInfo.priorityLevels;
+        const taskConfigs = generateDiverseTaskConfigs(
+          availableStatuses,
+          availablePriorities,
+        );
 
-      const prompt = dedent`
+        const prompt = dedent`
         ${makeBackgroundPrompt(config.getSutConfig())}
         Test attribute isolation for ${attribute.getPrettyName()}.
 
@@ -56,11 +61,9 @@ export function makeAttributeIsolationTest(attribute: TaskAttribute): TestCase {
         Mark the test as passing if changing task 1's ${attribute.getPrettyName()} doesn't affect any attributes of the other tasks.
         Mark as failing if any other task's attributes changed.`;
 
-      config
-        .getLogger()
-        .withMetadata({ prompt })
-        .debug("Attribute isolation test prompt");
-      return agent.check(prompt);
+        yield* logger.debug("Attribute isolation test prompt", { prompt });
+        return yield* agent.check(prompt);
+      });
     },
   };
 }

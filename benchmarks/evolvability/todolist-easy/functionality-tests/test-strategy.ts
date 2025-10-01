@@ -7,6 +7,7 @@ import { TestContext } from "../../../../harness/benchmark-test-lib/context.ts";
 import type { TestRunnerConfig } from "../../../../harness/benchmark-test-lib/runner.ts";
 import type { SuiteGenerationStrategy } from "../../../../harness/benchmark-test-lib/suite.ts";
 import { Suite } from "../../../../harness/benchmark-test-lib/suite.ts";
+import { LoggerConfig } from "../../../../harness/utils/logger/logger.ts";
 import { jsonStringify } from "../../../../harness/utils/logger/pretty.ts";
 import {
   attributeIsolationDueDate,
@@ -87,6 +88,7 @@ export function discoverTodoListAppInfo(
   config: TestRunnerConfig,
 ) {
   return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
     const appInfo = yield* discoveryAgent.query(
       dedent`
       You are a senior developer trying to piece together a preliminary understanding of this program,
@@ -117,9 +119,7 @@ export function discoverTodoListAppInfo(
       That said, although you aren't testing the app, you still need to investigate it thoroughly enough that downstream testers can figure out what they should be testing.`,
       TodoListAppInfo,
     );
-    config
-      .getLogger()
-      .info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
+    yield* logger.info(`DiscoveryAgent app info:\n${jsonStringify(appInfo)}`);
     return new TestContext(new Map([[appInfoId, appInfo]]));
   });
 }

@@ -12,7 +12,7 @@ import {
 import { CodexAgent } from "../agents/feature-addition/codex-agent.ts";
 import type { CodingAgent, FeatureAgent } from "../agents/types.ts";
 import { gitCmd } from "../utils/git.ts";
-import { getLoggerConfig, type Logger } from "../utils/logger/logger.ts";
+import { LoggerConfig } from "../utils/logger/logger.ts";
 import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 import { EvaluationError } from "./errors.ts";
@@ -45,16 +45,20 @@ export function evaluateUpdates(
   updatePrompt: string,
   workspaceDir: string,
   config: EvaluationConfig, // TODO: Load this with Effect instead
-) {
+): Effect.Effect<
+  EvaluationResult,
+  PlatformError,
+  FileSystem.FileSystem | CommandExecutor | LoggerConfig
+> {
   const startTime = new Date();
 
   return Effect.gen(function* () {
-    yield* Effect.logInfo("Starting update evaluation").pipe(
-      Effect.annotateLogs({
-        originalProgramPath,
-        updatePrompt: updatePrompt.substring(0, 100),
-      }),
-    );
+    const { logger } = yield* LoggerConfig;
+
+    yield* logger.info("Starting update evaluation", {
+      originalProgramPath,
+      updatePrompt: updatePrompt.substring(0, 100),
+    });
 
     const updateResults = yield* applyUpdatesToInstances(
       originalProgramPath,
@@ -95,7 +99,7 @@ export function evaluateUpdates(
 
     const fs = yield* FileSystem.FileSystem;
     yield* fs.writeFileString(resultsPath, JSON.stringify(result, null, 2));
-    yield* Effect.logInfo(`Saved complete results to: ${resultsPath}`);
+    yield* logger.info(`Saved complete results to: ${resultsPath}`);
 
     // Log diff stats
     const diffStats = successfulUpdates.map((r) => ({
@@ -103,32 +107,30 @@ export function evaluateUpdates(
       stats: getDiffStats(r),
     }));
 
-    yield* Effect.logInfo("Evaluation completed successfully").pipe(
-      Effect.annotateLogs({
-        duration: metadata.totalDuration,
-        successfulUpdates: successfulUpdates.length,
-        failedUpdates: failedUpdates.length,
-        diffStats,
-      }),
-    );
+    yield* logger.info("Evaluation completed successfully", {
+      duration: metadata.totalDuration,
+      successfulUpdates: successfulUpdates.length,
+      failedUpdates: failedUpdates.length,
+      diffStats,
+    });
 
     // Also print diff stats for visibility
-    yield* Effect.log("\n=== Git Diff Statistics & Scores ===");
+    yield* logger.info("\n=== Git Diff Statistics & Scores ===");
     for (const r of updateResults) {
       if (isSuccessInstanceResult(r)) {
-        yield* Effect.log(
+        yield* logger.info(
           `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}`,
         );
       } else {
-        yield* Effect.log(
+        yield* logger.info(
           `${r.instanceId} [${r.agentName}]: Invocation failed - ${r.cause}`,
         );
       }
     }
-    yield* Effect.log(`Total Score: ${totalScore}`);
-    yield* Effect.log("===========================\n");
+    yield* logger.info(`Total Score: ${totalScore}`);
+    yield* logger.info("===========================\n");
 
-    yield* Effect.logInfo("Update evaluation completed");
+    yield* logger.info("Update evaluation completed");
     return result;
   });
 }
@@ -141,10 +143,11 @@ export function evaluate(
 ): Effect.Effect<
   EvaluationResult,
   EvaluationError,
-  FileSystem.FileSystem | CommandExecutor
+  FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
   return Effect.gen(function* () {
-    yield* Effect.logInfo("Starting full evaluation").pipe(
+    const { logger } = yield* LoggerConfig;
+    yield* logger.info("Starting full evaluation").pipe(
       Effect.annotateLogs({
         initialPrompt: initialPrompt.substring(0, 100),
         updatePrompt: updatePrompt.substring(0, 100),
@@ -159,7 +162,7 @@ export function evaluate(
       }),
     );
 
-    yield* Effect.logDebug(`Created temporary workspace: ${tempDir.name}`);
+    yield* logger.debug(`Created temporary workspace: ${tempDir.name}`);
 
     const originalProgramPath = yield* generateOriginalProgram(
       initialPrompt,
@@ -174,7 +177,7 @@ export function evaluate(
       config,
     );
 
-    yield* Effect.logInfo(`Benchmark results saved at: ${tempDir.name}`);
+    yield* logger.info(`Benchmark results saved at: ${tempDir.name}`);
 
     return {
       ...updateResult,
@@ -186,7 +189,8 @@ export function evaluate(
   }).pipe(
     Effect.catchAll((error) =>
       Effect.gen(function* () {
-        yield* Effect.logError("Full evaluation failed").pipe(
+        const { logger } = yield* LoggerConfig;
+        yield* logger.error("Full evaluation failed").pipe(
           Effect.annotateLogs({
             error: error instanceof Error ? error.message : String(error),
           }),
@@ -213,24 +217,26 @@ function generateOriginalProgram(
 ): Effect.Effect<
   string,
   EvaluationError,
-  FileSystem.FileSystem | CommandExecutor
+  FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
   return Effect.gen(function* () {
-    yield* Effect.logInfo("Generating original program");
+    const { logger } = yield* LoggerConfig;
+    yield* logger.info("Generating original program");
 
     const originalFolder = path.join(workspaceDir, "original-program");
     const fs = yield* FileSystem.FileSystem;
     yield* fs.makeDirectory(originalFolder, { recursive: true });
 
-    yield* Effect.tryPromise({
-      try: () => codingAgent(initialPrompt, originalFolder),
-      catch: (error) =>
-        new EvaluationError(
-          "Failed to generate original program",
-          "GENERATION_FAILED",
-          error,
-        ),
-    });
+    yield* codingAgent(initialPrompt, originalFolder).pipe(
+      Effect.mapError(
+        (error) =>
+          new EvaluationError(
+            "Failed to generate original program",
+            "GENERATION_FAILED",
+            error,
+          ),
+      ),
+    );
 
     const files = yield* fs.readDirectory(originalFolder);
     if (files.length === 0) {
@@ -267,15 +273,10 @@ build/
       "Initial commit: Generated program",
     );
 
-    yield* Effect.logInfo(
-      "Original program generated and committed to git",
-    ).pipe(
-      Effect.annotateLogs({
-        path: originalFolder,
-        fileCount: files.length,
-      }),
-    );
-
+    yield* logger.info("Original program generated and committed to git", {
+      path: originalFolder,
+      fileCount: files.length,
+    });
     return originalFolder;
   }).pipe(
     Effect.mapError((error) =>
@@ -298,37 +299,36 @@ function applyUpdatesToInstances(
 ): Effect.Effect<
   (SuccessInstanceResult | FailedInstanceResult)[],
   PlatformError,
-  FileSystem.FileSystem | CommandExecutor
+  FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
   return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
+
     const agents: FeatureAgent[] = [new ClaudeAgent(), new CodexAgent()];
     // { name: 'gemini', agent: geminiAgent, applyUpdate: false }
 
     const basePort = 30000;
-    const instances: readonly InstanceDescriptor[] = makeInstances(
-      getLoggerConfig().logger,
+    const instances = yield* makeInstances(
       workspaceDir,
       basePort,
       agents,
       config,
     );
 
-    yield* Effect.logInfo("Applying updates to all instances in parallel");
+    yield* logger.info("Applying updates to all instances in parallel");
 
     return yield* Effect.forEach(
       instances,
       (instance) =>
         Effect.gen(function* () {
+          const { logger } = yield* LoggerConfig;
+
           const fs = yield* FileSystem.FileSystem;
           yield* fs.copy(originalProgramPath, instance.instancePath);
-          yield* Effect.logDebug(`Created instance ${instance.instanceId}`);
+          yield* logger.debug(`Created instance ${instance.instanceId}`);
 
           // 1. Try to update with feature addition agent
-          let result = yield* runFeatureAgent(
-            getLoggerConfig().logger,
-            updatePrompt,
-            instance,
-          );
+          let result = yield* runFeatureAgent(updatePrompt, instance);
 
           // 2. Compute diff stats
           result = yield* augmentWithDiffStats(result);
@@ -351,9 +351,9 @@ function applyUpdatesToInstances(
           );
 
           // 5. Log
-          yield* Effect.logInfo(`Instance ${instance.instanceId} completed`);
+          yield* logger.info(`Instance ${instance.instanceId} completed`);
           if (isSuccessInstanceResult(result)) {
-            yield* Effect.logInfo(
+            yield* logger.info(
               dedent`
                 → ${result.instanceId} [${result.agentName}]: ${result.diffStats.getNumFilesChanged()} files changed, ${result.diffStats.getNumLinesChanged()} lines changed, score: ${result.score}`,
             );
@@ -371,13 +371,15 @@ function augmentWithDiffStats(
 ): Effect.Effect<
   SuccessInstanceResult | FailedInstanceResult,
   PlatformError,
-  CommandExecutor
+  CommandExecutor | LoggerConfig
 > {
   if (!isSuccessInstanceResult(result)) {
     return Effect.succeed(result);
   }
 
   return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
+
     // **************************************************
     // a. Add all changes to staging to see what changed
     // **************************************************
@@ -413,24 +415,27 @@ function augmentWithDiffStats(
       ...baseGitDiffArgs,
       "--stat",
     );
-    yield* Effect.logDebug(dedent`
+    yield* logger.debug(dedent`
             Diff stats for ${result.instanceId}:
             ${gitDiffStatOutput}`);
-    yield* Effect.logDebug(dedent`
-            ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${result.instanceId}: 
+    yield* logger.debug(dedent`
+            ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${result.instanceId}:
             ${diffStatOutput}`);
 
     return { ...result, diffStats };
   });
 }
 
-// TODO: Will refactor this at some point
 const runFeatureAgent = (
-  logger: Logger,
   updatePrompt: string,
   descriptor: InstanceDescriptor,
-): Effect.Effect<SuccessInstanceResult | FailedInstanceResult, never> =>
+): Effect.Effect<
+  SuccessInstanceResult | FailedInstanceResult,
+  never,
+  LoggerConfig
+> =>
   Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
     const startTime = yield* Effect.sync(() => Date.now());
     if (isClaudeAgent(descriptor.agent)) {
       return yield* descriptor.agent
@@ -448,10 +453,9 @@ const runFeatureAgent = (
                   () => Date.now() - startTime,
                 );
                 const prettyCause = Cause.pretty(cause);
-                yield* Effect.sync(() =>
-                  logger
-                    .withMetadata({ cause: prettyCause })
-                    .error(`Claude agent failed for ${descriptor.instanceId}`),
+                yield* logger.error(
+                  `Claude agent failed for ${descriptor.instanceId}`,
+                  { cause: prettyCause },
                 );
 
                 return makeFailedInstanceResult(
@@ -467,16 +471,11 @@ const runFeatureAgent = (
         );
     }
 
-    return yield* Effect.tryPromise({
-      try: () =>
-        (descriptor.agent as CodingAgent)(
-          updatePrompt,
-          descriptor.instancePath,
-          descriptor.port,
-        ),
-      catch: (cause) =>
-        cause instanceof Error ? cause : new Error(String(cause)),
-    }).pipe(
+    return yield* (descriptor.agent as CodingAgent)(
+      updatePrompt,
+      descriptor.instancePath,
+      descriptor.port,
+    ).pipe(
       Effect.map(() =>
         makeSuccessInstanceResult(
           descriptor.instanceId,
@@ -488,17 +487,18 @@ const runFeatureAgent = (
       Effect.catchAll((error) =>
         Effect.gen(function* () {
           const elapsed = yield* Effect.sync(() => Date.now() - startTime);
-          yield* Effect.sync(() =>
-            logger
-              .withMetadata({ error: error.message })
-              .error(`Failed to apply update for ${descriptor.instanceId}`),
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          yield* logger.error(
+            `Failed to apply update for ${descriptor.instanceId}`,
+            { error: errorMessage },
           );
           return makeFailedInstanceResult(
             descriptor.instanceId,
             descriptor.instancePath,
             descriptor.agentName,
             elapsed,
-            error.message,
+            errorMessage,
           );
         }),
       ),

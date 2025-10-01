@@ -15,8 +15,7 @@ import {
   isMaxTurnsErrorResult,
   isSuccessResult,
 } from "../../utils/claude-code-sdk/type-guards.ts";
-import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
-import { jsonStringify } from "../../utils/logger/pretty.ts";
+import { LoggerConfig } from "../../utils/logger/logger.ts";
 
 // Specializing the following to Claude Code for now
 
@@ -88,14 +87,7 @@ export class DriverAgentResponseFormatInvalid extends Data.TaggedError(
 export class DriverAgent {
   private sessionId?: string;
 
-  constructor(
-    private readonly config: DriverAgentConfig,
-    private readonly logger: Logger = getLoggerConfig().logger,
-  ) {
-    logger.debug(
-      `DriverAgent (for testing functionality) initialized with ${jsonStringify(config)}`,
-    );
-  }
+  constructor(private readonly config: DriverAgentConfig) {}
 
   getConfig() {
     return this.config;
@@ -107,16 +99,18 @@ export class DriverAgent {
     prompt: string,
     /** Additional config / options */
     additionalConfig?: Partial<DriverAgentConfig>,
-  ): Effect.Effect<string, DriverAgentError> {
+  ): Effect.Effect<string, DriverAgentError, LoggerConfig> {
     const self = this;
     return Effect.gen(function* () {
+      const { logger } = yield* LoggerConfig;
+
       const options = {
         ...self.getConfig(),
         ...additionalConfig,
         resume: self.getSessionId(), // session id managed by and only by DriverAgent
       };
 
-      self.logger.info(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
+      yield* logger.info(`[DRIVER-ASK] [PROMPT]\n${prompt}`);
       const response = query({
         prompt,
         options,
@@ -125,7 +119,6 @@ export class DriverAgent {
       const result = yield* consumeUntilTerminal({
         response,
         sessionManager: self,
-        logger: self.logger,
       }).pipe(
         Effect.mapError(
           (streamError) =>
@@ -180,7 +173,7 @@ export class DriverAgent {
     outputSchema: T,
     /** Additional config / options */
     additionalConfig?: Partial<DriverAgentConfig>,
-  ): Effect.Effect<z.infer<T>, DriverAgentError> {
+  ): Effect.Effect<z.infer<T>, DriverAgentError, LoggerConfig> {
     const self = this;
     return Effect.gen(function* () {
       const fullPrompt = dedent`

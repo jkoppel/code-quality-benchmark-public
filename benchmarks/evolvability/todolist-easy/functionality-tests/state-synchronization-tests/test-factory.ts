@@ -1,5 +1,5 @@
 import dedent from "dedent";
-import type { Effect } from "effect";
+import { Effect } from "effect";
 import type * as z from "zod";
 import type { DriverAgentError } from "../../../../../harness/benchmark-test-lib/agents/driver-agent.ts";
 import type {
@@ -11,6 +11,7 @@ import type { TestContext } from "../../../../../harness/benchmark-test-lib/cont
 import type { TestResult } from "../../../../../harness/benchmark-test-lib/report.ts";
 import type { TestRunnerConfig } from "../../../../../harness/benchmark-test-lib/runner.ts";
 import type { TestCase } from "../../../../../harness/benchmark-test-lib/suite.ts";
+import { LoggerConfig } from "../../../../../harness/utils/logger/logger.ts";
 import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
 import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import {
@@ -62,7 +63,7 @@ export function makePerMutatorStateSyncTestsForStatus(
         makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
         _context: TestContext,
         config: TestRunnerConfig,
-      ): Effect.Effect<TestResult, DriverAgentError, never> {
+      ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
         const agent = makeAgent({ additionalCapabilities: [] });
         // TODO: Consider putting info on the views for ALL attributes -- test case agent sometimes gets confused about what some bit of ui represents
         return agent.check(dedent`
@@ -101,12 +102,16 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
-    ): Effect.Effect<TestResult, DriverAgentError, never> {
-      const agent = makeAgent({ additionalCapabilities: [] });
-      const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
-      config.getLogger().withMetadata(appInfo).debug("AppInfo fixture");
+    ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
+      return Effect.gen(function* () {
+        const { logger } = yield* LoggerConfig;
+        const agent = makeAgent({ additionalCapabilities: [] });
+        const appInfo = context.get(appInfoId) as z.infer<
+          typeof TodoListAppInfo
+        >;
+        yield* logger.debug("AppInfo fixture", appInfo);
 
-      return agent.check(dedent`
+        return yield* agent.check(dedent`
         ${makeBackgroundPrompt(config.getSutConfig())}
         Here is some information that someone else gathered about the views of or UI elements for the ${attribute.getPrettyName()} (and related things):
         ${attribute.getInfoForStateSynchTests(appInfo)}
@@ -125,6 +130,7 @@ export function makeChanceyStateSynchTest(attribute: TaskAttribute): TestCase {
         - For an app with both an icon/badge and a text label for the status: Status icon updates but text label doesn't change
         - For an app with both a detailed view and a summary view: Status changes in the detailed view but not in the summary view
         `);
+      });
     },
   };
 }

@@ -5,6 +5,31 @@ import type {
   SDKUserMessage,
 } from "@anthropic-ai/claude-code";
 
+const CLAUDE_CODE_MESSAGE_TYPES = new Set([
+  "assistant",
+  "user",
+  "result",
+  "system",
+]);
+
+export function isSDKMessage(value: unknown): value is SDKMessage {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as { type?: unknown };
+
+  if (typeof candidate.type !== "string") {
+    return false;
+  }
+
+  if (!CLAUDE_CODE_MESSAGE_TYPES.has(candidate.type)) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Claude Code SDK utilities and type guards
  *

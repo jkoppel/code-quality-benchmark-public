@@ -10,6 +10,7 @@ import type { TestContext } from "../../../../harness/benchmark-test-lib/context
 import type { TestResult } from "../../../../harness/benchmark-test-lib/report.ts";
 import type { TestRunnerConfig } from "../../../../harness/benchmark-test-lib/runner.ts";
 import type { TestCase } from "../../../../harness/benchmark-test-lib/suite.ts";
+import type { LoggerConfig } from "../../../../harness/utils/logger/logger.ts";
 import { makeBackgroundPrompt } from "./common-prompts.ts";
 
 /***************************************
@@ -21,7 +22,7 @@ export const basicColorPickerRgbSelection = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
@@ -45,7 +46,7 @@ export const colorSelectionSharedAcrossPanes = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
@@ -73,7 +74,7 @@ export const colorSelectionSurvivesPaneOps = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
@@ -102,7 +103,7 @@ export const basicMultiPaneCreation = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
@@ -127,7 +128,7 @@ export const drawingAreaIndependence = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
 
@@ -156,7 +157,7 @@ export const bitmapSaveLoad = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       
@@ -177,7 +178,7 @@ export const bitmapLoadingIsolation = makeTest({
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       
@@ -202,7 +203,7 @@ interface PixelArtTestOptions {
   run(
     agent: TestCaseAgent,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never>;
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig>;
 }
 
 const capabilitiesForPixelArtTests: OptionalTestCaseAgentCapability[] = [
@@ -216,7 +217,7 @@ function makeTest({ name, run }: PixelArtTestOptions): TestCase {
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       _context: TestContext,
       config: TestRunnerConfig,
-    ): Effect.Effect<TestResult, DriverAgentError, never> {
+    ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
       const agent = makeAgent({
         additionalCapabilities: capabilitiesForPixelArtTests,
       });

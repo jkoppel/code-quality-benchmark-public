@@ -20,4 +20,3 @@ export type {
   EvaluationResult,
   SuccessInstanceResult as InstanceResult,
 } from "./evaluator/result.ts";
-export type { Logger, LogLevel } from "./utils/logger/logger.ts";

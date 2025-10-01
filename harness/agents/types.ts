@@ -1,5 +1,6 @@
 import { Data, type Effect } from "effect";
 import type { SuccessInstanceResult } from "../evaluator/result";
+import type { LoggerConfig } from "../utils/logger/logger.ts";
 
 /*****************************
      Coding Agent
@@ -9,7 +10,7 @@ export type CodingAgent = (
   prompt: string,
   folderPath: string,
   port?: number,
-) => Promise<void>;
+) => Effect.Effect<void, Error, LoggerConfig>;
 
 /*****************************
     Feature Addition Agent
@@ -24,11 +25,11 @@ export interface FeatureAgent {
     folderPath: string,
     instanceId: string,
     port: number,
-  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, never>;
+  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig>;
 }
 
 /*****************************
-    AgentInvocationError
+    FeatureAgentError
 ******************************/
 
 export class FeatureAgentError extends Data.TaggedError("FeatureAgentError")<{

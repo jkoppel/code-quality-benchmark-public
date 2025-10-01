@@ -10,6 +10,7 @@ import type { TestContext } from "../../../../../harness/benchmark-test-lib/cont
 import type { TestResult } from "../../../../../harness/benchmark-test-lib/report.ts";
 import type { TestRunnerConfig } from "../../../../../harness/benchmark-test-lib/runner.ts";
 import type { TestCase } from "../../../../../harness/benchmark-test-lib/suite.ts";
+import type { LoggerConfig } from "../../../../../harness/utils/logger/logger.ts";
 import type { TodoListAppInfo } from "../shared/app-info-schema.ts";
 import { makeBackgroundPrompt } from "../shared/common-prompts.ts";
 import { appInfoId } from "../test-strategy.ts";
@@ -20,7 +21,7 @@ export const moreThanDoneNotDoneStatuses = makeTest({
     agent: TestCaseAgent,
     appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       Here's some info that someone has collected about the app:
@@ -38,7 +39,7 @@ export const tasksHavePriorities = makeTest({
     agent: TestCaseAgent,
     appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     return agent.check(dedent`
       ${makeBackgroundPrompt(config.getSutConfig())}
       Here's some info that someone has collected about the app:
@@ -59,7 +60,7 @@ interface TodoListTestOptions {
     agent: TestCaseAgent,
     appInfo: z.infer<typeof TodoListAppInfo>,
     config: TestRunnerConfig,
-  ): Effect.Effect<TestResult, DriverAgentError, never>;
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig>;
 }
 
 function makeTest({ name, run }: TodoListTestOptions): TestCase {
@@ -69,7 +70,7 @@ function makeTest({ name, run }: TodoListTestOptions): TestCase {
       makeAgent: (options: TestCaseAgentOptions) => TestCaseAgent,
       context: TestContext,
       config: TestRunnerConfig,
-    ): Effect.Effect<TestResult, DriverAgentError, never> {
+    ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
       const agent = makeAgent({ additionalCapabilities: [] });
       const appInfo = context.get(appInfoId) as z.infer<typeof TodoListAppInfo>;
       return run(agent, appInfo, config);
