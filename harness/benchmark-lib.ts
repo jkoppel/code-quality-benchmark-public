@@ -7,6 +7,8 @@ import { Effect } from "effect";
 import fs from "fs-extra";
 import * as tmp from "tmp";
 import type { CodingAgent } from "./agents/types.ts";
+import { DEFAULT_EVALUATION_CONFIG } from "./evaluator/config.ts";
+import { evaluate, evaluateUpdates } from "./evaluator/evaluator.ts";
 import {
   type EvaluationResult,
   type FailedInstanceResult,
@@ -14,8 +16,6 @@ import {
   isSuccessInstanceResult,
   type SuccessInstanceResult,
 } from "./evaluator/result.ts";
-import { eval as evaluate, evaluateUpdates } from "./index.ts";
-
 /**
  * Common benchmark output logic
  */
@@ -139,9 +139,12 @@ export function runBenchmarkWithNewCode(
       throw new Error(`Missing initial-prompt.txt in ${benchmarkPath}`);
     }
 
-    const result = yield* evaluate(initialPrompt, codingAgent, updatePrompt, {
-      logLevel: "info",
-    });
+    const result = yield* evaluate(
+      initialPrompt,
+      codingAgent,
+      updatePrompt,
+      DEFAULT_EVALUATION_CONFIG,
+    );
 
     yield* Effect.sync(() => outputBenchmarkResults(benchmarkName, result));
   });
@@ -210,9 +213,7 @@ export function runBenchmarkWithExistingCode(
       originalProgramPath,
       updatePrompt,
       tempDir.name,
-      {
-        logLevel: "info",
-      },
+      DEFAULT_EVALUATION_CONFIG,
     );
 
     yield* Effect.sync(() => outputBenchmarkResults(benchmarkName, result));

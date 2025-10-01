@@ -40,8 +40,6 @@ import {
  * since functionality tests are, conceptually, themselves an eval.
  */
 
-// TODO: Move workspaceDir into EvaluationConfig?
-
 export function evaluateUpdates(
   originalProgramPath: string,
   updatePrompt: string,
@@ -57,8 +55,6 @@ export function evaluateUpdates(
         updatePrompt: updatePrompt.substring(0, 100),
       }),
     );
-
-    // const providerBackedConfig = yield* evaluationConfig;
 
     const updateResults = yield* applyUpdatesToInstances(
       originalProgramPath,
@@ -141,7 +137,7 @@ export function evaluate(
   initialPrompt: string,
   codingAgent: CodingAgent,
   updatePrompt: string,
-  config: EvaluationConfig = {},
+  config: EvaluationConfig,
 ): Effect.Effect<
   EvaluationResult,
   EvaluationError,
