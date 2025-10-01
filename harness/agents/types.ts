@@ -1,4 +1,9 @@
-import type { Options } from "@anthropic-ai/claude-code";
+import { Data, type Effect } from "effect";
+import type { InstanceResult } from "../evaluator/result";
+
+/*****************************
+     Coding Agent
+******************************/
 
 export type CodingAgent = (
   prompt: string,
@@ -6,18 +11,26 @@ export type CodingAgent = (
   port?: number,
 ) => Promise<void>;
 
-export type ClaudeAgentConfig = Pick<
-  Options,
-  "allowedTools" | "appendSystemPrompt" | "model"
->;
+/*****************************
+    Feature Addition Agent
+******************************/
 
-export class AgentExecutionError extends Error {
-  constructor(
-    message: string,
-    public readonly code: string = "AGENT_EXECUTION_ERROR",
-    public readonly details?: unknown,
-  ) {
-    super(message);
-    this.name = "AgentExecutionError";
-  }
+export interface FeatureAgent {
+  applyUpdate(
+    updatePrompt: string,
+    folderPath: string,
+    instanceId: string,
+    port: number,
+  ): Effect.Effect<InstanceResult, AgentInvocationError, never>;
 }
+
+/*****************************
+    AgentInvocationError
+******************************/
+
+export class AgentInvocationError extends Data.TaggedError(
+  "AgentInvocationError",
+)<{
+  readonly message: string;
+  readonly cause?: unknown;
+}> {}
