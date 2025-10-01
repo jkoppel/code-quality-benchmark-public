@@ -183,9 +183,7 @@ export function runFunctionalityTests({
 
     // Execute suite generation strategy
     yield* logger.info(`Executing suite generation strategy`);
-    const testResults = yield* runner.executeStrategy(strategy);
-
-    return testResults;
+    return yield* runner.executeStrategy(strategy);
   });
 }
 
