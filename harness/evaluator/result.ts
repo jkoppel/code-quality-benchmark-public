@@ -1,3 +1,4 @@
+import type { TestSuiteResult } from "../benchmark-test-lib/report.ts";
 import type { EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 
@@ -44,6 +45,11 @@ export interface SuccessInstanceResult extends InstanceMetadata {
   type: "SuccessInstanceResult";
   diffStats: DiffStats;
   score: number;
+}
+
+export interface SuccessInstanceResultWithTestSuiteResult
+  extends SuccessInstanceResult {
+  testSuiteResult: TestSuiteResult;
 }
 
 /** Info from a feature addition agent's attempt that failed */

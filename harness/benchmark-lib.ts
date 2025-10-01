@@ -213,9 +213,12 @@ export function runBenchmarkWithNewCode(
     }
 
     const result = yield* evaluate(
-      initialPrompt,
+      {
+        benchmarkPath,
+        initialPrompt,
+        updatePrompt,
+      },
       codingAgent,
-      updatePrompt,
       DEFAULT_EVALUATION_CONFIG,
     );
 
@@ -283,6 +286,7 @@ export function runBenchmarkWithExistingCode(
 
     // Run the update evaluation only
     const result = yield* evaluateUpdates(
+      benchmarkPath,
       originalProgramPath,
       updatePrompt,
       tempDir.name,
