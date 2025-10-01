@@ -19,25 +19,57 @@ import { checkDependenciesPresent } from "./utils/validate-dependencies.ts";
 // TODO: Refactor the path args to use Effect's path args facilities (which also do validation)
 
 /*************************************************
-    Logger Layer Helpers
+    Main Command
 **************************************************/
 
-/**
- * Creates the logger layer with CLI log level override support.
- * Precedence: CLI > env > default (from LoggerConfigSpec)
- */
-function makeLoggerLayer(cliLogLevel: Option.Option<string>) {
-  const provider = Option.match(cliLogLevel, {
-    onNone: () => ConfigProvider.fromEnv(),
-    onSome: (value) => ConfigProvider.fromJson({ LOG_LEVEL: value }),
-  });
-  return LoggerConfigLayer.pipe(
-    Layer.provide(Layer.setConfigProvider(provider)),
-  );
-}
+const command = Command.make("cqb").pipe(
+  Command.withSubcommands([
+    makeRunFromScratchSubCommand(),
+    makeRunWithExistingSubCommand(),
+    makeTestSubCommand(),
+    makeListTestStrategiesSubCommand(),
+  ]),
+  Command.withDescription(
+    HelpDoc.blocks([
+      HelpDoc.p("Code Quality Benchmark CLI"),
+      HelpDoc.h2("Examples"),
+      HelpDoc.enumeration([
+        HelpDoc.p(
+          "Benchmark from scratch on the todolist-easy project: cqb run benchmarks/evolvability/todolist-easy ./my-agent.sh",
+        ),
+        HelpDoc.p(
+          "Benchmark with existing code on the todolist-easy project: cqb existing benchmarks/evolvability/todolist-easy /tmp/benchmark-xxx/original-program",
+        ),
+        HelpDoc.p(
+          "Run functionality tests on an attempt at the todolist-easy project: LOG_LEVEL=debug cqb test benchmarks/evolvability/todolist-easy /tmp/benchmark-xxx/attempt",
+        ),
+      ]),
+    ]),
+  ),
+);
+
+const cli = Command.run(command, {
+  name: "Code Quality Benchmark",
+  version: "0.1.1", // TODO: Find a way to get this automatedly or something from a more centralized location?
+});
+
+cli(process.argv).pipe(
+  Effect.catchAllCause((cause) =>
+    Effect.gen(function* () {
+      yield* Effect.sync(() => console.error(Cause.pretty(cause)));
+      yield* Effect.sync(() => process.exit(1));
+    }),
+  ),
+  Effect.provide(
+    Layer.mergeAll(NodeContext.layer, CliConfig.layer({ showBuiltIns: false })),
+  ),
+  NodeRuntime.runMain({
+    disableErrorReporting: true,
+  }),
+);
 
 /*************************************************
-    Shared Arguments & Options
+    Subcommands
 **************************************************/
 
 // Shared arguments
@@ -119,7 +151,6 @@ function makeTestSubCommand() {
         logLevel: cliLogLevel,
       }) =>
         Effect.gen(function* () {
-          // Run functionality tests
           const testResults = yield* runFunctionalityTests({
             benchmarkPath,
             systemUnderTestPath: systemUnderTest,
@@ -251,48 +282,20 @@ function makeListTestStrategiesSubCommand() {
   );
 }
 
-const command = Command.make("cqb").pipe(
-  Command.withSubcommands([
-    makeRunFromScratchSubCommand(),
-    makeRunWithExistingSubCommand(),
-    makeTestSubCommand(),
-    makeListTestStrategiesSubCommand(),
-  ]),
-  Command.withDescription(
-    HelpDoc.blocks([
-      HelpDoc.p("Code Quality Benchmark CLI"),
-      HelpDoc.h2("Examples"),
-      HelpDoc.enumeration([
-        HelpDoc.p(
-          "Benchmark from scratch on the todolist-easy project: cqb run benchmarks/evolvability/todolist-easy ./my-agent.sh",
-        ),
-        HelpDoc.p(
-          "Benchmark with existing code on the todolist-easy project: cqb existing benchmarks/evolvability/todolist-easy /tmp/benchmark-xxx/original-program",
-        ),
-        HelpDoc.p(
-          "Run functionality tests on an attempt at the todolist-easy project: LOG_LEVEL=debug cqb test benchmarks/evolvability/todolist-easy /tmp/benchmark-xxx/attempt",
-        ),
-      ]),
-    ]),
-  ),
-);
+/*************************************************
+    Logger Layer Helpers
+**************************************************/
 
-const cli = Command.run(command, {
-  name: "Code Quality Benchmark",
-  version: "0.1.1", // TODO: Find a way to get this automatedly or something from a more centralized location?
-});
-
-cli(process.argv).pipe(
-  Effect.catchAllCause((cause) =>
-    Effect.gen(function* () {
-      yield* Effect.sync(() => console.error(Cause.pretty(cause)));
-      yield* Effect.sync(() => process.exit(1));
-    }),
-  ),
-  Effect.provide(
-    Layer.mergeAll(NodeContext.layer, CliConfig.layer({ showBuiltIns: false })),
-  ),
-  NodeRuntime.runMain({
-    disableErrorReporting: true,
-  }),
-);
+/**
+ * Creates the logger layer with CLI log level override support.
+ * Precedence: CLI > env > default (from LoggerConfigSpec)
+ */
+function makeLoggerLayer(cliLogLevel: Option.Option<string>) {
+  const provider = Option.match(cliLogLevel, {
+    onNone: () => ConfigProvider.fromEnv(),
+    onSome: (value) => ConfigProvider.fromJson({ LOG_LEVEL: value }),
+  });
+  return LoggerConfigLayer.pipe(
+    Layer.provide(Layer.setConfigProvider(provider)),
+  );
+}
