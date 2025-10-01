@@ -102,17 +102,18 @@ async function getSuiteGenerationStrategy(
 ): Promise<SuiteGenerationStrategy> {
   const { BENCHMARKS_ROOT, TEST_DIR, BASE_FILENAME } = TESTS_PATHS_CONVENTION;
 
-  const strategyPath = path
-    .join(
-      // We assume $BENCHMARKS_ROOT is a sibling of the harness folder (in the compiled codebase structure)
-      "../",
-      BENCHMARKS_ROOT,
-      benchmarkSet,
-      project,
-      TEST_DIR,
-      BASE_FILENAME,
-    )
-    .concat(".js");
+  const strategyPath =
+    "./" +
+    path
+      .join(
+        // Import path is relative to dist/ where both the harness bundle and compiled benchmarks live
+        BENCHMARKS_ROOT,
+        benchmarkSet,
+        project,
+        TEST_DIR,
+        BASE_FILENAME,
+      )
+      .concat(".js");
   /*
     Dynamic imports use the compiled js
     Using dynamic import to avoid circular dependencies since test files import stuff from the test-lib
