@@ -9,7 +9,7 @@ export interface EvaluationResult {
   originalProgramPath: string;
   originalProgramSource: OriginalProgramSource;
   updatePrompt: string;
-  updates: (InstanceResult | AgentInvocationFailure)[];
+  updates: (SuccessInstanceResult | FailedInstanceResult)[];
   metadata: EvaluationMetadata;
   totalScore: number;
 }
@@ -28,6 +28,7 @@ export function wasGeneratedInRun(
 
 /*********************************************
    Feature Addition Agent Invocation Results
+        aka 'Instance Result'
 **********************************************/
 
 interface InstanceMetadata {
@@ -37,16 +38,17 @@ interface InstanceMetadata {
   executionTimeMs: number;
 }
 
-/** Successful result from a feature addition agent's attempt. */
-export interface InstanceResult extends InstanceMetadata {
-  type: "InstanceResult";
+/** Result from a feature addition agent's attempt that *successfully executed / ran to completion*
+ * (but that may or may not pass functionality tests). */
+export interface SuccessInstanceResult extends InstanceMetadata {
+  type: "SuccessInstanceResult";
   diffStats: DiffStats;
   score: number;
 }
 
 /** Info from a feature addition agent's attempt that failed */
-export interface AgentInvocationFailure extends InstanceMetadata {
-  type: "AgentInvocationFailure";
+export interface FailedInstanceResult extends InstanceMetadata {
+  type: "FailedInstanceResult";
   score: 0;
   cause: string; // Pretty-printed from Effect's Cause
   errorType?: string; // Optional: original error _tag
@@ -54,30 +56,30 @@ export interface AgentInvocationFailure extends InstanceMetadata {
 
 // Type guard functions
 
-export function isInvocationSuccess(
-  result: InstanceResult | AgentInvocationFailure,
-): result is InstanceResult {
-  return result.type === "InstanceResult";
+export function isSuccessInstanceResult(
+  result: SuccessInstanceResult | FailedInstanceResult,
+): result is SuccessInstanceResult {
+  return result.type === "SuccessInstanceResult";
 }
 
-export function isInvocationFailure(
-  result: InstanceResult | AgentInvocationFailure,
-): result is AgentInvocationFailure {
-  return result.type === "AgentInvocationFailure";
+export function isFailedInstanceResult(
+  result: SuccessInstanceResult | FailedInstanceResult,
+): result is FailedInstanceResult {
+  return result.type === "FailedInstanceResult";
 }
 
 // Helper factory functions
 
-export function makeInstanceResult(
+export function makeSuccessInstanceResult(
   instanceId: string,
   folderPath: string,
   agentName: string,
   executionTimeMs: number,
   diffStats: DiffStats = DiffStats.mempty(),
   score: number = 0,
-): InstanceResult {
+): SuccessInstanceResult {
   return {
-    type: "InstanceResult",
+    type: "SuccessInstanceResult",
     instanceId,
     folderPath,
     agentName,
@@ -87,16 +89,16 @@ export function makeInstanceResult(
   };
 }
 
-export function makeAgentInvocationFailure(
+export function makeFailedInstanceResult(
   instanceId: string,
   folderPath: string,
   agentName: string,
   executionTimeMs: number,
   cause: string,
   errorType?: string,
-): AgentInvocationFailure {
+): FailedInstanceResult {
   return {
-    type: "AgentInvocationFailure",
+    type: "FailedInstanceResult",
     instanceId,
     folderPath,
     agentName,
@@ -110,7 +112,7 @@ export function makeAgentInvocationFailure(
 // Accessors
 
 export function getDiffStats(
-  result: InstanceResult | AgentInvocationFailure,
+  result: SuccessInstanceResult | FailedInstanceResult,
 ): DiffStats | undefined {
-  return isInvocationSuccess(result) ? result.diffStats : undefined;
+  return isSuccessInstanceResult(result) ? result.diffStats : undefined;
 }

@@ -1,6 +1,7 @@
 import * as path from "node:path";
-import type { AgentConfig } from "../agents/feature-addition/config.ts";
+import type { FeatureAgent } from "../agents/types.ts";
 import type { Logger } from "../utils/logger/logger.ts";
+import type { EvaluationConfig } from "./config.ts";
 
 export type InstanceDescriptor = {
   readonly instanceId: string;
@@ -14,21 +15,27 @@ export function makeInstances(
   logger: Logger,
   workspaceDir: string,
   basePort: number,
-  instancesPerAgent: number,
-  agents: AgentConfig[],
+  agents: FeatureAgent[],
+  config: EvaluationConfig,
 ) {
   logger.info("Creating program instances for updates");
 
-  return agents.flatMap((agentConfig, agentIndex) =>
-    Array.from({ length: instancesPerAgent }, (_, instanceIdx) => {
-      const instanceId = `${agentConfig.name}-${instanceIdx + 1}`;
-      return {
-        instanceId,
-        agentName: agentConfig.name,
-        agent: agentConfig.agent,
-        instancePath: path.join(workspaceDir, instanceId),
-        port: basePort + agentIndex * instancesPerAgent + instanceIdx,
-      } satisfies InstanceDescriptor;
-    }),
+  return agents.flatMap((agent, agentIndex) =>
+    Array.from(
+      { length: config.instancesPerFeatureAgent },
+      (_, instanceIdx) => {
+        const instanceId = `${agent.getName()}-${instanceIdx + 1}`;
+        return {
+          instanceId,
+          agentName: agent.getName(),
+          agent,
+          instancePath: path.join(workspaceDir, instanceId),
+          port:
+            basePort +
+            agentIndex * config.instancesPerFeatureAgent +
+            instanceIdx,
+        } satisfies InstanceDescriptor;
+      },
+    ),
   );
 }

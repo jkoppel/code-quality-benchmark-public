@@ -1,8 +1,8 @@
 import { type Options, query } from "@anthropic-ai/claude-code";
 import { Effect, Option } from "effect";
 import {
-  type InstanceResult,
-  makeInstanceResult,
+  makeSuccessInstanceResult,
+  type SuccessInstanceResult,
 } from "../../evaluator/result.ts";
 import {
   ClaudeCodeExecutionError,
@@ -16,7 +16,7 @@ import {
   isSuccessResult,
 } from "../../utils/claude-code-sdk/type-guards.ts";
 import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
-import { AgentInvocationError, type FeatureAgent } from "../types.ts";
+import { type FeatureAgent, FeatureAgentError } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
 export type ClaudeAgentConfig = Pick<
@@ -29,27 +29,22 @@ export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
 }
 
 export class ClaudeAgent implements FeatureAgent {
+  private readonly name = "claude-code";
   private readonly logger: Logger;
   private readonly config: ClaudeAgentConfig;
 
-  constructor(
-    config: ClaudeAgentConfig = {},
-    logger: Logger = getLoggerConfig().logger,
-  ) {
+  constructor(logger: Logger = getLoggerConfig().logger) {
     this.logger = logger;
     this.config = {
-      // TODO: Will improve this later
-      appendSystemPrompt: config.appendSystemPrompt ?? SYSTEM_PROMPT,
-      allowedTools: config.allowedTools ?? [
-        "Read",
-        "Write",
-        "Edit",
-        "Bash",
-        "LS",
-        "Glob",
-      ],
-      model: config.model ?? "sonnet",
+      // TODO: Will make this configurable in the future
+      appendSystemPrompt: SYSTEM_PROMPT,
+      allowedTools: ["Read", "Write", "Edit", "Bash", "LS", "Glob"],
+      model: "sonnet",
     };
+  }
+
+  getName(): string {
+    return this.name;
   }
 
   /** Feature addition agents return a 'mempty' version of InstanceResult that is subsequently augmented with a score by the evaluator */
@@ -58,7 +53,7 @@ export class ClaudeAgent implements FeatureAgent {
     folderPath: string,
     instanceId: string,
     port: number,
-  ): Effect.Effect<InstanceResult, AgentInvocationError, never> {
+  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, never> {
     const startTime = Date.now();
 
     this.logger
@@ -96,7 +91,7 @@ export class ClaudeAgent implements FeatureAgent {
           })
           .debug(`Claude completed`);
         self.logger.info(`✓ Update for instance ${instanceId} completed`);
-        return makeInstanceResult(
+        return makeSuccessInstanceResult(
           instanceId,
           folderPath,
           "claude",
@@ -123,7 +118,7 @@ export class ClaudeAgent implements FeatureAgent {
       }),
       Effect.mapError(
         (error) =>
-          new AgentInvocationError({
+          new FeatureAgentError({
             message: error.message,
             cause: error,
           }),

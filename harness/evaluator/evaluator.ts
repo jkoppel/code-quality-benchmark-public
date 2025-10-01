@@ -9,8 +9,8 @@ import {
   ClaudeAgent,
   isClaudeAgent,
 } from "../agents/feature-addition/claude-agent.ts";
-import { codexAgent } from "../agents/feature-addition/codex-agent.ts";
-import type { CodingAgent } from "../agents/types.ts";
+import { CodexAgent } from "../agents/feature-addition/codex-agent.ts";
+import type { CodingAgent, FeatureAgent } from "../agents/types.ts";
 import { gitCmd } from "../utils/git.ts";
 import { getLoggerConfig, type Logger } from "../utils/logger/logger.ts";
 import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
@@ -18,14 +18,14 @@ import { DiffStats } from "./diff-stats.ts";
 import { EvaluationError } from "./errors.ts";
 import { type InstanceDescriptor, makeInstances } from "./instance.ts";
 import {
-  type AgentInvocationFailure,
   type EvaluationResult,
+  type FailedInstanceResult,
   getDiffStats,
-  type InstanceResult,
-  isInvocationFailure,
-  isInvocationSuccess,
-  makeAgentInvocationFailure,
-  makeInstanceResult,
+  isFailedInstanceResult,
+  isSuccessInstanceResult,
+  makeFailedInstanceResult,
+  makeSuccessInstanceResult,
+  type SuccessInstanceResult,
 } from "./result.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
@@ -44,7 +44,7 @@ export function evaluateUpdates(
   originalProgramPath: string,
   updatePrompt: string,
   workspaceDir: string,
-  config: EvaluationConfig = {},
+  config: EvaluationConfig, // TODO: Load this with Effect instead
 ) {
   const startTime = new Date();
 
@@ -63,8 +63,8 @@ export function evaluateUpdates(
       config,
     );
     const [successfulUpdates, failedUpdates] = [
-      updateResults.filter(isInvocationSuccess),
-      updateResults.filter(isInvocationFailure),
+      updateResults.filter(isSuccessInstanceResult),
+      updateResults.filter(isFailedInstanceResult),
     ];
 
     // Calculate total score
@@ -79,7 +79,6 @@ export function evaluateUpdates(
       startTime,
       endTime,
       totalDuration: endTime.getTime() - startTime.getTime(),
-      agentsUsed: ["claude-code", "codex"],
       config,
     };
     const result: EvaluationResult = {
@@ -116,7 +115,7 @@ export function evaluateUpdates(
     // Also print diff stats for visibility
     yield* Effect.log("\n=== Git Diff Statistics & Scores ===");
     for (const r of updateResults) {
-      if (isInvocationSuccess(r)) {
+      if (isSuccessInstanceResult(r)) {
         yield* Effect.log(
           `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}`,
         );
@@ -138,7 +137,7 @@ export function evaluate(
   initialPrompt: string,
   codingAgent: CodingAgent,
   updatePrompt: string,
-  config: EvaluationConfig = {},
+  config: EvaluationConfig,
 ): Effect.Effect<
   EvaluationResult,
   EvaluationError,
@@ -297,90 +296,84 @@ function applyUpdatesToInstances(
   workspaceDir: string,
   config: EvaluationConfig,
 ): Effect.Effect<
-  (InstanceResult | AgentInvocationFailure)[],
+  (SuccessInstanceResult | FailedInstanceResult)[],
   PlatformError,
   FileSystem.FileSystem | CommandExecutor
 > {
-  // Make instances
-  const agents = [
-    {
-      name: "claude",
-      agent: new ClaudeAgent(config.claudeConfig),
-    },
-    { name: "codex", agent: codexAgent },
+  return Effect.gen(function* () {
+    const agents: FeatureAgent[] = [new ClaudeAgent(), new CodexAgent()];
     // { name: 'gemini', agent: geminiAgent, applyUpdate: false }
-  ];
 
-  const instancesPerAgent = 3;
-  const basePort = 30000;
-  const instances: readonly InstanceDescriptor[] = makeInstances(
-    getLoggerConfig().logger,
-    workspaceDir,
-    basePort,
-    instancesPerAgent,
-    agents,
-  );
+    const basePort = 30000;
+    const instances: readonly InstanceDescriptor[] = makeInstances(
+      getLoggerConfig().logger,
+      workspaceDir,
+      basePort,
+      agents,
+      config,
+    );
 
-  // Execute all updates in parallel
-  Effect.logInfo("Applying updates to all instances in parallel");
-  return Effect.forEach(
-    instances,
-    (instance) =>
-      Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
-        yield* fs.copy(originalProgramPath, instance.instancePath);
-        yield* Effect.logDebug(`Created instance ${instance.instanceId}`);
+    yield* Effect.logInfo("Applying updates to all instances in parallel");
 
-        // 1. Try to update with feature addition agent
-        let result = yield* runFeatureAgent(
-          getLoggerConfig().logger,
-          updatePrompt,
-          instance,
-        );
+    return yield* Effect.forEach(
+      instances,
+      (instance) =>
+        Effect.gen(function* () {
+          const fs = yield* FileSystem.FileSystem;
+          yield* fs.copy(originalProgramPath, instance.instancePath);
+          yield* Effect.logDebug(`Created instance ${instance.instanceId}`);
 
-        // 2. Compute diff stats
-        result = yield* augmentWithDiffStats(result);
-        if (isInvocationFailure(result)) {
-          return result;
-        }
-
-        // 3. Calculate score: 300 - linesChanged
-        result.score = Math.max(
-          0,
-          300 - result.diffStats.getSummaryStats().linesChanged,
-        );
-
-        // 4. Commit the changes for future reference
-        yield* gitCmd(
-          result.folderPath,
-          "commit",
-          "-m",
-          `Update: Applied modifications by ${result.agentName}`,
-        );
-
-        // 5. Log
-        yield* Effect.logInfo(`Instance ${instance.instanceId} completed`);
-        if (isInvocationSuccess(result)) {
-          yield* Effect.logInfo(
-            dedent`
-              → ${result.instanceId} [${result.agentName}]: ${result.diffStats.getNumFilesChanged()} files changed, ${result.diffStats.getNumLinesChanged()} lines changed, score: ${result.score}`,
+          // 1. Try to update with feature addition agent
+          let result = yield* runFeatureAgent(
+            getLoggerConfig().logger,
+            updatePrompt,
+            instance,
           );
-        }
 
-        return result;
-      }),
-    { concurrency: "unbounded" },
-  );
+          // 2. Compute diff stats
+          result = yield* augmentWithDiffStats(result);
+          if (isFailedInstanceResult(result)) {
+            return result;
+          }
+
+          // 3. Calculate score: 300 - linesChanged
+          result.score = Math.max(
+            0,
+            300 - result.diffStats.getSummaryStats().linesChanged,
+          );
+
+          // 4. Commit the changes for future reference
+          yield* gitCmd(
+            result.folderPath,
+            "commit",
+            "-m",
+            `Update: Applied modifications by ${result.agentName}`,
+          );
+
+          // 5. Log
+          yield* Effect.logInfo(`Instance ${instance.instanceId} completed`);
+          if (isSuccessInstanceResult(result)) {
+            yield* Effect.logInfo(
+              dedent`
+                → ${result.instanceId} [${result.agentName}]: ${result.diffStats.getNumFilesChanged()} files changed, ${result.diffStats.getNumLinesChanged()} lines changed, score: ${result.score}`,
+            );
+          }
+
+          return result;
+        }),
+      { concurrency: "unbounded" },
+    );
+  });
 }
 
 function augmentWithDiffStats(
-  result: InstanceResult | AgentInvocationFailure,
+  result: SuccessInstanceResult | FailedInstanceResult,
 ): Effect.Effect<
-  InstanceResult | AgentInvocationFailure,
+  SuccessInstanceResult | FailedInstanceResult,
   PlatformError,
   CommandExecutor
 > {
-  if (!isInvocationSuccess(result)) {
+  if (!isSuccessInstanceResult(result)) {
     return Effect.succeed(result);
   }
 
@@ -436,7 +429,7 @@ const runFeatureAgent = (
   logger: Logger,
   updatePrompt: string,
   descriptor: InstanceDescriptor,
-): Effect.Effect<InstanceResult | AgentInvocationFailure, never> =>
+): Effect.Effect<SuccessInstanceResult | FailedInstanceResult, never> =>
   Effect.gen(function* () {
     const startTime = yield* Effect.sync(() => Date.now());
     if (isClaudeAgent(descriptor.agent)) {
@@ -461,7 +454,7 @@ const runFeatureAgent = (
                     .error(`Claude agent failed for ${descriptor.instanceId}`),
                 );
 
-                return makeAgentInvocationFailure(
+                return makeFailedInstanceResult(
                   descriptor.instanceId,
                   descriptor.instancePath,
                   descriptor.agentName,
@@ -485,7 +478,7 @@ const runFeatureAgent = (
         cause instanceof Error ? cause : new Error(String(cause)),
     }).pipe(
       Effect.map(() =>
-        makeInstanceResult(
+        makeSuccessInstanceResult(
           descriptor.instanceId,
           descriptor.instancePath,
           descriptor.agentName,
@@ -500,7 +493,7 @@ const runFeatureAgent = (
               .withMetadata({ error: error.message })
               .error(`Failed to apply update for ${descriptor.instanceId}`),
           );
-          return makeAgentInvocationFailure(
+          return makeFailedInstanceResult(
             descriptor.instanceId,
             descriptor.instancePath,
             descriptor.agentName,

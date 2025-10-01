@@ -1,8 +1,8 @@
 export { ClaudeAgent } from "./agents/feature-addition/claude-agent.ts";
 export { createShellAgent, defaultShellAgent } from "./agents/shell-agent.ts";
 export type {
-  AgentInvocationError,
   CodingAgent,
+  FeatureAgentError,
 } from "./agents/types.ts";
 export {
   outputBenchmarkResults,
@@ -18,6 +18,6 @@ export { EvaluationError } from "./evaluator/errors.ts";
 export { evaluate as eval, evaluateUpdates } from "./evaluator/evaluator.ts";
 export type {
   EvaluationResult,
-  InstanceResult,
+  SuccessInstanceResult as InstanceResult,
 } from "./evaluator/result.ts";
 export type { Logger, LogLevel } from "./utils/logger/logger.ts";
