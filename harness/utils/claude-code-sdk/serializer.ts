@@ -39,9 +39,7 @@ export const claudeCodeSerializer = (message: SDKMessage) => {
           : undefined;
       const serializedTools = toolUses.map((tool: ToolUseBlock) => ({
         name: tool.name,
-        input: tool.input
-          ? serializeToolInput(tool.input, defaultSerializationConfig)
-          : undefined,
+        input: tool.input ? serializeToolInput(tool.input) : undefined,
       }));
 
       return {
@@ -221,20 +219,28 @@ function extractUsageMetrics(usage: Usage | NonNullableUsage) {
   };
 }
 
-function serializeToolInput(
-  input: unknown,
-  config: SerializationConfig,
-): unknown {
+function redactSensitiveInput(input: unknown): unknown {
   if (!input || typeof input !== "object") {
     return input;
   }
 
-  return Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [
-      key,
-      typeof value === "string"
-        ? truncate(value, config.maxToolContentLength)
-        : value,
-    ]),
-  );
+  const obj = { ...(input as Record<string, unknown>) };
+  const sensitiveKeys = ["api_key", "password", "token"];
+
+  for (const key of sensitiveKeys) {
+    if (key in obj) {
+      obj[key] = "[REDACTED]";
+    }
+  }
+
+  return obj;
+}
+
+function serializeToolInput(input: unknown): unknown {
+  if (!input || typeof input !== "object") {
+    return input;
+  }
+
+  const redacted = redactSensitiveInput(input);
+  return JSON.stringify(redacted, null, 2);
 }

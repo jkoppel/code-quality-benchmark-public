@@ -1,6 +1,7 @@
 import * as path from "node:path";
+import { Effect } from "effect";
 import type { FeatureAgent } from "../agents/types.ts";
-import type { Logger } from "../utils/logger/logger.ts";
+import { LoggerConfig } from "../utils/logger/logger.ts";
 import type { EvaluationConfig } from "./config.ts";
 
 export type InstanceDescriptor = {
@@ -12,30 +13,32 @@ export type InstanceDescriptor = {
 };
 
 export function makeInstances(
-  logger: Logger,
   workspaceDir: string,
   basePort: number,
   agents: FeatureAgent[],
   config: EvaluationConfig,
-) {
-  logger.info("Creating program instances for updates");
+): Effect.Effect<readonly InstanceDescriptor[], never, LoggerConfig> {
+  return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
+    yield* logger.info("Creating program instances for updates");
 
-  return agents.flatMap((agent, agentIndex) =>
-    Array.from(
-      { length: config.instancesPerFeatureAgent },
-      (_, instanceIdx) => {
-        const instanceId = `${agent.getName()}-${instanceIdx + 1}`;
-        return {
-          instanceId,
-          agentName: agent.getName(),
-          agent,
-          instancePath: path.join(workspaceDir, instanceId),
-          port:
-            basePort +
-            agentIndex * config.instancesPerFeatureAgent +
-            instanceIdx,
-        } satisfies InstanceDescriptor;
-      },
-    ),
-  );
+    return agents.flatMap((agent, agentIndex) =>
+      Array.from(
+        { length: config.instancesPerFeatureAgent },
+        (_, instanceIdx) => {
+          const instanceId = `${agent.getName()}-${instanceIdx + 1}`;
+          return {
+            instanceId,
+            agentName: agent.getName(),
+            agent,
+            instancePath: path.join(workspaceDir, instanceId),
+            port:
+              basePort +
+              agentIndex * config.instancesPerFeatureAgent +
+              instanceIdx,
+          } satisfies InstanceDescriptor;
+        },
+      ),
+    );
+  });
 }

@@ -7,6 +7,9 @@ import { Effect } from "effect";
 import fs from "fs-extra";
 import * as tmp from "tmp";
 import type { CodingAgent } from "./agents/types.ts";
+import type { TestSuiteResult } from "./benchmark-test-lib/report.ts";
+import { TestRunner, TestRunnerConfig } from "./benchmark-test-lib/runner.ts";
+import { loadSuiteGenerationStrategy } from "./benchmark-test-lib/test-registry.ts";
 import { DEFAULT_EVALUATION_CONFIG } from "./evaluator/config.ts";
 import { evaluate, evaluateUpdates } from "./evaluator/evaluator.ts";
 import {
@@ -16,6 +19,12 @@ import {
   isSuccessInstanceResult,
   type SuccessInstanceResult,
 } from "./evaluator/result.ts";
+import { LoggerConfig } from "./utils/logger/logger.ts";
+
+/*************************************************
+    Reporting & Output
+**************************************************/
+
 /**
  * Common benchmark output logic
  */
@@ -91,6 +100,10 @@ export function outputBenchmarkResults(
   process.exit(successCount === totalUpdates ? 0 : 1);
 }
 
+/*************************************************
+    Helpers
+**************************************************/
+
 /**
  * Read benchmark prompts from files
  */
@@ -118,6 +131,68 @@ export async function readBenchmarkPrompts(
   };
 }
 
+/*************************************************
+    Functionality Testing
+**************************************************/
+
+/**
+ * Run functionality tests against a system under test
+ */
+export function runFunctionalityTests({
+  benchmarkPath,
+  systemUnderTestPath,
+  port,
+  maxConcurrentTests = 4,
+  headed = false,
+  playwrightOutDir,
+}: {
+  benchmarkPath: string;
+  systemUnderTestPath: string;
+  port: number;
+  maxConcurrentTests?: number;
+  headed?: boolean;
+  playwrightOutDir?: string;
+}): Effect.Effect<TestSuiteResult, Error, LoggerConfig> {
+  return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
+
+    const resolvedBenchmarkPath = path.resolve(benchmarkPath);
+    const resolvedSystemPath = path.resolve(systemUnderTestPath);
+
+    yield* logger.info(`Running functionality tests`);
+    yield* logger.info(`Benchmark: ${resolvedBenchmarkPath}`);
+    yield* logger.info(`System under test: ${resolvedSystemPath}`);
+
+    // Create test runner config
+    const config = TestRunnerConfig.make(
+      { folderPath: resolvedSystemPath, port },
+      maxConcurrentTests,
+      headed,
+      playwrightOutDir,
+    );
+    const runner = new TestRunner(config);
+    yield* logger.info(`Started test runner with config ${config.toPretty()}`);
+
+    // Load test suite generation strategy
+    yield* logger.info(
+      `Loading test suite generation strategy for ${resolvedBenchmarkPath}`,
+    );
+    const strategy = yield* Effect.promise(() =>
+      loadSuiteGenerationStrategy(resolvedBenchmarkPath),
+    );
+
+    // Execute suite generation strategy
+    yield* logger.info(`Executing suite generation strategy`);
+    const testResults = yield* runner.executeStrategy(strategy);
+
+    return testResults;
+  });
+}
+
+/*************************************************
+    Benchmark Handlers
+**************************************************/
+
 /**
  * Run benchmark with generated initial code
  */
@@ -127,7 +202,7 @@ export function runBenchmarkWithNewCode(
 ): Effect.Effect<
   void,
   PlatformError | Error,
-  FileSystem.FileSystem | CommandExecutor
+  FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
   return Effect.gen(function* () {
     const benchmarkName = path.basename(benchmarkPath);
@@ -159,7 +234,7 @@ export function runBenchmarkWithExistingCode(
 ): Effect.Effect<
   void,
   PlatformError | Error,
-  FileSystem.FileSystem | CommandExecutor
+  FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
   return Effect.gen(function* () {
     const benchmarkName = path.basename(benchmarkPath);

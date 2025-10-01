@@ -15,7 +15,7 @@ import {
   isMaxTurnsErrorResult,
   isSuccessResult,
 } from "../../utils/claude-code-sdk/type-guards.ts";
-import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
+import { LoggerConfig } from "../../utils/logger/logger.ts";
 import { type FeatureAgent, FeatureAgentError } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
@@ -30,11 +30,9 @@ export function isClaudeAgent(agent: unknown): agent is ClaudeAgent {
 
 export class ClaudeAgent implements FeatureAgent {
   private readonly name = "claude-code";
-  private readonly logger: Logger;
   private readonly config: ClaudeAgentConfig;
 
-  constructor(logger: Logger = getLoggerConfig().logger) {
-    this.logger = logger;
+  constructor() {
     this.config = {
       // TODO: Will make this configurable in the future
       appendSystemPrompt: SYSTEM_PROMPT,
@@ -53,28 +51,27 @@ export class ClaudeAgent implements FeatureAgent {
     folderPath: string,
     instanceId: string,
     port: number,
-  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, never> {
+  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig> {
     const startTime = Date.now();
+    const self = this;
 
-    this.logger
-      .withMetadata({
+    return Effect.gen(function* () {
+      const { logger } = yield* LoggerConfig;
+
+      yield* logger.info(`Starting Claude agent for instance ${instanceId}`, {
         folderPath,
         updatePrompt: updatePrompt.substring(0, 100),
-      })
-      .info(`Starting Claude agent for instance ${instanceId}`);
+      });
 
-    const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
+      const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
 
-    const response = query({
-      prompt: fullPrompt,
-      options: this.config,
-    });
+      const response = query({
+        prompt: fullPrompt,
+        options: self.config,
+      });
 
-    const self = this;
-    return Effect.gen(function* () {
       const maybeTerminalMessage = yield* consumeUntilTerminal({
         response,
-        logger: self.logger,
       });
 
       if (Option.isNone(maybeTerminalMessage)) {
@@ -84,13 +81,11 @@ export class ClaudeAgent implements FeatureAgent {
       const message = maybeTerminalMessage.value;
 
       if (isSuccessResult(message)) {
-        self.logger
-          .withMetadata({
-            instanceId,
-            duration: message.duration_ms,
-          })
-          .debug(`Claude completed`);
-        self.logger.info(`✓ Update for instance ${instanceId} completed`);
+        yield* logger.debug(`Claude completed`, {
+          instanceId,
+          duration: message.duration_ms,
+        });
+        yield* logger.info(`✓ Update for instance ${instanceId} completed`);
         return makeSuccessInstanceResult(
           instanceId,
           folderPath,

@@ -1,7 +1,7 @@
 import dedent from "dedent";
 import { Effect } from "effect";
 import type * as z from "zod";
-import { getLoggerConfig, type Logger } from "../../utils/logger/logger.ts";
+import { LoggerConfig } from "../../utils/logger/logger.ts";
 import { jsonStringify } from "../../utils/logger/pretty.ts";
 import type { TestResult } from "../report.ts";
 import { TestResultSchema } from "../report.ts";
@@ -38,7 +38,6 @@ export class TestCaseAgent {
   static make(
     options: TestCaseAgentOptions,
     testRunnerConfig: TestRunnerConfig,
-    logger?: Logger,
   ): TestCaseAgent {
     const driverConfig = {
       ...BASE_CONFIG,
@@ -65,9 +64,8 @@ export class TestCaseAgent {
 
     return new TestCaseAgent(
       options,
-      new DriverAgent(driverConfig, logger),
+      new DriverAgent(driverConfig),
       checkPromptPrefix,
-      logger,
     );
   }
 
@@ -75,7 +73,6 @@ export class TestCaseAgent {
     private readonly options: TestCaseAgentOptions,
     private readonly driver: DriverAgent,
     private readonly checkPromptPrefix: string,
-    private readonly logger: Logger = getLoggerConfig().logger,
   ) {}
 
   private getCheckPromptPrefix() {
@@ -89,9 +86,11 @@ export class TestCaseAgent {
   // TODO: Could improve the order of instructions in the prompt -- doesn't always make sense to have what im currently calling the check prompt prefix come first
   check(
     instructions: string,
-  ): Effect.Effect<TestResult, DriverAgentError, never> {
+  ): Effect.Effect<TestResult, DriverAgentError, LoggerConfig> {
     const testCaseAgent = this;
     return Effect.gen(function* () {
+      const { logger } = yield* LoggerConfig;
+
       const result = yield* testCaseAgent.driver.query(
         dedent`
         ${testCaseAgent.getCheckPromptPrefix()}
@@ -99,13 +98,13 @@ export class TestCaseAgent {
         TestResultSchema,
       );
 
-      testCaseAgent.logger.info(
+      yield* logger.info(
         `TestCaseAgent.check result:\n${jsonStringify(result)}\n`,
       );
 
       // Immediately log failed tests so user can abort without going through the rest of the suite
       if (result.outcome.status === "failed") {
-        testCaseAgent.logger.error(
+        yield* logger.error(
           `🔴 TEST FAILED: ${result.name} - ${result.outcome.reason}`,
         );
       }
@@ -117,7 +116,7 @@ export class TestCaseAgent {
   query<T extends z.ZodType>(
     prompt: string,
     outputSchema: T,
-  ): Effect.Effect<z.infer<T>, DriverAgentError, never> {
+  ): Effect.Effect<z.infer<T>, DriverAgentError, LoggerConfig> {
     return this.driver.query(prompt, outputSchema);
   }
 }

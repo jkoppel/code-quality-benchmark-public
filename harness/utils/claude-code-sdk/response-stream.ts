@@ -4,7 +4,7 @@
 
 import type { SDKMessage } from "@anthropic-ai/claude-code";
 import { Data, Effect, type Option, Stream } from "effect";
-import type { Logger } from "../logger/logger.ts";
+import { LoggerConfig } from "../logger/logger.ts";
 import {
   isExecutionErrorResult,
   isMaxTurnsErrorResult,
@@ -25,7 +25,6 @@ export interface SessionManager {
 export interface ConsumeResponseStreamOptions<T extends SessionManager> {
   response: AsyncIterable<SDKMessage>;
   sessionManager?: T;
-  logger?: Logger;
 }
 
 /**
@@ -42,35 +41,43 @@ export interface ConsumeResponseStreamOptions<T extends SessionManager> {
  */
 export function consumeUntilTerminal<T extends SessionManager>(
   options: ConsumeResponseStreamOptions<T>,
-): Effect.Effect<Option.Option<SDKMessage>, StreamConversionError> {
-  const { response, sessionManager, logger } = options;
+): Effect.Effect<
+  Option.Option<SDKMessage>,
+  StreamConversionError,
+  LoggerConfig
+> {
+  const { response, sessionManager } = options;
 
-  return Stream.fromAsyncIterable(
-    response,
-    (error) =>
-      new StreamConversionError({
-        message: `Failed to convert Claude Code response stream: ${error}`,
-      }),
-  ).pipe(
-    Stream.tap((message) =>
-      Effect.sync(() => {
-        sessionManager?.setSessionId(message.session_id);
-        logger?.withMetadata({ claudeCode: message }).debug("Response");
-      }),
-    ),
-    Stream.takeUntil(
-      (message) =>
-        isSuccessResult(message) ||
-        isMaxTurnsErrorResult(message) ||
-        isExecutionErrorResult(message),
-    ),
-    Stream.runLast,
-    Effect.catchAll((streamError) =>
-      Effect.fail(
+  return Effect.gen(function* () {
+    const { logger } = yield* LoggerConfig;
+
+    return yield* Stream.fromAsyncIterable(
+      response,
+      (error) =>
         new StreamConversionError({
-          message: `Stream conversion error: ${streamError.message}`,
+          message: `Failed to convert Claude Code response stream: ${error}`,
+        }),
+    ).pipe(
+      Stream.tap((message) =>
+        Effect.gen(function* () {
+          sessionManager?.setSessionId(message.session_id);
+          yield* logger.debug("Response", { claudeCode: message });
         }),
       ),
-    ),
-  );
+      Stream.takeUntil(
+        (message) =>
+          isSuccessResult(message) ||
+          isMaxTurnsErrorResult(message) ||
+          isExecutionErrorResult(message),
+      ),
+      Stream.runLast,
+      Effect.catchAll((streamError) =>
+        Effect.fail(
+          new StreamConversionError({
+            message: `Stream conversion error: ${streamError instanceof Error ? streamError.message : String(streamError)}`,
+          }),
+        ),
+      ),
+    );
+  });
 }
