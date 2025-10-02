@@ -1,6 +1,8 @@
-/************************************ 
+/************************************
         Diff Stats
 *************************************/
+
+import dedent from "dedent";
 
 export class DiffStats {
   /** Examples of stuff that this should parse
@@ -69,6 +71,26 @@ export class DiffStats {
 
   getDetailedStats() {
     return this.perFileStats;
+  }
+
+  toPretty(): string {
+    const summary = `${this.summaryStats.filesChanged} files, ${this.summaryStats.linesChanged} lines`;
+
+    if (this.perFileStats.length === 0) {
+      return summary;
+    }
+
+    const perFileDetails = this.perFileStats
+      .map(
+        (f) =>
+          `  ${f.filename}: +${f.insertions}/-${f.deletions}/~${f.modifications}`,
+      )
+      .join("\n");
+
+    return dedent`
+      ${summary}
+      ${perFileDetails}
+    `;
   }
 }
 

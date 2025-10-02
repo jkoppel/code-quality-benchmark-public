@@ -20,7 +20,6 @@ import { type InstanceDescriptor, makeInstances } from "./instance.ts";
 import {
   type EvaluationResult,
   type FailedInstanceResult,
-  getDiffStats,
   isFailedInstanceResult,
   isSuccessInstanceResult,
   makeFailedInstanceResult,
@@ -96,20 +95,13 @@ export function evaluateUpdates(
     yield* fs.writeFileString(resultsPath, JSON.stringify(result, null, 2));
     yield* logger.info(`Saved complete results to: ${resultsPath}`);
 
-    // Log diff stats
-    const diffStats = successfulUpdates.map((r) => ({
-      instance: r.instanceId,
-      stats: getDiffStats(r),
-    }));
-
     yield* logger.info("Evaluation completed successfully", {
       duration: metadata.totalDuration,
       successfulUpdates: successfulUpdates.length,
       failedUpdates: failedUpdates.length,
-      diffStats,
     });
 
-    // Also print diff stats and test suite results for visibility
+    // Print diff stats and test suite results for visibility
     yield* logger.info("\n=== Git Diff Statistics & Scores ===");
     for (const r of updateResults) {
       if (isSuccessInstanceResult(r)) {
@@ -465,15 +457,18 @@ const tryApplyUpdate = (
         onFailure: (cause) =>
           Effect.gen(function* () {
             const elapsed = yield* Effect.sync(() => Date.now() - startTime);
-            const prettyCause = Cause.pretty(cause);
             yield* logger.error(
               `Feature agent failed for ${instance.instanceId}`,
               {
-                cause: prettyCause,
+                cause,
               },
             );
 
-            return makeFailedInstanceResult(instance, elapsed, prettyCause);
+            return makeFailedInstanceResult(
+              instance,
+              elapsed,
+              Cause.pretty(cause, { renderErrorCause: true }),
+            );
           }),
         onSuccess: (success) => Effect.succeed(success),
       }),

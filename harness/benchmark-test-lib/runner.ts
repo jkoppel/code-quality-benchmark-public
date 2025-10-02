@@ -255,6 +255,7 @@ function startDevServer(
 ): Effect.Effect<DevServerHandle, DevServerError, LoggerConfig> {
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
+    const runtime = yield* Effect.runtime();
 
     yield* logger.debug("Pre-validation checks before starting dev server...");
 
@@ -351,23 +352,31 @@ function startDevServer(
         },
         onExit: (exitCode, signal) => {
           if (exitCode && exitCode !== 0) {
-            console.warn(
-              `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
+            Runtime.runFork(runtime)(
+              logger.warn(
+                `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
+              ),
             );
           } else {
-            console.info("Dev server exited cleanly");
+            Runtime.runFork(runtime)(logger.info("Dev server exited cleanly"));
           }
         },
         log: (message) => {
           // Parse and format dev server output
           if (message.includes("[out]")) {
-            console.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
+            Runtime.runFork(runtime)(
+              logger.info(
+                message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"),
+              ),
+            );
           } else if (message.includes("[err]")) {
-            console.error(
-              message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
+            Runtime.runFork(runtime)(
+              logger.error(
+                message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
+              ),
             );
           } else {
-            console.log(message);
+            Runtime.runFork(runtime)(logger.debug(message));
           }
         },
       }),
@@ -380,9 +389,11 @@ function startDevServer(
 
     return {
       async [Symbol.asyncDispose]() {
-        await console.log("Stopping dev server...");
+        await Runtime.runPromise(runtime)(
+          logger.info("Stopping dev server..."),
+        );
         await gracefullyClose();
-        await console.log("Dev server stopped");
+        await Runtime.runPromise(runtime)(logger.info("Dev server stopped"));
       },
     };
   });
@@ -398,6 +409,7 @@ async function waitForServerReady(
   // c.f. Playwright:  https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts#L186
 
   // TODO: not sure about this way of checking for readiness
+  let lastError: unknown;
   while (Date.now() < deadline) {
     try {
       // Try main URL first
@@ -409,8 +421,9 @@ async function waitForServerReady(
         response = await fetch(`${url}index.html`);
         if (response.ok) return;
       }
-    } catch {
+    } catch (error) {
       // Server not ready yet, continue polling
+      lastError = error;
     }
 
     const delay = delays.shift() || 1000; // Progressive backoff, cap at 1s
@@ -420,5 +433,6 @@ async function waitForServerReady(
   throw new DevServerStartupTimeoutError({
     url,
     timeoutMs,
+    cause: lastError,
   });
 }

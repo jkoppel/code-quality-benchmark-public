@@ -15,6 +15,7 @@ export class StreamConversionError extends Data.TaggedError(
   "StreamConversionError",
 )<{
   message: string;
+  cause?: unknown;
 }> {}
 
 export interface SessionManager {
@@ -56,6 +57,7 @@ export function consumeUntilTerminal<T extends SessionManager>(
       (error) =>
         new StreamConversionError({
           message: `Failed to convert Claude Code response stream: ${error}`,
+          cause: error,
         }),
     ).pipe(
       Stream.tap((message) =>
@@ -75,6 +77,7 @@ export function consumeUntilTerminal<T extends SessionManager>(
         Effect.fail(
           new StreamConversionError({
             message: `Stream conversion error: ${streamError instanceof Error ? streamError.message : String(streamError)}`,
+            cause: streamError,
           }),
         ),
       ),

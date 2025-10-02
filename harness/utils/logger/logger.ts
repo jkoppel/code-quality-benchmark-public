@@ -3,6 +3,7 @@ import { FileSystem, PlatformLogger } from "@effect/platform";
 import { SystemError } from "@effect/platform/Error";
 import { NodeFileSystem } from "@effect/platform-node";
 import {
+  Cause,
   Config,
   ConfigError,
   Context,
@@ -68,22 +69,49 @@ const logLevelConfig = Config.string("LOG_LEVEL").pipe(
 /**
  * Processes annotations before logging.
  * Applies custom serializer for 'claudeCode' annotation.
+ * Extracts stack traces from 'cause' annotation (Effect Cause objects).
  * Redaction of sensitive fields happens during serialization.
  */
 function processAnnotations(
   annotations: HashMap.HashMap<string, unknown>,
 ): HashMap.HashMap<string, unknown> {
-  const maybeClaudeCode = HashMap.get(annotations, "claudeCode");
+  let processed = annotations;
 
+  // Handle claudeCode annotation
+  const maybeClaudeCode = HashMap.get(annotations, "claudeCode");
   if (Option.isSome(maybeClaudeCode) && isSDKMessage(maybeClaudeCode.value)) {
-    return HashMap.set(
-      annotations,
+    processed = HashMap.set(
+      processed,
       "claudeCode",
       claudeCodeSerializer(maybeClaudeCode.value),
     );
   }
 
-  return annotations;
+  // Handle cause annotation (Effect Cause objects)
+  const maybeCause = HashMap.get(annotations, "cause");
+  if (Option.isSome(maybeCause) && Cause.isCause(maybeCause.value)) {
+    const cause = maybeCause.value;
+
+    // Extract all errors (failures + defects) for explicit stack traces
+    const allErrors = [...Cause.failures(cause), ...Cause.defects(cause)];
+    const stackTraces = allErrors
+      .filter((e): e is Error => e instanceof Error)
+      .map((e) => ({ name: e.name, message: e.message, stack: e.stack }));
+
+    // Replace Cause object with pretty-printed string
+    processed = HashMap.set(
+      processed,
+      "cause",
+      Cause.pretty(cause, { renderErrorCause: true }),
+    );
+
+    // Add explicit stack traces if any found
+    if (stackTraces.length > 0) {
+      processed = HashMap.set(processed, "stackTraces", stackTraces);
+    }
+  }
+
+  return processed;
 }
 
 /*************************************************

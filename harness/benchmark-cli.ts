@@ -79,7 +79,9 @@ const cli = Command.run(command, {
 cli(process.argv).pipe(
   Effect.catchAllCause((cause) =>
     Effect.gen(function* () {
-      yield* Effect.sync(() => console.error(Cause.pretty(cause)));
+      yield* Effect.sync(() =>
+        console.error(Cause.pretty(cause, { renderErrorCause: true })),
+      );
       yield* Effect.sync(() => process.exit(1));
     }),
   ),
