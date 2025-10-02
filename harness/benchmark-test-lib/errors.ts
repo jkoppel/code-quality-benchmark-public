@@ -45,6 +45,7 @@ export class DevServerStartupTimeoutError extends Data.TaggedError(
 )<{
   readonly url: string;
   readonly timeoutMs: number;
+  readonly cause?: unknown;
 }> {}
 
 /*************************************

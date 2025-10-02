@@ -183,6 +183,13 @@ function sanitizeContentBlock(block: any): any {
     };
   }
 
+  if (block.type === "tool_use") {
+    return {
+      ...block,
+      input: block.input ? serializeToolInput(block.input) : undefined,
+    };
+  }
+
   if (block.type === "tool_result") {
     return {
       ...block,

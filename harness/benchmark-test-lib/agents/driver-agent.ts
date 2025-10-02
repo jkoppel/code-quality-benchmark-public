@@ -65,7 +65,7 @@ export class DriverAgentExecutionError extends Data.TaggedError(
 )<{
   readonly message: string;
   readonly sessionId?: string;
-  readonly underlyingError?: ClaudeCodeError | Error;
+  readonly cause?: ClaudeCodeError | Error;
 }> {}
 
 export class DriverAgentResponseFormatInvalid extends Data.TaggedError(
@@ -125,7 +125,7 @@ export class DriverAgent {
             new DriverAgentExecutionError({
               message: `Stream conversion error: ${streamError.message}`,
               sessionId: self.getSessionId(),
-              underlyingError: streamError,
+              cause: streamError,
             }),
         ),
       );
@@ -134,9 +134,7 @@ export class DriverAgent {
         return yield* new DriverAgentExecutionError({
           message: "Agent terminated unexpectedly",
           sessionId: self.getSessionId(),
-          underlyingError: ClaudeCodeUnexpectedTerminationError.make(
-            self.getSessionId(),
-          ),
+          cause: ClaudeCodeUnexpectedTerminationError.make(self.getSessionId()),
         });
       }
 
@@ -149,14 +147,14 @@ export class DriverAgent {
         return yield* new DriverAgentExecutionError({
           message: "Maximum turns exceeded",
           sessionId: self.getSessionId(),
-          underlyingError: ClaudeCodeMaxTurnsError.make(self.getSessionId()),
+          cause: ClaudeCodeMaxTurnsError.make(self.getSessionId()),
         });
       }
       if (isExecutionErrorResult(message)) {
         return yield* new DriverAgentExecutionError({
           message: "Execution error occurred",
           sessionId: self.getSessionId(),
-          underlyingError: ClaudeCodeExecutionError.make(self.getSessionId()),
+          cause: ClaudeCodeExecutionError.make(self.getSessionId()),
         });
       }
 

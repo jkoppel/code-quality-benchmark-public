@@ -398,6 +398,7 @@ async function waitForServerReady(
   // c.f. Playwright:  https://github.com/microsoft/playwright/blob/f8f3e07efb4ea56bf77e90cf90bd6af754a6d2c3/packages/playwright/src/plugins/webServerPlugin.ts#L186
 
   // TODO: not sure about this way of checking for readiness
+  let lastError: unknown;
   while (Date.now() < deadline) {
     try {
       // Try main URL first
@@ -409,8 +410,9 @@ async function waitForServerReady(
         response = await fetch(`${url}index.html`);
         if (response.ok) return;
       }
-    } catch {
+    } catch (error) {
       // Server not ready yet, continue polling
+      lastError = error;
     }
 
     const delay = delays.shift() || 1000; // Progressive backoff, cap at 1s
@@ -420,5 +422,6 @@ async function waitForServerReady(
   throw new DevServerStartupTimeoutError({
     url,
     timeoutMs,
+    cause: lastError,
   });
 }
