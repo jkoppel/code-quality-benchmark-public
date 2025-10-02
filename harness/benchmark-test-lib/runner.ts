@@ -12,9 +12,8 @@
  */
 
 import path from "node:path";
-import dedent from "dedent";
 import detect from "detect-port";
-import { Effect } from "effect";
+import { Effect, Runtime } from "effect";
 import fs from "fs-extra";
 import { LoggerConfig } from "../utils/logger/logger.ts";
 import { jsonStringify } from "../utils/logger/pretty.ts";
@@ -120,16 +119,26 @@ export class TestRunner {
   ): Effect.Effect<TestSuiteResult, TestRunnerError, LoggerConfig> {
     const self = this;
     return Effect.gen(function* () {
+      // Capture runtime to access LoggerConfig context from within the event handler callback.
+      // The handler runs outside Effect.gen where we can't yield* dependencies,
+      // so we capture the runtime (which contains Context<LoggerConfig>) and use
+      // runtime.runFork() to execute the logger Effect with that context.
+      // See: https://effect.website/docs/runtime/
+      const { logger } = yield* LoggerConfig;
+      const runtime = yield* Effect.runtime();
+
       const maxListenersExceededWarningHandler = (warning: Error) => {
         if (warning.name === "MaxListenersExceededWarning") {
-          // Note: can't use Effect logger here since we're in a sync callback
-          console.error(
-            `MaxListenersExceededWarning detected: ${warning.message}`,
+          Runtime.runFork(runtime)(
+            logger.error(
+              `MaxListenersExceededWarning detected: ${warning.message}`,
+              { stack: warning.stack },
+            ),
           );
-          throw new Error(dedent`
-            Test generation/execution aborted due to MaxListenersExceededWarning.
-            Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
-            I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
+          // throw new Error(dedent`
+          //   Test generation/execution aborted due to MaxListenersExceededWarning.
+          //   Am because this *may*, in my experience, indicate resource leaks (or other issues) that could affect testing.
+          //   I'm not at all sure about this -- just feels like it's safer to error loudly for the time being.`);
         }
       };
 

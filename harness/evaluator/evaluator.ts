@@ -5,14 +5,14 @@ import type { PlatformError } from "@effect/platform/Error";
 import dedent from "dedent";
 import { Cause, Effect } from "effect";
 import * as tmp from "tmp";
-import {
-  ClaudeAgent,
-  isClaudeAgent,
-} from "../agents/feature-addition/claude-agent.ts";
+import { ClaudeAgent } from "../agents/feature-addition/claude-agent.ts";
 import { CodexAgent } from "../agents/feature-addition/codex-agent.ts";
 import type { CodingAgent, FeatureAgent } from "../agents/types.ts";
+import { runFunctionalityTests } from "../benchmark-lib.ts";
+import { allTestsPassed } from "../benchmark-test-lib/report.ts";
 import { gitCmd } from "../utils/git.ts";
 import { LoggerConfig } from "../utils/logger/logger.ts";
+import { jsonStringify } from "../utils/logger/pretty.ts";
 import type { EvaluationConfig, EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
 import { EvaluationError } from "./errors.ts";
@@ -24,8 +24,8 @@ import {
   isFailedInstanceResult,
   isSuccessInstanceResult,
   makeFailedInstanceResult,
-  makeSuccessInstanceResult,
   type SuccessInstanceResult,
+  type SuccessInstanceResultWithTestSuiteResult,
 } from "./result.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
@@ -33,14 +33,8 @@ import {
 // Don't automatically cleanup - we want to keep benchmark results
 // tmp.setGracefulCleanup();
 
-/**
- * TODO
- * -----
- * - Should prob call functionality tests from e.g. the eval updates function and have the eval results include results from the functionality tests,
- * since functionality tests are, conceptually, themselves an eval.
- */
-
 export function evaluateUpdates(
+  benchmarkPath: string,
   originalProgramPath: string,
   updatePrompt: string,
   workspaceDir: string,
@@ -61,6 +55,7 @@ export function evaluateUpdates(
     });
 
     const updateResults = yield* applyUpdatesToInstances(
+      benchmarkPath,
       originalProgramPath,
       updatePrompt,
       workspaceDir,
@@ -114,16 +109,16 @@ export function evaluateUpdates(
       diffStats,
     });
 
-    // Also print diff stats for visibility
+    // Also print diff stats and test suite results for visibility
     yield* logger.info("\n=== Git Diff Statistics & Scores ===");
     for (const r of updateResults) {
       if (isSuccessInstanceResult(r)) {
-        yield* logger.info(
-          `${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}`,
-        );
+        yield* logger.info(dedent`
+          ${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}
+          ${"testSuiteResult" in r ? `${r.testSuiteResult.name}: ${jsonStringify(r.testSuiteResult.summary)}` : ""}`);
       } else {
         yield* logger.info(
-          `${r.instanceId} [${r.agentName}]: Invocation failed - ${r.cause}`,
+          `${r.instanceId} [${r.agentName}]: Update failed - ${r.cause}`,
         );
       }
     }
@@ -136,15 +131,19 @@ export function evaluateUpdates(
 }
 
 export function evaluate(
-  initialPrompt: string,
+  benchmarkInfo: {
+    benchmarkPath: string;
+    initialPrompt: string;
+    updatePrompt: string;
+  },
   codingAgent: CodingAgent,
-  updatePrompt: string,
   config: EvaluationConfig,
 ): Effect.Effect<
   EvaluationResult,
   EvaluationError,
   FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
+  const { benchmarkPath, initialPrompt, updatePrompt } = benchmarkInfo;
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
     yield* logger.info("Starting full evaluation").pipe(
@@ -171,6 +170,7 @@ export function evaluate(
     );
 
     const updateResult = yield* evaluateUpdates(
+      benchmarkPath,
       originalProgramPath,
       updatePrompt,
       tempDir.name,
@@ -292,12 +292,17 @@ build/
 }
 
 function applyUpdatesToInstances(
+  benchmarkPath: string,
   originalProgramPath: string,
   updatePrompt: string,
   workspaceDir: string,
   config: EvaluationConfig,
 ): Effect.Effect<
-  (SuccessInstanceResult | FailedInstanceResult)[],
+  (
+    | SuccessInstanceResultWithTestSuiteResult
+    | SuccessInstanceResult
+    | FailedInstanceResult
+  )[],
   PlatformError,
   FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
@@ -328,21 +333,15 @@ function applyUpdatesToInstances(
           yield* logger.debug(`Created instance ${instance.instanceId}`);
 
           // 1. Try to update with feature addition agent
-          let result = yield* runFeatureAgent(updatePrompt, instance);
-
-          // 2. Compute diff stats
-          result = yield* augmentWithDiffStats(result);
+          const result = yield* runFeatureAgent(updatePrompt, instance);
           if (isFailedInstanceResult(result)) {
             return result;
           }
 
-          // 3. Calculate score: 300 - linesChanged
-          result.score = Math.max(
-            0,
-            300 - result.diffStats.getSummaryStats().linesChanged,
-          );
+          // 2. Compute diff stats
+          result.diffStats = yield* computeDiffStats(result);
 
-          // 4. Commit the changes for future reference
+          // 3. Commit the changes for future reference
           yield* gitCmd(
             result.folderPath,
             "commit",
@@ -350,33 +349,55 @@ function applyUpdatesToInstances(
             `Update: Applied modifications by ${result.agentName}`,
           );
 
-          // 5. Log
-          yield* logger.info(`Instance ${instance.instanceId} completed`);
-          if (isSuccessInstanceResult(result)) {
-            yield* logger.info(
-              dedent`
-                → ${result.instanceId} [${result.agentName}]: ${result.diffStats.getNumFilesChanged()} files changed, ${result.diffStats.getNumLinesChanged()} lines changed, score: ${result.score}`,
-            );
-          }
+          // 4. Run functionality tests
+          const testSuiteResult = yield* runFunctionalityTests({
+            benchmarkPath,
+            systemUnderTestPath: result.folderPath,
+            port: instance.port,
+          }).pipe(
+            Effect.tapError((error) =>
+              logger.error(`Could not run tests for ${instance.instanceId}`, {
+                error,
+              }),
+            ),
+            Effect.orElseSucceed(() => undefined),
+          );
 
-          return result;
+          // 5. Calculate score
+          const MAX_POSSIBLE_SCORE = 300;
+          const diffOnlyScore = Math.max(
+            0,
+            MAX_POSSIBLE_SCORE - result.diffStats.getNumLinesChanged(),
+          );
+          result.score =
+            testSuiteResult && allTestsPassed(testSuiteResult)
+              ? diffOnlyScore
+              : 0;
+
+          // 6. Make final result
+          const finalResult:
+            | SuccessInstanceResultWithTestSuiteResult
+            | SuccessInstanceResult = testSuiteResult
+            ? { ...result, testSuiteResult }
+            : { ...result };
+
+          // 7. Log
+          yield* logger.info(`Instance ${instance.instanceId} completed`);
+          yield* logger.info(
+            dedent`
+              → ${finalResult.instanceId} [${finalResult.agentName}]: ${finalResult.diffStats.getNumFilesChanged()} files changed, ${finalResult.diffStats.getNumLinesChanged()} lines changed, score: ${finalResult.score}`,
+          );
+
+          return finalResult;
         }),
       { concurrency: "unbounded" },
     );
   });
 }
 
-function augmentWithDiffStats(
-  result: SuccessInstanceResult | FailedInstanceResult,
-): Effect.Effect<
-  SuccessInstanceResult | FailedInstanceResult,
-  PlatformError,
-  CommandExecutor | LoggerConfig
-> {
-  if (!isSuccessInstanceResult(result)) {
-    return Effect.succeed(result);
-  }
-
+function computeDiffStats(
+  result: SuccessInstanceResult,
+): Effect.Effect<DiffStats, PlatformError, CommandExecutor | LoggerConfig> {
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
 
@@ -422,10 +443,11 @@ function augmentWithDiffStats(
             ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${result.instanceId}:
             ${diffStatOutput}`);
 
-    return { ...result, diffStats };
+    return diffStats;
   });
 }
 
+// TODO: Consider doing more to improve resource cleanups (eg killing started processes at the end)
 const runFeatureAgent = (
   updatePrompt: string,
   descriptor: InstanceDescriptor,
@@ -437,72 +459,38 @@ const runFeatureAgent = (
   Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
     const startTime = yield* Effect.sync(() => Date.now());
-    if (isClaudeAgent(descriptor.agent)) {
-      return yield* descriptor.agent
-        .applyUpdate(
-          updatePrompt,
-          descriptor.instancePath,
-          descriptor.instanceId,
-          descriptor.port,
-        )
-        .pipe(
-          Effect.matchCauseEffect({
-            onFailure: (cause) =>
-              Effect.gen(function* () {
-                const elapsed = yield* Effect.sync(
-                  () => Date.now() - startTime,
-                );
-                const prettyCause = Cause.pretty(cause);
-                yield* logger.error(
-                  `Claude agent failed for ${descriptor.instanceId}`,
-                  { cause: prettyCause },
-                );
 
-                return makeFailedInstanceResult(
-                  descriptor.instanceId,
-                  descriptor.instancePath,
-                  descriptor.agentName,
-                  elapsed,
-                  prettyCause,
-                );
-              }),
-            onSuccess: (success) => Effect.succeed(success),
-          }),
-        );
-    }
+    return yield* descriptor.agent
+      .applyUpdate(
+        updatePrompt,
+        descriptor.instancePath,
+        descriptor.instanceId,
+        descriptor.port,
+      )
+      .pipe(
+        Effect.matchCauseEffect({
+          onFailure: (cause) =>
+            Effect.gen(function* () {
+              const elapsed = yield* Effect.sync(() => Date.now() - startTime);
+              const prettyCause = Cause.pretty(cause);
+              yield* logger.error(
+                `Feature agent failed for ${descriptor.instanceId}`,
+                {
+                  cause: prettyCause,
+                },
+              );
 
-    return yield* (descriptor.agent as CodingAgent)(
-      updatePrompt,
-      descriptor.instancePath,
-      descriptor.port,
-    ).pipe(
-      Effect.map(() =>
-        makeSuccessInstanceResult(
-          descriptor.instanceId,
-          descriptor.instancePath,
-          descriptor.agentName,
-          Date.now() - startTime,
-        ),
-      ),
-      Effect.catchAll((error) =>
-        Effect.gen(function* () {
-          const elapsed = yield* Effect.sync(() => Date.now() - startTime);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          yield* logger.error(
-            `Failed to apply update for ${descriptor.instanceId}`,
-            { error: errorMessage },
-          );
-          return makeFailedInstanceResult(
-            descriptor.instanceId,
-            descriptor.instancePath,
-            descriptor.agentName,
-            elapsed,
-            errorMessage,
-          );
+              return makeFailedInstanceResult(
+                descriptor.instanceId,
+                descriptor.instancePath,
+                descriptor.agentName,
+                elapsed,
+                prettyCause,
+              );
+            }),
+          onSuccess: (success) => Effect.succeed(success),
         }),
-      ),
-    );
+      );
   });
 
 export type { CodingAgent } from "../agents/types.ts";
