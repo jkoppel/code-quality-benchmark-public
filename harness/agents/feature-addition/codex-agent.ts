@@ -13,7 +13,11 @@ import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const codexScriptPath = path.join(__dirname, "../../../agents/raw_codex.sh");
+const codexScriptPath = path.resolve(
+  __dirname,
+  "../../../..",
+  "agents/raw_codex.sh",
+);
 
 const baseCodexAgent = createShellAgent(codexScriptPath);
 
