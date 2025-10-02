@@ -5,7 +5,12 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import dedent from "dedent";
+import { Effect } from "effect";
+import {
+  InvalidBenchmarkPathError,
+  type TestLoadError,
+  TestSuiteImportError,
+} from "./errors.ts";
 import type { SuiteGenerationStrategy } from "./suite.ts";
 
 //------------------------------------------------------
@@ -87,19 +92,22 @@ export function discoverBenchmarksWithTests(): Array<{
  * Load a test suite generation strategy for a specific benchmark set.
  * Main entry point for strategy loading.
  */
-export async function loadSuiteGenerationStrategy(
+export function loadSuiteGenerationStrategy(
   benchmarkPath: string,
-): Promise<SuiteGenerationStrategy> {
-  const { benchmarkSet, project } = parseBenchmarkPath(benchmarkPath);
-  return await getSuiteGenerationStrategy(benchmarkSet, project);
+): Effect.Effect<SuiteGenerationStrategy, TestLoadError> {
+  return parseBenchmarkPath(benchmarkPath).pipe(
+    Effect.flatMap(({ benchmarkSet, project }) =>
+      getSuiteGenerationStrategy(benchmarkSet, project),
+    ),
+  );
 }
 
 /** Dynamically import the test suite generation strategy using convention-based path */
-async function getSuiteGenerationStrategy(
+function getSuiteGenerationStrategy(
   /** e.g., "evolvability" */
   benchmarkSet: string,
   project: string,
-): Promise<SuiteGenerationStrategy> {
+): Effect.Effect<SuiteGenerationStrategy, TestSuiteImportError> {
   const { BENCHMARKS_ROOT, TEST_DIR, BASE_FILENAME } = TESTS_PATHS_CONVENTION;
 
   const strategyPath =
@@ -123,23 +131,23 @@ async function getSuiteGenerationStrategy(
     Haven't looked too much into the circular dependencies issue I ran into at the start --- there may be an easy workaround
     */
 
-  try {
-    return (await import(strategyPath)).default;
-  } catch (error) {
-    const available = discoverBenchmarksWithTests()
-      .map(
-        ({ benchmarkSet, project, testDir }) =>
-          `${benchmarkSet}/${project}/${testDir}`,
-      )
-      .join(", ");
+  return Effect.tryPromise({
+    try: async () => (await import(strategyPath)).default,
+    catch: (error) => {
+      const available = discoverBenchmarksWithTests()
+        .map(
+          ({ benchmarkSet, project, testDir }) =>
+            `${benchmarkSet}/${project}/${testDir}`,
+        )
+        .join(", ");
 
-    throw new Error(dedent`
-      Failed to load test strategy for ${benchmarkSet}/${project}.
-      Path: ${strategyPath}
-      Available strategies: ${available}
-      Error: ${error}
-    `);
-  }
+      return new TestSuiteImportError({
+        testSuiteStrategyPath: strategyPath,
+        availableStrategies: available,
+        underlyingError: error,
+      });
+    },
+  });
 }
 
 //------------------------------------------------------
@@ -155,10 +163,12 @@ async function getSuiteGenerationStrategy(
  *
  * @param benchmarkPath - Path following the TESTS_PATHS_CONVENTION
  */
-export function parseBenchmarkPath(benchmarkPath: string): {
-  benchmarkSet: string;
-  project: string;
-} {
+export function parseBenchmarkPath(
+  benchmarkPath: string,
+): Effect.Effect<
+  { benchmarkSet: string; project: string },
+  InvalidBenchmarkPathError
+> {
   const parts = benchmarkPath.split("/");
   const { BENCHMARKS_ROOT, BENCHMARK_PATTERN, DEPTH_AFTER_ROOT } =
     TESTS_PATHS_CONVENTION;
@@ -168,15 +178,16 @@ export function parseBenchmarkPath(benchmarkPath: string): {
     benchmarksIndex === -1 ||
     benchmarksIndex + DEPTH_AFTER_ROOT >= parts.length
   ) {
-    throw new Error(dedent`
-      Invalid benchmark path: ${benchmarkPath}
-      Expected format: ${BENCHMARK_PATTERN}
-      Example: benchmarks/evolvability/pixel-art
-    `);
+    return Effect.fail(
+      new InvalidBenchmarkPathError({
+        benchmarkPath,
+        expectedFormat: BENCHMARK_PATTERN,
+      }),
+    );
   }
 
-  return {
+  return Effect.succeed({
     benchmarkSet: parts[benchmarksIndex + 1],
     project: parts[benchmarksIndex + 2],
-  };
+  });
 }

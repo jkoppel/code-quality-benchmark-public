@@ -6,6 +6,12 @@ import { Data } from "effect";
 import type { DriverAgentError } from "./agents/driver-agent.ts";
 
 /*************************************
+    Test Runner Error
+***************************************/
+
+export type TestRunnerError = DriverAgentError | DevServerError;
+
+/*************************************
     Dev Server Errors
 ***************************************/
 
@@ -42,11 +48,22 @@ export class DevServerStartupTimeoutError extends Data.TaggedError(
 }> {}
 
 /*************************************
-    Test Runner Error Union
+    Benchmark Tests Load Errors
 ***************************************/
 
-/**
- * Union of all errors that can occur during test runner execution.
- * Includes both dev server infrastructure errors and driver agent errors.
- */
-export type TestRunnerError = DriverAgentError | DevServerError;
+export type TestLoadError = InvalidBenchmarkPathError | TestSuiteImportError;
+
+export class InvalidBenchmarkPathError extends Data.TaggedError(
+  "InvalidBenchmarkPathError",
+)<{
+  readonly benchmarkPath: string;
+  readonly expectedFormat: string;
+}> {}
+
+export class TestSuiteImportError extends Data.TaggedError(
+  "StrategyImportError",
+)<{
+  readonly testSuiteStrategyPath: string;
+  readonly availableStrategies: string;
+  readonly underlyingError?: unknown;
+}> {}
