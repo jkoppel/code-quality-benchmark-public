@@ -99,7 +99,7 @@ export function evaluateUpdates(
     // Log diff stats
     const diffStats = successfulUpdates.map((r) => ({
       instance: r.instanceId,
-      stats: getDiffStats(r),
+      stats: getDiffStats(r)?.toPretty(),
     }));
 
     yield* logger.info("Evaluation completed successfully", {
