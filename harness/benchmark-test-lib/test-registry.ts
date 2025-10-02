@@ -5,6 +5,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import dedent from "dedent";
 import { Effect } from "effect";
 import {
   InvalidBenchmarkPathError,
@@ -142,9 +143,16 @@ function getSuiteGenerationStrategy(
         .join(", ");
 
       return new TestSuiteImportError({
+        message: dedent`
+          Failed to load test strategy for ${benchmarkSet}/${project}.
+          Path: ${strategyPath}
+          Available strategies: ${available}
+          ${error}`,
+        benchmarkSet,
+        project,
         testSuiteStrategyPath: strategyPath,
         availableStrategies: available,
-        underlyingError: error,
+        cause: error,
       });
     },
   });
@@ -180,6 +188,9 @@ export function parseBenchmarkPath(
   ) {
     return Effect.fail(
       new InvalidBenchmarkPathError({
+        message: dedent`
+          Invalid benchmark path: ${benchmarkPath}
+          Expected format: ${BENCHMARK_PATTERN}`,
         benchmarkPath,
         expectedFormat: BENCHMARK_PATTERN,
       }),
