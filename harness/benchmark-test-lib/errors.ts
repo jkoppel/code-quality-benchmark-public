@@ -6,6 +6,12 @@ import { Data } from "effect";
 import type { DriverAgentError } from "./agents/driver-agent.ts";
 
 /*************************************
+    Test Runner Error
+***************************************/
+
+export type TestRunnerError = DriverAgentError | DevServerError;
+
+/*************************************
     Dev Server Errors
 ***************************************/
 
@@ -40,13 +46,3 @@ export class DevServerStartupTimeoutError extends Data.TaggedError(
   readonly url: string;
   readonly timeoutMs: number;
 }> {}
-
-/*************************************
-    Test Runner Error Union
-***************************************/
-
-/**
- * Union of all errors that can occur during test runner execution.
- * Includes both dev server infrastructure errors and driver agent errors.
- */
-export type TestRunnerError = DriverAgentError | DevServerError;
