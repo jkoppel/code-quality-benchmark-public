@@ -96,20 +96,13 @@ export function evaluateUpdates(
     yield* fs.writeFileString(resultsPath, JSON.stringify(result, null, 2));
     yield* logger.info(`Saved complete results to: ${resultsPath}`);
 
-    // Log diff stats
-    const diffStats = successfulUpdates.map((r) => ({
-      instance: r.instanceId,
-      stats: getDiffStats(r)?.toPretty(),
-    }));
-
     yield* logger.info("Evaluation completed successfully", {
       duration: metadata.totalDuration,
       successfulUpdates: successfulUpdates.length,
       failedUpdates: failedUpdates.length,
-      diffStats,
     });
 
-    // Also print diff stats and test suite results for visibility
+    // Print diff stats and test suite results for visibility
     yield* logger.info("\n=== Git Diff Statistics & Scores ===");
     for (const r of updateResults) {
       if (isSuccessInstanceResult(r)) {
