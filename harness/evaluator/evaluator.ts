@@ -333,58 +333,53 @@ function applyUpdatesToInstances(
           yield* logger.debug(`Created instance ${instance.instanceId}`);
 
           // 1. Try to update with feature addition agent
-          let result = yield* runFeatureAgent(updatePrompt, instance);
-
-          // 2. Compute diff stats
-          result = yield* augmentWithDiffStats(result);
+          const result = yield* runFeatureAgent(updatePrompt, instance);
           if (isFailedInstanceResult(result)) {
             return result;
           }
 
-          // At this point, result is SuccessInstanceResult
-          const successResult = result;
+          // 2. Compute diff stats
+          result.diffStats = yield* computeDiffStats(result);
 
           // 3. Commit the changes for future reference
           yield* gitCmd(
-            successResult.folderPath,
+            result.folderPath,
             "commit",
             "-m",
-            `Update: Applied modifications by ${successResult.agentName}`,
+            `Update: Applied modifications by ${result.agentName}`,
           );
 
           // 4. Run functionality tests
           const testSuiteResult = yield* runFunctionalityTests({
             benchmarkPath,
-            systemUnderTestPath: successResult.folderPath,
+            systemUnderTestPath: result.folderPath,
             port: instance.port,
           }).pipe(
-            Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                yield* logger.error(`Tests failed for ${instance.instanceId}`, {
-                  error: error instanceof Error ? error.message : String(error),
-                });
-                return undefined;
+            Effect.tapError((error) =>
+              logger.error(`Could not run tests for ${instance.instanceId}`, {
+                error,
               }),
             ),
+            Effect.orElseSucceed(() => undefined),
           );
 
           // 5. Calculate score
           const MAX_POSSIBLE_SCORE = 300;
           const diffOnlyScore = Math.max(
             0,
-            MAX_POSSIBLE_SCORE - successResult.diffStats.getNumLinesChanged(),
+            MAX_POSSIBLE_SCORE - result.diffStats.getNumLinesChanged(),
           );
-          const score =
+          result.score =
             testSuiteResult && allTestsPassed(testSuiteResult)
               ? diffOnlyScore
               : 0;
 
-          // 6. Create final result with proper type
+          // 6. Make final result
           const finalResult:
             | SuccessInstanceResultWithTestSuiteResult
             | SuccessInstanceResult = testSuiteResult
-            ? { ...successResult, testSuiteResult, score }
-            : { ...successResult, score };
+            ? { ...result, testSuiteResult }
+            : { ...result };
 
           // 7. Log
           yield* logger.info(`Instance ${instance.instanceId} completed`);
@@ -400,17 +395,9 @@ function applyUpdatesToInstances(
   });
 }
 
-function augmentWithDiffStats(
-  result: SuccessInstanceResult | FailedInstanceResult,
-): Effect.Effect<
-  SuccessInstanceResult | FailedInstanceResult,
-  PlatformError,
-  CommandExecutor | LoggerConfig
-> {
-  if (!isSuccessInstanceResult(result)) {
-    return Effect.succeed(result);
-  }
-
+function computeDiffStats(
+  result: SuccessInstanceResult,
+): Effect.Effect<DiffStats, PlatformError, CommandExecutor | LoggerConfig> {
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
 
@@ -456,10 +443,11 @@ function augmentWithDiffStats(
             ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${result.instanceId}:
             ${diffStatOutput}`);
 
-    return { ...result, diffStats };
+    return diffStats;
   });
 }
 
+// TODO: Consider doing more to improve resource cleanups (eg killing started processes at the end)
 const runFeatureAgent = (
   updatePrompt: string,
   descriptor: InstanceDescriptor,
