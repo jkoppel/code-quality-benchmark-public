@@ -317,6 +317,9 @@ function startDevServer(
           ...DEFAULT_ENVIRONMENT_VARIABLES,
           ...process.env,
           PORT: sutConfig.port.toString(),
+          // Without CI=true, Vite dev server will exit immediately upon starting up,
+          // because our process launcher maps child stdin to "ignore"
+          CI: "true",
         },
         shell: false,
         handleSIGINT: true,
