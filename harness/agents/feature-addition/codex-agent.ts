@@ -1,5 +1,4 @@
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Effect } from "effect";
 import type { InstanceDescriptor } from "../../evaluator/instance.ts";
 import {
@@ -11,13 +10,7 @@ import { createShellAgent } from "../shell-agent.ts";
 import { type FeatureAgent, FeatureAgentError } from "../types.ts";
 import { getFullPrompt, SYSTEM_PROMPT } from "./common-prompts.ts";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const codexScriptPath = path.resolve(
-  __dirname,
-  "../../../..",
-  "agents/raw_codex.sh",
-);
+const codexScriptPath = path.resolve(process.cwd(), "agents/raw_codex.sh");
 
 const baseCodexAgent = createShellAgent(codexScriptPath);
 
