@@ -333,7 +333,7 @@ function applyUpdatesToInstances(
           yield* logger.debug(`Created instance ${instance.instanceId}`);
 
           // 1. Try to update with feature addition agent
-          const result = yield* runFeatureAgent(updatePrompt, instance);
+          const result = yield* tryApplyUpdate(updatePrompt, instance);
           if (isFailedInstanceResult(result)) {
             return result;
           }
@@ -448,9 +448,9 @@ function computeDiffStats(
 }
 
 // TODO: Consider doing more to improve resource cleanups (eg killing started processes at the end)
-const runFeatureAgent = (
+const tryApplyUpdate = (
   updatePrompt: string,
-  descriptor: InstanceDescriptor,
+  instance: InstanceDescriptor,
 ): Effect.Effect<
   SuccessInstanceResult | FailedInstanceResult,
   never,
@@ -460,37 +460,24 @@ const runFeatureAgent = (
     const { logger } = yield* LoggerConfig;
     const startTime = yield* Effect.sync(() => Date.now());
 
-    return yield* descriptor.agent
-      .applyUpdate(
-        updatePrompt,
-        descriptor.instancePath,
-        descriptor.instanceId,
-        descriptor.port,
-      )
-      .pipe(
-        Effect.matchCauseEffect({
-          onFailure: (cause) =>
-            Effect.gen(function* () {
-              const elapsed = yield* Effect.sync(() => Date.now() - startTime);
-              const prettyCause = Cause.pretty(cause);
-              yield* logger.error(
-                `Feature agent failed for ${descriptor.instanceId}`,
-                {
-                  cause: prettyCause,
-                },
-              );
+    return yield* instance.agent.applyUpdate(updatePrompt, instance).pipe(
+      Effect.matchCauseEffect({
+        onFailure: (cause) =>
+          Effect.gen(function* () {
+            const elapsed = yield* Effect.sync(() => Date.now() - startTime);
+            const prettyCause = Cause.pretty(cause);
+            yield* logger.error(
+              `Feature agent failed for ${instance.instanceId}`,
+              {
+                cause: prettyCause,
+              },
+            );
 
-              return makeFailedInstanceResult(
-                descriptor.instanceId,
-                descriptor.instancePath,
-                descriptor.agentName,
-                elapsed,
-                prettyCause,
-              );
-            }),
-          onSuccess: (success) => Effect.succeed(success),
-        }),
-      );
+            return makeFailedInstanceResult(instance, elapsed, prettyCause);
+          }),
+        onSuccess: (success) => Effect.succeed(success),
+      }),
+    );
   });
 
 export type { CodingAgent } from "../agents/types.ts";

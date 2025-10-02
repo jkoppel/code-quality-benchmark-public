@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Effect } from "effect";
+import type { InstanceDescriptor } from "../../evaluator/instance.ts";
 import {
   makeSuccessInstanceResult,
   type SuccessInstanceResult,
@@ -25,27 +26,32 @@ export class CodexAgent implements FeatureAgent {
 
   applyUpdate(
     updatePrompt: string,
-    folderPath: string,
-    instanceId: string,
-    port: number,
+    instance: InstanceDescriptor,
   ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig> {
     const startTime = Date.now();
 
     return Effect.gen(function* () {
       const { logger } = yield* LoggerConfig;
 
-      yield* logger.info(`Starting Codex agent for instance ${instanceId}`, {
-        folderPath,
-        updatePrompt: updatePrompt.substring(0, 100),
-      });
+      yield* logger.info(
+        `Starting Codex agent for instance ${instance.instanceId}`,
+        {
+          folderPath: instance.instancePath,
+          updatePrompt: updatePrompt.substring(0, 100),
+        },
+      );
 
-      const fullPrompt = `${SYSTEM_PROMPT}\n\n${getFullPrompt(updatePrompt, folderPath, port)}`;
+      const fullPrompt = `${SYSTEM_PROMPT}\n\n${getFullPrompt(updatePrompt, instance.instancePath, instance.port)}`;
 
-      return yield* baseCodexAgent(fullPrompt, folderPath, port).pipe(
+      return yield* baseCodexAgent(
+        fullPrompt,
+        instance.instancePath,
+        instance.port,
+      ).pipe(
         Effect.map(() =>
           makeSuccessInstanceResult(
-            instanceId,
-            folderPath,
+            instance.instanceId,
+            instance.instancePath,
             "codex",
             Date.now() - startTime,
           ),
@@ -54,13 +60,13 @@ export class CodexAgent implements FeatureAgent {
           const errorMessage =
             error instanceof Error ? error.message : String(error);
           return new FeatureAgentError({
-            message: `Codex agent failed for instance ${instanceId}: ${errorMessage}`,
+            message: `Codex agent failed for instance ${instance.instanceId}: ${errorMessage}`,
             cause: error,
           });
         }),
         Effect.tapError((error) =>
           Effect.logError(
-            `Failed to apply update for instance ${instanceId}: ${error}`,
+            `Failed to apply update for instance ${instance.instanceId}: ${error}`,
           ),
         ),
       );

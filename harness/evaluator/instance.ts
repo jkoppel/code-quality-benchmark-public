@@ -6,10 +6,9 @@ import type { EvaluationConfig } from "./config.ts";
 
 export type InstanceDescriptor = {
   readonly instanceId: string;
-  readonly agentName: string;
-  readonly agent: FeatureAgent;
   readonly instancePath: string;
   readonly port: number;
+  readonly agent: FeatureAgent;
 };
 
 export function makeInstances(
@@ -29,7 +28,6 @@ export function makeInstances(
           const instanceId = `${agent.getName()}-${instanceIdx + 1}`;
           return {
             instanceId,
-            agentName: agent.getName(),
             agent,
             instancePath: path.join(workspaceDir, instanceId),
             port:

@@ -1,6 +1,7 @@
 import type { TestSuiteResult } from "../benchmark-test-lib/report.ts";
 import type { EvaluationMetadata } from "./config.ts";
 import { DiffStats } from "./diff-stats.ts";
+import type { InstanceDescriptor } from "./instance.ts";
 
 /*********************
    EvaluationResult
@@ -96,18 +97,16 @@ export function makeSuccessInstanceResult(
 }
 
 export function makeFailedInstanceResult(
-  instanceId: string,
-  folderPath: string,
-  agentName: string,
+  instance: InstanceDescriptor,
   executionTimeMs: number,
   cause: string,
   errorType?: string,
 ): FailedInstanceResult {
   return {
     type: "FailedInstanceResult",
-    instanceId,
-    folderPath,
-    agentName,
+    instanceId: instance.instanceId,
+    folderPath: instance.instancePath,
+    agentName: instance.agent.getName(),
     executionTimeMs,
     cause,
     errorType,
