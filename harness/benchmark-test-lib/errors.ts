@@ -19,7 +19,8 @@ export type DevServerError =
   | DevServerPortInUseError
   | DevServerProjectNotFoundError
   | DevServerDependenciesNotInstalledError
-  | DevServerStartupTimeoutError;
+  | DevServerStartupTimeoutError
+  | DevServerStartupUnknownError;
 
 export class DevServerPortInUseError extends Data.TaggedError(
   "DevServerPortInUseError",
@@ -44,7 +45,12 @@ export class DevServerStartupTimeoutError extends Data.TaggedError(
   "DevServerStartupTimeoutError",
 )<{
   readonly url: string;
-  readonly timeoutMs: number;
+  readonly cause?: unknown;
+}> {}
+
+export class DevServerStartupUnknownError extends Data.TaggedError(
+  "DevServerStartupUnknownError",
+)<{
   readonly cause?: unknown;
 }> {}
 
