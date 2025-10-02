@@ -1,4 +1,5 @@
 import { Data, type Effect } from "effect";
+import type { InstanceDescriptor } from "../evaluator/instance.ts";
 import type { SuccessInstanceResult } from "../evaluator/result";
 import type { LoggerConfig } from "../utils/logger/logger.ts";
 
@@ -22,9 +23,7 @@ export interface FeatureAgent {
   getName(): string;
   applyUpdate(
     updatePrompt: string,
-    folderPath: string,
-    instanceId: string,
-    port: number,
+    instance: InstanceDescriptor,
   ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig>;
 }
 

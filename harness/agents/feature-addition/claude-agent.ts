@@ -1,5 +1,6 @@
 import { type Options, query } from "@anthropic-ai/claude-code";
 import { Effect, Option } from "effect";
+import type { InstanceDescriptor } from "../../evaluator/instance.ts";
 import {
   makeSuccessInstanceResult,
   type SuccessInstanceResult,
@@ -48,9 +49,7 @@ export class ClaudeAgent implements FeatureAgent {
   /** Feature addition agents return a 'mempty' version of InstanceResult that is subsequently augmented with a score by the evaluator */
   applyUpdate(
     updatePrompt: string,
-    folderPath: string,
-    instanceId: string,
-    port: number,
+    instance: InstanceDescriptor,
   ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig> {
     const startTime = Date.now();
     const self = this;
@@ -58,12 +57,19 @@ export class ClaudeAgent implements FeatureAgent {
     return Effect.gen(function* () {
       const { logger } = yield* LoggerConfig;
 
-      yield* logger.info(`Starting Claude agent for instance ${instanceId}`, {
-        folderPath,
-        updatePrompt: updatePrompt.substring(0, 100),
-      });
+      yield* logger.info(
+        `Starting Claude agent for instance ${instance.instanceId}`,
+        {
+          folderPath: instance.instancePath,
+          updatePrompt: updatePrompt.substring(0, 100),
+        },
+      );
 
-      const fullPrompt = getFullPrompt(updatePrompt, folderPath, port);
+      const fullPrompt = getFullPrompt(
+        updatePrompt,
+        instance.instancePath,
+        instance.port,
+      );
 
       const response = query({
         prompt: fullPrompt,
@@ -82,13 +88,15 @@ export class ClaudeAgent implements FeatureAgent {
 
       if (isSuccessResult(message)) {
         yield* logger.debug(`Claude completed`, {
-          instanceId,
+          instanceId: instance.instanceId,
           duration: message.duration_ms,
         });
-        yield* logger.info(`✓ Update for instance ${instanceId} completed`);
+        yield* logger.info(
+          `✓ Update for instance ${instance.instanceId} completed`,
+        );
         return makeSuccessInstanceResult(
-          instanceId,
-          folderPath,
+          instance.instanceId,
+          instance.instancePath,
           "claude",
           Date.now() - startTime,
         );
@@ -107,7 +115,7 @@ export class ClaudeAgent implements FeatureAgent {
     }).pipe(
       Effect.tapError((error) => {
         return Effect.logError(
-          `Failed to apply update for instance ${instanceId}`,
+          `Failed to apply update for instance ${instance.instanceId}`,
           error,
         );
       }),
