@@ -56,14 +56,18 @@ export type TestLoadError = InvalidBenchmarkPathError | TestSuiteImportError;
 export class InvalidBenchmarkPathError extends Data.TaggedError(
   "InvalidBenchmarkPathError",
 )<{
+  readonly message: string;
   readonly benchmarkPath: string;
   readonly expectedFormat: string;
 }> {}
 
 export class TestSuiteImportError extends Data.TaggedError(
-  "StrategyImportError",
+  "TestSuiteImportError",
 )<{
+  readonly message: string;
+  readonly benchmarkSet: string;
+  readonly project: string;
   readonly testSuiteStrategyPath: string;
   readonly availableStrategies: string;
-  readonly underlyingError?: unknown;
+  readonly cause?: unknown;
 }> {}
