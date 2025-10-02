@@ -70,14 +70,10 @@ export function createShellAgent(
           Effect.runSync(
             logger.error("Failed to execute shell script", {
               script: scriptPath,
-              error: error.message,
+              error,
             }),
           );
-          resume(
-            Effect.fail(
-              new Error(`Failed to execute shell script: ${error.message}`),
-            ),
-          );
+          resume(Effect.fail(error));
         });
 
         child.on("close", (code, signal) => {
@@ -114,7 +110,10 @@ export function createShellAgent(
                 signal,
               }),
             );
-            resume(Effect.fail(new Error(errorMsg)));
+            const error = new Error(errorMsg, {
+              cause: { code, signal, script: scriptPath, folder: folderPath },
+            });
+            resume(Effect.fail(error));
           }
         });
       });

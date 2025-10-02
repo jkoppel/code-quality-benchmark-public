@@ -20,7 +20,6 @@ import { type InstanceDescriptor, makeInstances } from "./instance.ts";
 import {
   type EvaluationResult,
   type FailedInstanceResult,
-  getDiffStats,
   isFailedInstanceResult,
   isSuccessInstanceResult,
   makeFailedInstanceResult,
@@ -458,15 +457,18 @@ const tryApplyUpdate = (
         onFailure: (cause) =>
           Effect.gen(function* () {
             const elapsed = yield* Effect.sync(() => Date.now() - startTime);
-            const prettyCause = Cause.pretty(cause);
             yield* logger.error(
               `Feature agent failed for ${instance.instanceId}`,
               {
-                cause: prettyCause,
+                cause,
               },
             );
 
-            return makeFailedInstanceResult(instance, elapsed, prettyCause);
+            return makeFailedInstanceResult(
+              instance,
+              elapsed,
+              Cause.pretty(cause, { renderErrorCause: true }),
+            );
           }),
         onSuccess: (success) => Effect.succeed(success),
       }),

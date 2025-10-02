@@ -57,10 +57,8 @@ export class CodexAgent implements FeatureAgent {
           ),
         ),
         Effect.mapError((error) => {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
           return new FeatureAgentError({
-            message: `Codex agent failed for instance ${instance.instanceId}: ${errorMessage}`,
+            message: `Codex agent failed for instance ${instance.instanceId}`,
             cause: error,
           });
         }),
