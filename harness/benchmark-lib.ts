@@ -7,6 +7,10 @@ import { Effect } from "effect";
 import fs from "fs-extra";
 import * as tmp from "tmp";
 import type { CodingAgent } from "./agents/types.ts";
+import type {
+  TestLoadError,
+  TestRunnerError,
+} from "./benchmark-test-lib/errors.ts";
 import type { TestSuiteResult } from "./benchmark-test-lib/report.ts";
 import { TestRunner, TestRunnerConfig } from "./benchmark-test-lib/runner.ts";
 import { loadSuiteGenerationStrategy } from "./benchmark-test-lib/test-registry.ts";
@@ -152,7 +156,11 @@ export function runFunctionalityTests({
   maxConcurrentTests?: number;
   headed?: boolean;
   playwrightOutDir?: string;
-}): Effect.Effect<TestSuiteResult, Error, LoggerConfig> {
+}): Effect.Effect<
+  TestSuiteResult,
+  TestRunnerError | TestLoadError,
+  LoggerConfig
+> {
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
 
@@ -177,9 +185,7 @@ export function runFunctionalityTests({
     yield* logger.info(
       `Loading test suite generation strategy for ${resolvedBenchmarkPath}`,
     );
-    const strategy = yield* Effect.promise(() =>
-      loadSuiteGenerationStrategy(resolvedBenchmarkPath),
-    );
+    const strategy = yield* loadSuiteGenerationStrategy(resolvedBenchmarkPath);
 
     // Execute suite generation strategy
     yield* logger.info(`Executing suite generation strategy`);

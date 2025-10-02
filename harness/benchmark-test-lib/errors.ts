@@ -46,3 +46,24 @@ export class DevServerStartupTimeoutError extends Data.TaggedError(
   readonly url: string;
   readonly timeoutMs: number;
 }> {}
+
+/*************************************
+    Benchmark Tests Load Errors
+***************************************/
+
+export type TestLoadError = InvalidBenchmarkPathError | TestSuiteImportError;
+
+export class InvalidBenchmarkPathError extends Data.TaggedError(
+  "InvalidBenchmarkPathError",
+)<{
+  readonly benchmarkPath: string;
+  readonly expectedFormat: string;
+}> {}
+
+export class TestSuiteImportError extends Data.TaggedError(
+  "StrategyImportError",
+)<{
+  readonly testSuiteStrategyPath: string;
+  readonly availableStrategies: string;
+  readonly underlyingError?: unknown;
+}> {}
