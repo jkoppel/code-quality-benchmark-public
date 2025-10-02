@@ -255,6 +255,7 @@ function startDevServer(
 ): Effect.Effect<DevServerHandle, DevServerError, LoggerConfig> {
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
+    const runtime = yield* Effect.runtime();
 
     yield* logger.debug("Pre-validation checks before starting dev server...");
 
@@ -351,23 +352,31 @@ function startDevServer(
         },
         onExit: (exitCode, signal) => {
           if (exitCode && exitCode !== 0) {
-            console.warn(
-              `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
+            Runtime.runFork(runtime)(
+              logger.warn(
+                `Dev server exited with code ${exitCode.toString()}, signal ${signal || "none"}`,
+              ),
             );
           } else {
-            console.info("Dev server exited cleanly");
+            Runtime.runFork(runtime)(logger.info("Dev server exited cleanly"));
           }
         },
         log: (message) => {
           // Parse and format dev server output
           if (message.includes("[out]")) {
-            console.info(message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"));
+            Runtime.runFork(runtime)(
+              logger.info(
+                message.replace(/\[pid=\d+\]\[out\]/, "[DEV-SERVER]"),
+              ),
+            );
           } else if (message.includes("[err]")) {
-            console.error(
-              message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
+            Runtime.runFork(runtime)(
+              logger.error(
+                message.replace(/\[pid=\d+\]\[err\]/, "[DEV-SERVER-ERROR]"),
+              ),
             );
           } else {
-            console.log(message);
+            Runtime.runFork(runtime)(logger.debug(message));
           }
         },
       }),
@@ -380,9 +389,11 @@ function startDevServer(
 
     return {
       async [Symbol.asyncDispose]() {
-        await console.log("Stopping dev server...");
+        await Runtime.runPromise(runtime)(
+          logger.info("Stopping dev server..."),
+        );
         await gracefullyClose();
-        await console.log("Dev server stopped");
+        await Runtime.runPromise(runtime)(logger.info("Dev server stopped"));
       },
     };
   });
