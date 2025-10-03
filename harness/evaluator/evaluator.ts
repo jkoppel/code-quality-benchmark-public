@@ -56,20 +56,20 @@ export function evaluateUpdates(
       updatePrompt: updatePrompt.substring(0, 100),
     });
 
-    const updateResults = yield* applyUpdatesToInstances(
+    const instanceResults = yield* applyUpdatesToInstances(
       benchmarkPath,
       originalProgramPath,
       updatePrompt,
       workspaceDir,
       config,
     );
-    const [successfulUpdates, failedUpdates] = [
-      updateResults.filter(isCompleteInstanceResult),
-      updateResults.filter(isFailedInstanceResult),
+    const [completedEvals, failedEvals] = [
+      instanceResults.filter(isCompleteInstanceResult),
+      instanceResults.filter(isFailedInstanceResult),
     ];
 
     // Calculate total score
-    const totalScore = successfulUpdates.reduce(
+    const totalScore = completedEvals.reduce(
       (sum, result) => sum + result.score,
       0,
     );
@@ -86,7 +86,7 @@ export function evaluateUpdates(
       originalProgramSource: { type: "pre-existing" },
       updatePrompt,
       originalProgramPath,
-      updates: updateResults,
+      updates: instanceResults,
       metadata,
       totalScore,
     };
@@ -98,22 +98,22 @@ export function evaluateUpdates(
     yield* fs.writeFileString(resultsPath, JSON.stringify(result, null, 2));
     yield* logger.info(`Saved complete results to: ${resultsPath}`);
 
-    yield* logger.info("Evaluation completed successfully", {
+    yield* logger.info("Evaluation done", {
       duration: metadata.totalDuration,
-      successfulUpdates: successfulUpdates.length,
-      failedUpdates: failedUpdates.length,
+      completedEvals: completedEvals.length,
+      failedEvals: failedEvals.length,
     });
 
     // Print diff stats and test suite results for visibility
     yield* logger.info("\n=== Git Diff Statistics & Scores ===");
-    for (const r of updateResults) {
+    for (const r of instanceResults) {
       if (isCompleteInstanceResult(r)) {
         yield* logger.info(dedent`
           ${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}
           ${"testSuiteResult" in r ? `${r.testSuiteResult.name}: ${jsonStringify(r.testSuiteResult.summary)}` : ""}`);
       } else {
         yield* logger.info(
-          `${r.instanceId} [${r.agentName}]: Update failed - ${r.cause}`,
+          `${r.instanceId} [${r.agentName}]: Eval didn't complete - ${r.cause}`,
         );
       }
     }
