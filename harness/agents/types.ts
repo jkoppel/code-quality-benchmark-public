@@ -1,6 +1,6 @@
 import { Data, type Effect } from "effect";
 import type { InstanceDescriptor } from "../evaluator/instance.ts";
-import type { SuccessInstanceResult } from "../evaluator/result";
+import type { UpdateOnlyInstanceInfo } from "../evaluator/result";
 import type { LoggerConfig } from "../utils/logger/logger.ts";
 
 /*****************************
@@ -24,7 +24,7 @@ export interface FeatureAgent {
   applyUpdate(
     updatePrompt: string,
     instance: InstanceDescriptor,
-  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig>;
+  ): Effect.Effect<UpdateOnlyInstanceInfo, FeatureAgentError, LoggerConfig>;
 }
 
 /*****************************

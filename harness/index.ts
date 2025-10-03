@@ -17,6 +17,7 @@ export type {
 export { EvaluationError } from "./evaluator/errors.ts";
 export { evaluate as eval, evaluateUpdates } from "./evaluator/evaluator.ts";
 export type {
+  CompleteInstanceResult,
   EvaluationResult,
-  SuccessInstanceResult as InstanceResult,
+  InstanceResult,
 } from "./evaluator/result.ts";

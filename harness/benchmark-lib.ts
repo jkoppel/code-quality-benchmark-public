@@ -18,10 +18,10 @@ import { DEFAULT_EVALUATION_CONFIG } from "./evaluator/config.ts";
 import { evaluate, evaluateUpdates } from "./evaluator/evaluator.ts";
 import {
   type EvaluationResult,
-  type FailedInstanceResult,
   getDiffStats,
-  isSuccessInstanceResult,
-  type SuccessInstanceResult,
+  type InstanceResult,
+  isCompleteInstanceResult,
+  isFailedInstanceResult,
 } from "./evaluator/result.ts";
 import { LoggerConfig } from "./utils/logger/logger.ts";
 
@@ -37,37 +37,54 @@ export function outputBenchmarkResults(
   result: EvaluationResult,
 ): void {
   // Output benchmark results as JSON
-  const successCount = result.updates.filter(isSuccessInstanceResult).length;
+  const completedCount = result.updates.filter(isCompleteInstanceResult).length;
+  const featureAgentSuccessCount = result.updates.filter(
+    (u) =>
+      isCompleteInstanceResult(u) ||
+      (isFailedInstanceResult(u) && u.lastCheckpoint),
+  ).length;
+  const testRunnerFailedCount = result.updates.filter(
+    (u) => isFailedInstanceResult(u) && u.lastCheckpoint,
+  ).length;
   const totalUpdates = result.updates.length;
 
   // Calculate per-agent success rates
   const agentStats: {
-    [key: string]: { successful: number; total: number; totalScore: number };
+    [key: string]: {
+      updateSuccess: number;
+      total: number;
+      totalScore: number;
+    };
   } = {};
-  result.updates.forEach((u: SuccessInstanceResult | FailedInstanceResult) => {
+  result.updates.forEach((u: InstanceResult) => {
     if (!agentStats[u.agentName]) {
-      agentStats[u.agentName] = { successful: 0, total: 0, totalScore: 0 };
+      agentStats[u.agentName] = {
+        updateSuccess: 0,
+        total: 0,
+        totalScore: 0,
+      };
     }
     agentStats[u.agentName].total++;
     agentStats[u.agentName].totalScore += u.score;
-    if (isSuccessInstanceResult(u)) {
-      agentStats[u.agentName].successful++;
+    if (
+      isCompleteInstanceResult(u) ||
+      (isFailedInstanceResult(u) && u.lastCheckpoint)
+    ) {
+      agentStats[u.agentName].updateSuccess++;
     }
   });
 
-  const updates = result.updates.map(
-    (u: SuccessInstanceResult | FailedInstanceResult) => ({
-      instance: u.instanceId,
-      agent: u.agentName,
-      success: isSuccessInstanceResult(u),
-      score: u.score,
-      diffStats: getDiffStats(u)?.getSummaryStats() ?? {
-        filesChanged: 0,
-        linesChanged: 0,
-      },
-      executionTime: u.executionTimeMs,
-    }),
-  );
+  const updates = result.updates.map((u: InstanceResult) => ({
+    instance: u.instanceId,
+    agent: u.agentName,
+    completed: isCompleteInstanceResult(u),
+    score: u.score,
+    diffStats: getDiffStats(u)?.getSummaryStats() ?? {
+      filesChanged: 0,
+      linesChanged: 0,
+    },
+    executionTime: u.executionTimeMs,
+  }));
 
   console.log(
     JSON.stringify(
@@ -82,14 +99,17 @@ export function outputBenchmarkResults(
           "evaluation-results.json",
         ),
         total_score: result.totalScore,
-        success_rate: (successCount / totalUpdates) * 100,
-        successful_updates: successCount,
+        testRunnerFailed: testRunnerFailedCount,
+        featureAgentUpdateSuccessRate:
+          (featureAgentSuccessCount / totalUpdates) * 100,
+        updateSuccess: featureAgentSuccessCount,
         total_updates: totalUpdates,
         duration_ms: result.metadata.totalDuration,
         agent_stats: Object.entries(agentStats).map(([agent, stats]) => ({
           agent,
-          success_rate: (stats.successful / stats.total) * 100,
-          successful: stats.successful,
+          featureAgentUpdateSuccessRate:
+            (stats.updateSuccess / stats.total) * 100,
+          updateSuccess: stats.updateSuccess,
           total: stats.total,
           total_score: stats.totalScore,
         })),
@@ -101,7 +121,7 @@ export function outputBenchmarkResults(
   );
 
   // Exit with appropriate code (success if all updates succeeded)
-  process.exit(successCount === totalUpdates ? 0 : 1);
+  process.exit(completedCount === totalUpdates ? 0 : 1);
 }
 
 /*************************************************

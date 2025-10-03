@@ -2,8 +2,8 @@ import * as path from "node:path";
 import { Effect } from "effect";
 import type { InstanceDescriptor } from "../../evaluator/instance.ts";
 import {
-  makeSuccessInstanceResult,
-  type SuccessInstanceResult,
+  makeUpdateOnlyInfo,
+  type UpdateOnlyInstanceInfo,
 } from "../../evaluator/result.ts";
 import { LoggerConfig } from "../../utils/logger/logger.ts";
 import { createShellAgent } from "../shell-agent.ts";
@@ -24,8 +24,9 @@ export class CodexAgent implements FeatureAgent {
   applyUpdate(
     updatePrompt: string,
     instance: InstanceDescriptor,
-  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig> {
+  ): Effect.Effect<UpdateOnlyInstanceInfo, FeatureAgentError, LoggerConfig> {
     const startTime = Date.now();
+    const self = this;
 
     return Effect.gen(function* () {
       const { logger } = yield* LoggerConfig;
@@ -46,10 +47,10 @@ export class CodexAgent implements FeatureAgent {
         instance.port,
       ).pipe(
         Effect.map(() =>
-          makeSuccessInstanceResult(
+          makeUpdateOnlyInfo(
             instance.instanceId,
             instance.instancePath,
-            "codex",
+            self.getName(),
             Date.now() - startTime,
           ),
         ),
