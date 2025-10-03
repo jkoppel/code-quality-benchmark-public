@@ -2,6 +2,9 @@ import { spawn } from "node:child_process";
 import { Effect } from "effect";
 import { LoggerConfig } from "../utils/logger/logger.ts";
 
+// TODO 2025.10.03 Logging here not ideal because (i) it's being buffered
+// and (ii) doesn't use our logger setup
+
 /**
  * Creates a CodingAgent that executes a shell script with the prompt and folder path as arguments
  * @param scriptPath - Path to the shell script to execute
