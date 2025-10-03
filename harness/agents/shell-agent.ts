@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { Effect } from "effect";
+import { match, P } from "ts-pattern";
 import { LoggerConfig } from "../utils/logger/logger.ts";
 
 // TODO 2025.10.03 Logging here not ideal because (i) it's being buffered
@@ -102,15 +103,34 @@ export function createShellAgent(
             );
             resume(Effect.succeed(undefined));
           } else {
-            const errorMsg =
-              code !== null
-                ? `Shell script exited with code ${code}.`
-                : `Shell script was terminated by signal ${signal}.`;
+            // Timeout detection: null code + SIGTERM + killed flag indicates timeout
+            const isTimeout =
+              code === null && signal === "SIGTERM" && child.killed;
+            const timeoutMs =
+              typeof timeout === "number" && Number.isFinite(timeout)
+                ? timeout
+                : undefined;
+
+            const errorMsg = match({ isTimeout, code })
+              .with(
+                { isTimeout: true },
+                () =>
+                  `Shell script timed out after ${timeoutMs ? `${timeoutMs}ms` : "configured limit"}.`,
+              )
+              .with(
+                { code: P.number },
+                ({ code }) => `Shell script exited with code ${code}.`,
+              )
+              .otherwise(() => `Shell script terminated by signal ${signal}.`);
+
             Effect.runSync(
-              logger.error("Shell script failed", {
+              logger.error(errorMsg, {
                 script: scriptPath,
                 code,
                 signal,
+                timedOut: isTimeout,
+                timeoutMs: isTimeout ? timeoutMs : undefined,
+                configuredTimeoutMs: timeoutMs,
               }),
             );
             const error = new Error(errorMsg, {
