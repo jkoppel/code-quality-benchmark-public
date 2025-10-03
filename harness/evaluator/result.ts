@@ -11,7 +11,11 @@ export interface EvaluationResult {
   originalProgramPath: string;
   originalProgramSource: OriginalProgramSource;
   updatePrompt: string;
-  updates: (SuccessInstanceResult | FailedInstanceResult)[];
+  updates: (
+    | SuccessInstanceResultWithTestSuiteResult
+    | SuccessInstanceResult
+    | FailedInstanceResult
+  )[];
   metadata: EvaluationMetadata;
   totalScore: number;
 }
@@ -39,6 +43,10 @@ interface InstanceMetadata {
   agentName: string;
   executionTimeMs: number;
 }
+
+// -- TODO: Improve the types in the future
+// eg prob better to have just one SuccessInstanceResult
+// and then a failure type with a maybe lastCheckpoint?
 
 /** Result from a feature addition agent's attempt that *successfully executed / ran to completion*
  * (but that may or may not pass functionality tests). */
