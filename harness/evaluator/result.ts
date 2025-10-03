@@ -11,11 +11,7 @@ export interface EvaluationResult {
   originalProgramPath: string;
   originalProgramSource: OriginalProgramSource;
   updatePrompt: string;
-  updates: (
-    | SuccessInstanceResultWithTestSuiteResult
-    | SuccessInstanceResult
-    | FailedInstanceResult
-  )[];
+  updates: InstanceResult[];
   metadata: EvaluationMetadata;
   totalScore: number;
 }
@@ -37,28 +33,23 @@ export function wasGeneratedInRun(
         aka 'Instance Result'
 **********************************************/
 
-interface InstanceMetadata {
+export type InstanceResult = CompleteInstanceResult | FailedInstanceResult;
+
+export interface InstanceMetadata {
   instanceId: string;
-  folderPath: string;
+  instancePath: string;
   agentName: string;
   executionTimeMs: number;
 }
 
-// -- TODO: Improve the types in the future
-// eg prob better to have just one SuccessInstanceResult
-// and then a failure type with a maybe lastCheckpoint?
-
 /** Result from a feature addition agent's attempt that *successfully executed / ran to completion*
  * (but that may or may not pass functionality tests). */
-export interface SuccessInstanceResult extends InstanceMetadata {
-  type: "SuccessInstanceResult";
+export interface CompleteInstanceResult extends InstanceMetadata {
+  /** eval ran to completion */
+  type: "CompleteInstanceResult";
   diffStats: DiffStats;
-  score: number;
-}
-
-export interface SuccessInstanceResultWithTestSuiteResult
-  extends SuccessInstanceResult {
   testSuiteResult: TestSuiteResult;
+  score: number;
 }
 
 /** Info from a feature addition agent's attempt that failed */
@@ -67,39 +58,52 @@ export interface FailedInstanceResult extends InstanceMetadata {
   score: 0;
   cause: string; // Pretty-printed from Effect's Cause
   errorType?: string; // Optional: original error _tag
+  lastCheckpoint?: UpdateOnlyInstanceInfo;
+}
+
+export interface UpdateOnlyInstanceInfo extends InstanceMetadata {
+  type: "UpdateOnlyInstanceInfo";
+  diffStats: DiffStats;
 }
 
 // Type guard functions
 
-export function isSuccessInstanceResult(
-  result: SuccessInstanceResult | FailedInstanceResult,
-): result is SuccessInstanceResult {
-  return result.type === "SuccessInstanceResult";
+export function isCompleteInstanceResult(
+  result: InstanceResult,
+): result is CompleteInstanceResult {
+  return result.type === "CompleteInstanceResult";
 }
 
 export function isFailedInstanceResult(
-  result: SuccessInstanceResult | FailedInstanceResult,
+  result: unknown,
 ): result is FailedInstanceResult {
-  return result.type === "FailedInstanceResult";
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    "type" in result &&
+    result.type === "FailedInstanceResult"
+  );
 }
 
 // Helper factory functions
 
-export function makeSuccessInstanceResult(
+export function makeCompleteInstanceResult(
   instanceId: string,
-  folderPath: string,
+  instancePath: string,
   agentName: string,
   executionTimeMs: number,
   diffStats: DiffStats = DiffStats.mempty(),
+  testSuiteResult: TestSuiteResult,
   score: number = 0,
-): SuccessInstanceResult {
+): CompleteInstanceResult {
   return {
-    type: "SuccessInstanceResult",
+    type: "CompleteInstanceResult",
     instanceId,
-    folderPath,
+    instancePath,
     agentName,
     executionTimeMs,
     diffStats,
+    testSuiteResult,
     score,
   };
 }
@@ -109,23 +113,40 @@ export function makeFailedInstanceResult(
   executionTimeMs: number,
   cause: string,
   errorType?: string,
+  lastCheckpoint?: UpdateOnlyInstanceInfo,
 ): FailedInstanceResult {
   return {
     type: "FailedInstanceResult",
     instanceId: instance.instanceId,
-    folderPath: instance.instancePath,
+    instancePath: instance.instancePath,
     agentName: instance.agent.getName(),
     executionTimeMs,
     cause,
     errorType,
     score: 0,
+    lastCheckpoint,
+  };
+}
+
+export function makeUpdateOnlyInfo(
+  instanceId: string,
+  folderPath: string,
+  agentName: string,
+  executionTimeMs: number,
+  diffStats: DiffStats = DiffStats.mempty(),
+): UpdateOnlyInstanceInfo {
+  return {
+    type: "UpdateOnlyInstanceInfo",
+    instanceId,
+    instancePath: folderPath,
+    agentName,
+    executionTimeMs,
+    diffStats,
   };
 }
 
 // Accessors
 
-export function getDiffStats(
-  result: SuccessInstanceResult | FailedInstanceResult,
-): DiffStats | undefined {
-  return isSuccessInstanceResult(result) ? result.diffStats : undefined;
+export function getDiffStats(result: InstanceResult): DiffStats | undefined {
+  return isCompleteInstanceResult(result) ? result.diffStats : undefined;
 }

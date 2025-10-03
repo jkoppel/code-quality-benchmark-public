@@ -3,7 +3,7 @@ import { Command, FileSystem } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import type { PlatformError } from "@effect/platform/Error";
 import dedent from "dedent";
-import { Cause, Effect } from "effect";
+import { Cause, Effect, Either } from "effect";
 import * as tmp from "tmp";
 import { ClaudeAgent } from "../agents/feature-addition/claude-agent.ts";
 import { CodexAgent } from "../agents/feature-addition/codex-agent.ts";
@@ -18,13 +18,16 @@ import { DiffStats } from "./diff-stats.ts";
 import { EvaluationError } from "./errors.ts";
 import { type InstanceDescriptor, makeInstances } from "./instance.ts";
 import {
+  type CompleteInstanceResult,
   type EvaluationResult,
   type FailedInstanceResult,
+  type InstanceMetadata,
+  type InstanceResult,
+  isCompleteInstanceResult,
   isFailedInstanceResult,
-  isSuccessInstanceResult,
   makeFailedInstanceResult,
-  type SuccessInstanceResult,
-  type SuccessInstanceResultWithTestSuiteResult,
+  makeUpdateOnlyInfo,
+  type UpdateOnlyInstanceInfo,
 } from "./result.ts";
 
 // import { geminiAgent } from './agents/feature-addition/gemini-agent.ts';
@@ -61,7 +64,7 @@ export function evaluateUpdates(
       config,
     );
     const [successfulUpdates, failedUpdates] = [
-      updateResults.filter(isSuccessInstanceResult),
+      updateResults.filter(isCompleteInstanceResult),
       updateResults.filter(isFailedInstanceResult),
     ];
 
@@ -104,7 +107,7 @@ export function evaluateUpdates(
     // Print diff stats and test suite results for visibility
     yield* logger.info("\n=== Git Diff Statistics & Scores ===");
     for (const r of updateResults) {
-      if (isSuccessInstanceResult(r)) {
+      if (isCompleteInstanceResult(r)) {
         yield* logger.info(dedent`
           ${r.instanceId} [${r.agentName}]: ${r.diffStats.getNumFilesChanged()} files, ${r.diffStats.getNumLinesChanged()} lines, score: ${r.score}
           ${"testSuiteResult" in r ? `${r.testSuiteResult.name}: ${jsonStringify(r.testSuiteResult.summary)}` : ""}`);
@@ -290,11 +293,7 @@ function applyUpdatesToInstances(
   workspaceDir: string,
   config: EvaluationConfig,
 ): Effect.Effect<
-  (
-    | SuccessInstanceResultWithTestSuiteResult
-    | SuccessInstanceResult
-    | FailedInstanceResult
-  )[],
+  InstanceResult[],
   PlatformError,
   FileSystem.FileSystem | CommandExecutor | LoggerConfig
 > {
@@ -325,55 +324,71 @@ function applyUpdatesToInstances(
           yield* logger.debug(`Created instance ${instance.instanceId}`);
 
           // 1. Try to update with feature addition agent
-          const result = yield* tryApplyUpdate(updatePrompt, instance);
-          if (isFailedInstanceResult(result)) {
-            return result;
+          const agentResult = yield* tryApplyUpdate(updatePrompt, instance);
+          if (isFailedInstanceResult(agentResult)) {
+            return agentResult;
           }
 
           // 2. Compute diff stats
-          result.diffStats = yield* computeDiffStats(result);
+          const diffStats = yield* computeDiffStats(agentResult);
 
           // 3. Commit the changes for future reference
           yield* gitCmd(
-            result.folderPath,
+            agentResult.instancePath,
             "commit",
             "-m",
-            `Update: Applied modifications by ${result.agentName}`,
+            `Update: Applied modifications by ${agentResult.agentName}`,
           );
 
           // 4. Run functionality tests
-          const testSuiteResult = yield* runFunctionalityTests({
+          const testResult = yield* runFunctionalityTests({
             benchmarkPath,
-            systemUnderTestPath: result.folderPath,
+            systemUnderTestPath: agentResult.instancePath,
             port: instance.port,
-          }).pipe(
-            Effect.tapError((error) =>
-              logger.error(`Could not run tests for ${instance.instanceId}`, {
-                error,
-              }),
-            ),
-            Effect.orElseSucceed(() => undefined),
-          );
+          }).pipe(Effect.either);
+
+          // If tests failed to run, return FailedInstanceResult with UpdateOnlyInstanceInfo
+          if (Either.isLeft(testResult)) {
+            yield* logger.error(
+              `Could not run tests for ${instance.instanceId}`,
+              { cause: testResult.left },
+            );
+
+            return makeFailedInstanceResult(
+              instance,
+              agentResult.executionTimeMs,
+              jsonStringify(testResult.left),
+              testResult.left._tag,
+              makeUpdateOnlyInfo(
+                agentResult.instanceId,
+                agentResult.instancePath,
+                agentResult.agentName,
+                agentResult.executionTimeMs,
+                diffStats,
+              ),
+            );
+          }
+          // Tests ran successfully, continue with scoring
+          const testSuiteResult = testResult.right;
 
           // 5. Calculate score
           const MAX_POSSIBLE_SCORE = 300;
           const diffOnlyScore = Math.max(
             0,
-            MAX_POSSIBLE_SCORE - result.diffStats.getNumLinesChanged(),
+            MAX_POSSIBLE_SCORE - diffStats.getNumLinesChanged(),
           );
-          result.score =
-            testSuiteResult && allTestsPassed(testSuiteResult)
-              ? diffOnlyScore
-              : 0;
+          const score = allTestsPassed(testSuiteResult) ? diffOnlyScore : 0;
 
-          // 6. Make final result
-          const finalResult:
-            | SuccessInstanceResultWithTestSuiteResult
-            | SuccessInstanceResult = testSuiteResult
-            ? { ...result, testSuiteResult }
-            : { ...result };
+          // 7. Make final result
+          const finalResult: CompleteInstanceResult = {
+            ...agentResult,
+            type: "CompleteInstanceResult",
+            diffStats,
+            testSuiteResult,
+            score,
+          };
 
-          // 7. Log
+          // 6. Log
           yield* logger.info(`Instance ${instance.instanceId} completed`);
           yield* logger.info(
             dedent`
@@ -388,7 +403,7 @@ function applyUpdatesToInstances(
 }
 
 function computeDiffStats(
-  result: SuccessInstanceResult,
+  metadata: InstanceMetadata,
 ): Effect.Effect<DiffStats, PlatformError, CommandExecutor | LoggerConfig> {
   return Effect.gen(function* () {
     const { logger } = yield* LoggerConfig;
@@ -396,7 +411,7 @@ function computeDiffStats(
     // **************************************************
     // a. Add all changes to staging to see what changed
     // **************************************************
-    yield* gitCmd(result.folderPath, "add", "-A");
+    yield* gitCmd(metadata.instancePath, "add", "-A");
 
     // **************************************************
     // b. Get the diff statistics
@@ -409,7 +424,7 @@ function computeDiffStats(
       "--ignore-space-change",
       // more conservative than --ignore-all-space (TODO: will need to monitor / tune this)
     ];
-    const diffOutput = yield* gitCmd(result.folderPath, ...baseGitDiffArgs);
+    const diffOutput = yield* gitCmd(metadata.instancePath, ...baseGitDiffArgs);
 
     const diffStatOutput = yield* Command.make("diffstat", "-tm").pipe(
       Command.feed(diffOutput),
@@ -424,15 +439,15 @@ function computeDiffStats(
     // c. Log the full diff stats for debugging
     // **************************************************
     const gitDiffStatOutput = yield* gitCmd(
-      result.folderPath,
+      metadata.instancePath,
       ...baseGitDiffArgs,
       "--stat",
     );
     yield* logger.debug(dedent`
-            Diff stats for ${result.instanceId}:
+            Diff stats for ${metadata.instanceId}:
             ${gitDiffStatOutput}`);
     yield* logger.debug(dedent`
-            ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${result.instanceId}:
+            ${baseGitDiffArgs.join(" ")} | diffstat -tm for ${metadata.instanceId}:
             ${diffStatOutput}`);
 
     return diffStats;
@@ -444,7 +459,7 @@ const tryApplyUpdate = (
   updatePrompt: string,
   instance: InstanceDescriptor,
 ): Effect.Effect<
-  SuccessInstanceResult | FailedInstanceResult,
+  UpdateOnlyInstanceInfo | FailedInstanceResult,
   never,
   LoggerConfig
 > =>
@@ -470,7 +485,7 @@ const tryApplyUpdate = (
               Cause.pretty(cause, { renderErrorCause: true }),
             );
           }),
-        onSuccess: (success) => Effect.succeed(success),
+        onSuccess: (metadata) => Effect.succeed(metadata),
       }),
     );
   });

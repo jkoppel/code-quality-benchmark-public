@@ -2,8 +2,8 @@ import { type Options, query } from "@anthropic-ai/claude-code";
 import { Effect, Option } from "effect";
 import type { InstanceDescriptor } from "../../evaluator/instance.ts";
 import {
-  makeSuccessInstanceResult,
-  type SuccessInstanceResult,
+  makeUpdateOnlyInfo,
+  type UpdateOnlyInstanceInfo,
 } from "../../evaluator/result.ts";
 import {
   ClaudeCodeExecutionError,
@@ -46,11 +46,10 @@ export class ClaudeAgent implements FeatureAgent {
     return this.name;
   }
 
-  /** Feature addition agents return a 'mempty' version of InstanceResult that is subsequently augmented with a score by the evaluator */
   applyUpdate(
     updatePrompt: string,
     instance: InstanceDescriptor,
-  ): Effect.Effect<SuccessInstanceResult, FeatureAgentError, LoggerConfig> {
+  ): Effect.Effect<UpdateOnlyInstanceInfo, FeatureAgentError, LoggerConfig> {
     const startTime = Date.now();
     const self = this;
 
@@ -65,14 +64,12 @@ export class ClaudeAgent implements FeatureAgent {
         },
       );
 
-      const fullPrompt = getFullPrompt(
-        updatePrompt,
-        instance.instancePath,
-        instance.port,
-      );
-
       const response = query({
-        prompt: fullPrompt,
+        prompt: getFullPrompt(
+          updatePrompt,
+          instance.instancePath,
+          instance.port,
+        ),
         options: self.config,
       });
 
@@ -94,10 +91,10 @@ export class ClaudeAgent implements FeatureAgent {
         yield* logger.info(
           `✓ Update for instance ${instance.instanceId} completed`,
         );
-        return makeSuccessInstanceResult(
+        return makeUpdateOnlyInfo(
           instance.instanceId,
           instance.instancePath,
-          "claude",
+          self.getName(),
           Date.now() - startTime,
         );
       }
