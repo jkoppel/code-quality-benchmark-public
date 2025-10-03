@@ -152,7 +152,7 @@ export class DriverAgent {
       }
       if (isExecutionErrorResult(message)) {
         return yield* new DriverAgentExecutionError({
-          message: "Execution error occurred",
+          message: "Execution error in TestCaseAgent driver",
           sessionId: self.getSessionId(),
           cause: ClaudeCodeExecutionError.make(self.getSessionId()),
         });
