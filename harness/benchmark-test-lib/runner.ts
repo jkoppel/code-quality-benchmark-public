@@ -31,6 +31,7 @@ import {
   DevServerPortInUseError,
   DevServerProjectNotFoundError,
   DevServerStartupTimeoutError,
+  DevServerStartupUnknownError,
   type TestRunnerError,
 } from "./errors.ts";
 import type { TestSuiteResult } from "./report.ts";
@@ -387,7 +388,14 @@ function startDevServer(
 
     // Wait for server to be ready
     yield* logger.info(`Waiting for server to be ready at ${serverUrl}...`);
-    yield* Effect.promise(() => waitForServerReady(serverUrl));
+    yield* Effect.tryPromise({
+      try: () => waitForServerReady(serverUrl),
+      catch: (error) => {
+        return error instanceof DevServerStartupTimeoutError
+          ? error
+          : new DevServerStartupUnknownError({ cause: error });
+      },
+    });
     yield* logger.info("Dev server is ready");
 
     return {
@@ -435,7 +443,6 @@ async function waitForServerReady(
 
   throw new DevServerStartupTimeoutError({
     url,
-    timeoutMs,
     cause: lastError,
   });
 }
